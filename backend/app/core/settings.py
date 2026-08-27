@@ -2,7 +2,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-
     # MyTischtennis Settings
     mytt_base_url: str = "https://www.mytischtennis.de"
     mytt_club_number: str = "45017"
@@ -30,11 +29,4 @@ class Settings(BaseSettings):
     cookie_samesite: str = "strict"
     cookie_path: str = "/api/auth"
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8"
-    )
-
-
-settings = Settings()
-print (settings)
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
