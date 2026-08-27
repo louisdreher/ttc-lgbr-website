@@ -1,0 +1,16 @@
+name: ttc-backend
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.13
+  - pip
+  - pip:
+      - fastapi[standard]
+      - sqlmodel
+      - psycopg[binary]
+      - pwdlib[argon2]
+      - pyjwt
+      - alembic
+      - httpx

@@ -1,0 +1,24 @@
+<div class="admin-layout">
+
+  <app-admin-header
+    (menuToggle)="toggleSidebar()"
+  ></app-admin-header>
+
+
+  <div class="admin-body">
+
+    <app-admin-sidebar
+      [open]="sidebarOpen"
+      (navigate)="closeSidebar()"
+    ></app-admin-sidebar>
+
+
+    <main class="admin-content">
+
+      <router-outlet></router-outlet>
+
+    </main>
+
+  </div>
+
+</div>

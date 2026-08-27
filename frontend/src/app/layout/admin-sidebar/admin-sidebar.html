@@ -1,0 +1,145 @@
+<aside
+  class="admin-sidebar"
+  [class.open]="open"
+>
+
+  <div class="sidebar-header">
+
+    <span class="sidebar-label">
+      Administration
+    </span>
+
+  </div>
+
+
+  <nav
+    class="sidebar-nav"
+    aria-label="Administration"
+  >
+
+    <!-- Dashboard -->
+
+    <a
+      routerLink="/admin"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      (click)="onNavigate()"
+    >
+      Dashboard
+    </a>
+
+
+    <!-- Beiträge -->
+
+    <div
+      class="sidebar-group"
+      routerLinkActive="active-group"
+    >
+
+      <button
+        class="sidebar-group-button"
+        type="button"
+        (click)="toggleArticles()"
+        [attr.aria-expanded]="articlesOpen"
+      >
+
+        <span>
+          Beiträge
+        </span>
+
+        <span
+          class="sidebar-group-arrow"
+          [class.open]="articlesOpen"
+        >
+          ▾
+        </span>
+
+      </button>
+
+
+      <div
+        class="sidebar-subnav"
+        [class.open]="articlesOpen"
+      >
+
+        <a
+          routerLink="/admin/articles/new"
+          routerLinkActive="active"
+          (click)="onNavigate()"
+        >
+          Neuer Beitrag
+        </a>
+
+
+        <a
+          routerLink="/admin/articles/drafts"
+          routerLinkActive="active"
+          (click)="onNavigate()"
+        >
+          Entwürfe
+        </a>
+
+
+        <a
+          routerLink="/admin/articles/list"
+          routerLinkActive="active"
+          (click)="onNavigate()"
+        >
+          Alle Beiträge
+        </a>
+
+
+        <a
+          routerLink="/admin/articles/newsletter"
+          routerLinkActive="active"
+          (click)="onNavigate()"
+        >
+          Newsletter erstellen
+        </a>
+
+      </div>
+
+    </div>
+
+
+    <!-- Mannschaften -->
+
+    <a
+      routerLink="/admin/teams"
+      routerLinkActive="active"
+      (click)="onNavigate()"
+    >
+      Mannschaften
+    </a>
+
+
+    <!-- Veranstaltungen -->
+
+    <a
+      routerLink="/admin/events"
+      routerLinkActive="active"
+      (click)="onNavigate()"
+    >
+      Veranstaltungen
+    </a>
+
+
+    <!-- Nur ADMIN -->
+
+    @if (authService.hasAnyRole('ADMIN')) {
+
+      <div class="sidebar-divider"></div>
+
+      <a
+        routerLink="/admin/users"
+        routerLinkActive="active"
+        (click)="onNavigate()"
+      >
+        Benutzer
+      </a>
+
+    }
+
+  </nav>
+
+</aside>

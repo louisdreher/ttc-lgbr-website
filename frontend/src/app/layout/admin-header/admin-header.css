@@ -1,0 +1,159 @@
+.admin-header {
+  height: 64px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 24px;
+
+  background-color: var(--color-surface);
+
+  border-bottom: 1px solid var(--color-border);
+
+  box-sizing: border-box;
+}
+
+
+/* ========================================
+   Linker Bereich
+   ======================================== */
+
+.admin-header-left {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+}
+
+
+/* ========================================
+   Logo / Titel
+   ======================================== */
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  color: var(--color-text);
+
+  text-decoration: none;
+}
+
+
+.admin-logo {
+  width: 40px;
+  height: 40px;
+
+  object-fit: contain;
+}
+
+
+.admin-title {
+  display: flex;
+  flex-direction: column;
+
+  line-height: 1.2;
+}
+
+
+.admin-club-name {
+  color: var(--color-text-muted);
+
+  font-size: 12px;
+  font-weight: 500;
+}
+
+
+.admin-area-name {
+  color: var(--color-text);
+
+  font-size: 17px;
+  font-weight: 700;
+}
+
+
+/* ========================================
+   Benutzer
+   ======================================== */
+
+.admin-header-user {
+  display: flex;
+  align-items: center;
+}
+
+
+/* ========================================
+   Mobile Sidebar Button
+   ======================================== */
+
+.admin-menu-button {
+  display: none;
+
+  width: 40px;
+  height: 40px;
+
+  padding: 7px;
+
+  border: none;
+  border-radius: 7px;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+
+.admin-menu-button:hover {
+  background-color: var(--club-primary-lighter);
+}
+
+
+.admin-menu-button span {
+  display: block;
+
+  width: 22px;
+  height: 2px;
+
+  margin: 4px auto;
+
+  background-color: var(--color-text);
+
+  border-radius: 2px;
+}
+
+
+/* ========================================
+   Mobile
+   ======================================== */
+
+@media (max-width: 900px) {
+
+  .admin-header {
+    padding: 0 16px;
+  }
+
+
+  .admin-menu-button {
+    display: block;
+  }
+
+
+  .admin-club-name {
+    display: none;
+  }
+
+
+  .admin-area-name {
+    font-size: 16px;
+  }
+
+
+  .admin-logo {
+    width: 36px;
+    height: 36px;
+  }
+
+}

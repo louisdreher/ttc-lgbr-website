@@ -1,0 +1,359 @@
+<header
+  class="site-header"
+  [class.scrolled]="isScrolled"
+>
+  <div class="header-inner">
+
+    <!-- ========================================
+         Logo / Vereinsname
+         ======================================== -->
+
+    <a
+      class="brand"
+      routerLink="/"
+      aria-label="TTC 1970 Langen-Brombach – Startseite"
+    >
+
+      <img
+        class="brand-logo"
+        src="/ttc-logo.png"
+        alt="Logo TTC 1970 Langen-Brombach"
+      >
+
+      <span class="brand-text">
+
+        <span class="brand-name">
+          TTC 1970
+        </span>
+
+        <span class="brand-name">
+          Langen-Brombach
+        </span>
+
+      </span>
+
+    </a>
+
+
+    <!-- ========================================
+         Hauptnavigation
+         ======================================== -->
+
+    <nav
+      class="main-nav"
+      [class.mobile-open]="mobileMenuOpen"
+      aria-label="Hauptnavigation"
+    >
+
+      <a
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="closeMobileMenu()"
+      >
+        Startseite
+      </a>
+
+
+      <!-- Aktuelles -->
+
+      <div
+        class="nav-item has-dropdown"
+        routerLinkActive="active"
+        [class.mobile-dropdown-open]="openMobileDropdown === 'aktuelles'"
+      >
+
+        <!-- Desktop -->
+        <a
+          class="desktop-dropdown-trigger"
+          routerLink="/news"
+        >
+          Aktuelles
+          <span class="dropdown-icon">▾</span>
+        </a>
+
+
+        <!-- Mobile -->
+        <button
+          class="mobile-dropdown-trigger"
+          type="button"
+          (click)="toggleMobileDropdown('aktuelles')"
+          [attr.aria-expanded]="openMobileDropdown === 'aktuelles'"
+        >
+          Aktuelles
+          <span class="dropdown-icon">▾</span>
+        </button>
+
+
+        <div class="dropdown-menu">
+
+          <a
+            routerLink="/news"
+            (click)="closeMobileMenu()"
+          >
+            News
+          </a>
+
+          <a
+            routerLink="/spielberichte"
+            (click)="closeMobileMenu()"
+          >
+            Spielberichte
+          </a>
+
+          <a
+            routerLink="/kalender"
+            (click)="closeMobileMenu()"
+          >
+            Kalender
+          </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- Mannschaften -->
+
+      <div
+        class="nav-item has-dropdown"
+        routerLinkActive="active"
+        [class.mobile-dropdown-open]="openMobileDropdown === 'mannschaften'"
+      >
+
+        <a
+          class="desktop-dropdown-trigger"
+          routerLink="/mannschaften"
+        >
+          Mannschaften
+          <span class="dropdown-icon">▾</span>
+        </a>
+
+        <button
+          class="mobile-dropdown-trigger"
+          type="button"
+          (click)="toggleMobileDropdown('mannschaften')"
+          [attr.aria-expanded]="openMobileDropdown === 'mannschaften'"
+        >
+          Mannschaften
+          <span class="dropdown-icon">▾</span>
+        </button>
+
+        <div class="dropdown-menu">
+
+          <a
+            routerLink="/mannschaften"
+            (click)="closeMobileMenu()"
+          >
+            Übersicht
+          </a>
+
+          <a
+            routerLink="/mannschaften/herren"
+            (click)="closeMobileMenu()"
+          >
+            Herren
+          </a>
+
+          <a
+            routerLink="/mannschaften/jugend"
+            (click)="closeMobileMenu()"
+          >
+            Jugend
+          </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- Training -->
+
+      <div
+        class="nav-item has-dropdown"
+        routerLinkActive="active"
+        [class.mobile-dropdown-open]="openMobileDropdown === 'training'"
+      >
+
+        <a
+          class="desktop-dropdown-trigger"
+          routerLink="/training"
+        >
+          Training
+          <span class="dropdown-icon">▾</span>
+        </a>
+
+        <button
+          class="mobile-dropdown-trigger"
+          type="button"
+          (click)="toggleMobileDropdown('training')"
+          [attr.aria-expanded]="openMobileDropdown === 'training'"
+        >
+          Training
+          <span class="dropdown-icon">▾</span>
+        </button>
+
+        <div class="dropdown-menu">
+
+          <a
+            routerLink="/training"
+            (click)="closeMobileMenu()"
+          >
+            Übersicht
+          </a>
+
+          <a
+            routerLink="/training/trainingsgruppen"
+            (click)="closeMobileMenu()"
+          >
+            Trainingsgruppen
+          </a>
+
+          <a
+            routerLink="/training/trainingszeiten"
+            (click)="closeMobileMenu()"
+          >
+            Trainingszeiten
+          </a>
+
+          <a
+            routerLink="/training/probetraining"
+            (click)="closeMobileMenu()"
+          >
+            Probetraining
+          </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- Verein -->
+
+      <div
+        class="nav-item has-dropdown"
+        routerLinkActive="active"
+        [class.mobile-dropdown-open]="openMobileDropdown === 'verein'"
+      >
+
+        <a
+          class="desktop-dropdown-trigger"
+          routerLink="/verein"
+        >
+          Verein
+          <span class="dropdown-icon">▾</span>
+        </a>
+
+        <button
+          class="mobile-dropdown-trigger"
+          type="button"
+          (click)="toggleMobileDropdown('verein')"
+          [attr.aria-expanded]="openMobileDropdown === 'verein'"
+        >
+          Verein
+          <span class="dropdown-icon">▾</span>
+        </button>
+
+        <div class="dropdown-menu">
+
+          <a
+            routerLink="/verein"
+            (click)="closeMobileMenu()"
+          >
+            Über uns
+          </a>
+
+          <a
+            routerLink="/verein/vorstand"
+            (click)="closeMobileMenu()"
+          >
+            Vorstand
+          </a>
+
+          <a
+            routerLink="/verein/geschichte"
+            (click)="closeMobileMenu()"
+          >
+            Geschichte
+          </a>
+
+          <a
+            routerLink="/verein/satzung"
+            (click)="closeMobileMenu()"
+          >
+            Satzung
+          </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- Kontakt -->
+
+      <a
+        routerLink="/kontakt"
+        routerLinkActive="active"
+        (click)="closeMobileMenu()"
+      >
+        Kontakt
+      </a>
+
+
+      <!-- ========================================
+      Benutzerbereich Mobile
+      ======================================== -->
+
+      <div class="mobile-user-slot">
+
+        <app-user-menu
+          variant="mobile"
+          context="public"
+          (navigate)="closeMobileMenu()"
+        ></app-user-menu>
+
+      </div>
+
+    </nav>
+
+
+    <!-- ========================================
+         Rechter Bereich
+         ======================================== -->
+
+    <!-- ========================================
+     Rechter Bereich
+     ======================================== -->
+
+    <div class="header-actions">
+
+      <div class="desktop-user-slot">
+
+        <app-user-menu
+          variant="desktop"
+          context="public"
+        ></app-user-menu>
+
+      </div>
+
+
+      <!-- Burger Button -->
+
+      <button
+        class="burger-button"
+        [class.open]="mobileMenuOpen"
+        type="button"
+        (click)="toggleMobileMenu()"
+        [attr.aria-expanded]="mobileMenuOpen"
+        aria-label="Navigation öffnen"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+    </div>
+
+  </div>
+
+</header>

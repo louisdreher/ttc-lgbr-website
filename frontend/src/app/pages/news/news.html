@@ -1,0 +1,60 @@
+<div class="news-page">
+    <section class="news-header">
+        <p class="eyebrow">TTC 1970 Langen-Brombach</p>
+        <h1>Aktuelles</h1>
+        <p class="subtitle">
+            Neuigkeiten, Berichte und Meldungen rund um unseren Verein.
+        </p>
+    </section>
+    <nav class="news-filters">
+        <button class="filter active">Alle</button>
+        <button class="filter">Verein</button>
+        <button class="filter">Herren</button>
+        <button class="filter">Jugend</button>
+        <button class="filter">Turniere</button>
+    </nav>
+      <section class="news-grid">
+
+    @for (article of articles; track article.title) {
+        <article
+        class="news-card"
+        [class.no-image]="!article.imageUrl"
+        >
+        @if (article.imageUrl) {
+            <div class="news-image">
+            <img
+                [src]="article.imageUrl"
+                [alt]="article.title"
+            >
+            </div>
+        }
+
+        <div class="news-card-content">
+
+            <span class="category">
+            {{ article.category }}
+            </span>
+
+            <h2>
+            {{ article.title }}
+            </h2>
+
+            <p class="article-text">
+            {{ article.text }}
+            </p>
+
+            <div class="news-card-footer">
+            <time>
+                {{ article.date }}
+            </time>
+
+            <a href="#">
+                Weiterlesen →
+            </a>
+            </div>
+
+        </div>
+        </article>
+    }
+  </section>
+</div>

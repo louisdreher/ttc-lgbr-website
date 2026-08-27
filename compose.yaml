@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:18
+    container_name: ttc-db
+
+    environment:
+      POSTGRES_USER: ttc_user
+      POSTGRES_PASSWORD: ttc_password
+      POSTGRES_DB: ttc_db
+
+    ports:
+      - "127.0.0.1:5432:5432"
+
+    volumes:
+      - db_data:/var/lib/postgresql
+
+volumes:
+  db_data:

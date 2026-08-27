@@ -1,0 +1,58 @@
+<header class="admin-header">
+
+  <div class="admin-header-left">
+
+    <!-- Mobile: Sidebar öffnen -->
+    <button
+      class="admin-menu-button"
+      type="button"
+      (click)="toggleMenu()"
+      aria-label="Administration Navigation öffnen"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+
+    <!-- Logo -->
+    <a
+      class="admin-brand"
+      routerLink="/admin"
+      aria-label="Administration Startseite"
+    >
+
+      <img
+        class="admin-logo"
+        src="/ttc-logo.png"
+        alt="Logo TTC 1970 Langen-Brombach"
+      >
+
+      <div class="admin-title">
+
+        <span class="admin-club-name">
+          TTC 1970 Langen-Brombach
+        </span>
+
+        <span class="admin-area-name">
+          Administration
+        </span>
+
+      </div>
+
+    </a>
+
+  </div>
+
+
+  <!-- Benutzer-Menü -->
+  <div class="admin-header-user">
+
+    <app-user-menu
+      variant="desktop"
+      context="admin"
+    ></app-user-menu>
+
+  </div>
+
+</header>

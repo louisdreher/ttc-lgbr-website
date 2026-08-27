@@ -1,0 +1,580 @@
+.site-header {
+  position: sticky;
+  top: 0;
+
+  z-index: 1000;
+
+  background-color: var(--club-primary-light);
+
+  border-bottom: 1px solid var(--color-border);
+
+  transition:
+    box-shadow 0.25s ease;
+}
+
+
+/* ========================================
+   Gesamter Inhalt des Headers
+   ======================================== */
+
+.header-inner {
+  max-width: 1200px;
+  height: 104px;
+
+  margin: 0 auto;
+  padding: 0 24px;
+
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+
+  align-items: center;
+
+  column-gap: 32px;
+
+  transition:
+    height 0.25s ease;
+}
+
+
+.site-header.scrolled .header-inner {
+  height: 68px;
+}
+
+
+/* ========================================
+   Logo / Vereinsname
+   ======================================== */
+
+.brand {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  text-decoration: none;
+
+  color: var(--color-text);
+}
+
+
+.brand-logo {
+  width: 72px;
+  height: 72px;
+
+  object-fit: contain;
+
+  transition:
+    width 0.25s ease,
+    height 0.25s ease;
+}
+
+
+.site-header.scrolled .brand-logo {
+  width: 44px;
+  height: 44px;
+}
+
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+
+  line-height: 1.15;
+}
+
+
+.brand-name {
+  font-size: 19px;
+  font-weight: 700;
+
+  color: var(--color-text);
+}
+
+
+.brand-place {
+  margin-top: 3px;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  color: var(--color-text-muted);
+}
+
+
+/* ========================================
+   Navigation
+   ======================================== */
+
+.main-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 24px;
+}
+
+
+.nav-item {
+  display: flex;
+  align-items: center;
+}
+
+
+.main-nav a {
+  position: relative;
+
+  padding: 12px 0;
+
+  color: var(--color-text-secondary);
+
+  font-size: 15px;
+  font-weight: 500;
+
+  text-decoration: none;
+
+  white-space: nowrap;
+
+  transition:
+    color 0.2s ease;
+}
+
+
+/* Hover */
+
+.main-nav a:hover {
+  color: var(--club-primary);
+}
+
+
+/* Linie unter Navigation */
+
+.main-nav a::after {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: 4px;
+
+  height: 2px;
+
+  background-color: var(--club-primary);
+
+  transform: scaleX(0);
+  transform-origin: center;
+
+  transition:
+    transform 0.2s ease;
+}
+
+
+.main-nav a:hover::after,
+.main-nav a.active::after {
+  transform: scaleX(1);
+}
+
+
+/* Aktive Seite */
+
+.main-nav a.active {
+  color: var(--club-primary);
+}
+
+
+.nav-item.active > a {
+  color: var(--club-primary);
+}
+
+
+.nav-item.active > a::after {
+  transform: scaleX(1);
+}
+
+
+/* ========================================
+   Dropdown Navigation
+   ======================================== */
+
+.dropdown-icon {
+  display: inline-block;
+
+  margin-left: 4px;
+
+  font-size: 11px;
+
+  transition:
+    transform 0.2s ease;
+}
+
+
+.has-dropdown {
+  position: relative;
+}
+
+
+.dropdown-menu {
+  position: absolute;
+
+  top: 100%;
+  left: 0;
+
+  min-width: 190px;
+
+  padding: 8px 0;
+
+  background-color: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+
+  box-shadow: var(--shadow-card-hover);
+
+  opacity: 0;
+  visibility: hidden;
+
+  transform: translateY(8px);
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s ease;
+
+  z-index: 100;
+}
+
+
+.dropdown-menu a {
+  display: block;
+
+  padding: 10px 16px;
+
+  color: var(--color-text-secondary);
+
+  text-decoration: none;
+
+  white-space: nowrap;
+}
+
+
+.dropdown-menu a:hover {
+  background-color: var(--club-primary-lighter);
+
+  color: var(--club-primary);
+}
+
+
+.has-dropdown:hover .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+
+  transform: translateY(0);
+}
+
+
+.has-dropdown:hover .dropdown-icon {
+  transform: rotate(180deg);
+}
+
+
+/* ========================================
+   Rechter Bereich
+   ======================================== */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+
+  justify-self: end;
+
+  gap: 12px;
+}
+
+
+/* =========================================================
+   Burger Button
+   ========================================================= */
+
+.mobile-dropdown-trigger {
+  display: none;
+}
+
+
+.burger-button {
+  display: none;
+
+  width: 44px;
+  height: 44px;
+
+  padding: 8px;
+
+  border: none;
+  border-radius: 8px;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+
+.burger-button span {
+  display: block;
+
+  width: 24px;
+  height: 2px;
+
+  margin: 5px auto;
+
+  background-color: var(--color-text);
+
+  border-radius: 2px;
+
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+/* ========================================
+   Benutzer-Menü
+   ======================================== */
+
+.mobile-user-slot {
+  display: none;
+}
+
+/* =========================================================
+   Mobile Navigation
+   ========================================================= */
+
+@media (max-width: 1000px) {
+
+  /* =====================================
+     Desktop-Elemente ausblenden
+     ===================================== */
+
+  .desktop-login {
+    display: none;
+  }
+
+
+  .desktop-user-menu {
+    display: none;
+  }
+
+
+  .desktop-dropdown-trigger {
+    display: none;
+  }
+
+
+  /* =====================================
+     Mobile Dropdown Trigger
+     ===================================== */
+
+  .mobile-dropdown-trigger {
+    display: flex;
+
+    width: 100%;
+
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 14px 4px;
+
+    border: none;
+
+    background: transparent;
+
+    color: var(--color-text-secondary);
+
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+
+    text-align: left;
+
+    cursor: pointer;
+  }
+
+
+  .mobile-dropdown-open
+    > .mobile-dropdown-trigger
+    .dropdown-icon {
+    transform: rotate(180deg);
+  }
+
+
+  .nav-item.active > .mobile-dropdown-trigger {
+    color: var(--club-primary);
+  }
+
+
+  /* =====================================
+     Burger Button
+     ===================================== */
+
+  .header-actions {
+    justify-self: end;
+  }
+
+
+  .burger-button {
+    display: block;
+  }
+
+
+  .burger-button.open span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+
+
+  .burger-button.open span:nth-child(2) {
+    opacity: 0;
+  }
+
+
+  .burger-button.open span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+
+  /* =====================================
+     Mobile Hauptmenü
+     ===================================== */
+
+  .main-nav {
+    display: none;
+
+    position: absolute;
+
+    top: 100%;
+    left: 0;
+    right: 0;
+
+    padding: 16px 24px 24px;
+
+    background-color: var(--color-surface);
+
+    border-bottom: 1px solid var(--color-border);
+
+    box-shadow: var(--shadow-header);
+
+    flex-direction: column;
+    align-items: stretch;
+
+    gap: 2px;
+  }
+
+
+  .main-nav.mobile-open {
+    display: flex;
+  }
+
+
+  /* Normale Menülinks */
+
+  .main-nav > a,
+  .nav-item > a {
+    width: 100%;
+
+    padding: 14px 4px;
+
+    font-size: 16px;
+  }
+
+
+  /* =====================================
+     Dropdown Hauptpunkt
+     ===================================== */
+
+  .nav-item {
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: stretch;
+  }
+
+
+  /* =====================================
+     Mobile Untermenüs
+     ===================================== */
+
+  .dropdown-menu {
+    position: static;
+
+    min-width: 0;
+
+    padding: 0;
+
+    border: none;
+    border-radius: 0;
+
+    box-shadow: none;
+
+    background: transparent;
+
+    opacity: 1;
+    visibility: visible;
+
+    transform: none;
+
+    overflow: hidden;
+
+    max-height: 0;
+
+    transition:
+      max-height 0.3s ease;
+  }
+
+
+  .mobile-dropdown-open > .dropdown-menu {
+    max-height: 300px;
+  }
+
+
+  .dropdown-menu a {
+    padding: 10px 20px;
+
+    font-size: 14px;
+
+    color: var(--color-text-muted);
+  }
+
+
+  .dropdown-menu a:hover {
+    background-color: var(--club-primary-lighter);
+
+    color: var(--club-primary);
+  }
+
+
+  /* Desktop-Hover auf Mobile deaktivieren */
+
+  .has-dropdown:hover .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+
+    transform: none;
+  }
+
+  /* ========================================
+   Benutzer-Menü
+   ======================================== */
+
+  .desktop-user-slot {
+    display: none;
+  }
+
+
+  .mobile-user-slot {
+    display: block;
+
+    margin-top: 16px;
+    padding-top: 18px;
+
+    border-top: 1px solid var(--color-border);
+  }
+
+}

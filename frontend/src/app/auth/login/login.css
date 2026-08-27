@@ -1,0 +1,219 @@
+.login-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 64px 32px 96px;
+
+  display: flex;
+  justify-content: center;
+}
+
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 36px;
+
+  background-color: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+
+  box-shadow: var(--shadow-card-hover);
+}
+
+
+/* ========================================
+   Überschrift
+   ======================================== */
+
+.login-header {
+  margin-bottom: 32px;
+}
+
+
+.eyebrow {
+  margin: 0 0 8px;
+
+  color: var(--club-primary);
+
+  font-size: 13px;
+  font-weight: 700;
+
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+
+.login-header h1 {
+  margin: 0;
+
+  color: var(--color-text);
+
+  font-size: 36px;
+  font-weight: 700;
+}
+
+
+.login-description {
+  margin: 12px 0 0;
+
+  color: var(--color-text-muted);
+
+  line-height: 1.6;
+}
+
+
+/* ========================================
+   Formular
+   ======================================== */
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+
+  gap: 22px;
+}
+
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+
+.form-field label {
+  color: var(--color-text);
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+
+.form-field input {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 12px 14px;
+
+  border: 1px solid var(--color-border-strong);
+  border-radius: 7px;
+
+  background-color: var(--color-surface);
+  color: var(--color-text);
+
+  font-family: inherit;
+  font-size: 15px;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+.form-field input:focus {
+  border-color: var(--club-primary);
+
+  box-shadow:
+    0 0 0 3px var(--club-primary-lighter);
+}
+
+
+.form-field input::placeholder {
+  color: var(--color-text-light);
+}
+
+
+/* ========================================
+   Fehlermeldungen
+   ======================================== */
+
+.form-error {
+  margin: 0;
+
+  color: var(--color-error);
+
+  font-size: 13px;
+}
+
+
+.login-error {
+  margin: 0;
+
+  color: var(--color-error);
+
+  font-size: 14px;
+}
+
+
+/* ========================================
+   Button
+   ======================================== */
+
+.login-submit {
+  margin-top: 4px;
+
+  padding: 12px 18px;
+
+  border: 1px solid var(--club-primary);
+  border-radius: 7px;
+
+  background-color: var(--club-primary);
+  color: var(--color-text-on-primary);
+
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+
+.login-submit:not(:disabled):hover {
+  background-color: var(--club-primary-dark);
+  border-color: var(--club-primary-dark);
+
+  transform: translateY(-1px);
+}
+
+
+.login-submit:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* ========================================
+   Smartphone
+   ======================================== */
+
+@media (max-width: 600px) {
+
+  .login-page {
+    padding: 40px 20px 64px;
+  }
+
+
+  .login-card {
+    padding: 26px 22px;
+  }
+
+
+  .login-header h1 {
+    font-size: 32px;
+  }
+
+}

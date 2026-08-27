@@ -1,0 +1,254 @@
+:host {
+  display: block;
+
+  min-width: 0;
+}
+
+
+.admin-sidebar {
+  height: 100%;
+
+  box-sizing: border-box;
+
+  padding: 24px 16px;
+
+  background-color: var(--color-surface);
+
+  border-right: 1px solid var(--color-border);
+}
+
+
+/* ========================================
+   Überschrift
+   ======================================== */
+
+.sidebar-header {
+  padding: 0 10px 18px;
+}
+
+
+.sidebar-label {
+  color: var(--color-text-muted);
+
+  font-size: 12px;
+  font-weight: 700;
+
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+
+/* ========================================
+   Navigation
+   ======================================== */
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+
+  min-height: 42px;
+
+  box-sizing: border-box;
+
+  padding: 10px 12px;
+
+  border-radius: 7px;
+
+  color: var(--color-text-secondary);
+
+  font-size: 14px;
+  font-weight: 500;
+
+  text-decoration: none;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+
+
+.sidebar-nav a:hover {
+  background-color: var(--club-primary-lighter);
+
+  color: var(--club-primary);
+}
+
+
+.sidebar-nav a.active {
+  background-color: var(--club-primary-lighter);
+
+  color: var(--club-primary);
+
+  font-weight: 700;
+}
+
+/* ========================================
+   Navigationsgruppe
+   ======================================== */
+
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+}
+
+
+.sidebar-group-button {
+  width: 100%;
+  min-height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  box-sizing: border-box;
+
+  padding: 10px 12px;
+
+  border: none;
+  border-radius: 7px;
+
+  background: transparent;
+
+  color: var(--color-text-secondary);
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+
+.sidebar-group-button:hover {
+  background-color: var(--club-primary-lighter);
+
+  color: var(--club-primary);
+}
+
+.sidebar-subnav {
+  display: flex;
+  flex-direction: column;
+
+  max-height: 0;
+
+  overflow: hidden;
+
+  opacity: 0;
+
+  transition:
+    max-height 0.25s ease,
+    opacity 0.2s ease;
+}
+
+
+.sidebar-subnav.open {
+  max-height: 220px;
+
+  opacity: 1;
+}
+
+.sidebar-subnav a {
+  min-height: 38px;
+
+  margin-left: 12px;
+  padding: 9px 12px;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sidebar-group.active-group > .sidebar-group-button {
+  color: var(--club-primary);
+
+  font-weight: 700;
+}
+
+/* ========================================
+   Pfeil
+   ======================================== */
+
+.sidebar-group-arrow {
+  display: inline-block;
+
+  font-size: 11px;
+
+  transition:
+    transform 0.2s ease;
+}
+
+
+.sidebar-group-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* ========================================
+   Trennlinie
+   ======================================== */
+
+.sidebar-divider {
+  height: 1px;
+
+  margin: 12px 8px;
+
+  background-color: var(--color-border);
+}
+
+
+/* ========================================
+   Mobile
+   ======================================== */
+
+@media (max-width: 900px) {
+
+  :host {
+    position: fixed;
+
+    top: 64px;
+    left: 0;
+    bottom: 0;
+
+    width: 260px;
+
+    z-index: 900;
+
+    pointer-events: none;
+  }
+
+
+  .admin-sidebar {
+    width: 260px;
+
+    transform: translateX(-100%);
+
+    box-shadow: var(--shadow-card-hover);
+
+    transition:
+      transform 0.25s ease;
+  }
+
+
+  .admin-sidebar.open {
+    transform: translateX(0);
+  }
+
+
+  :host:has(.admin-sidebar.open) {
+    pointer-events: auto;
+  }
+
+}

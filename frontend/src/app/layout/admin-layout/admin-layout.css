@@ -1,0 +1,38 @@
+.admin-layout {
+  min-height: 100vh;
+
+  background-color: var(--color-background);
+}
+
+
+.admin-body {
+  min-height: calc(100vh - 64px);
+
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+
+.admin-content {
+  min-width: 0;
+
+  padding: 32px;
+}
+
+
+/* ========================================
+   Mobile
+   ======================================== */
+
+@media (max-width: 900px) {
+
+  .admin-body {
+    display: block;
+  }
+
+
+  .admin-content {
+    padding: 24px 16px;
+  }
+
+}

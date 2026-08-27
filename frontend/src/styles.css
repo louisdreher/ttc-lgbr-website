@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  color: #1f2937;
+  background-color: white;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+:root {
+  /* Vereinsfarben */
+  --club-primary: #3da0d1;
+  --club-primary-dark: #2b7fa8;
+  --club-primary-light: #eaf6fb;
+
+  /* Hintergrundflächen */
+  --color-background: #f7f9fb;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f1f4f7;
+
+  /* Text */
+  --color-text: #20252b;
+  --color-text-muted: #69717a;
+  --color-text-light: #8a9199;
+  --color-text-on-primary: #20252b;
+
+  /* Linien / Rahmen */
+  --color-border: #e5e7eb;
+  --color-border-light: #eceef0;
+
+  /* Zustände */
+  --color-success: #2e7d32;
+  --color-warning: #ed9c27;
+  --color-error: #c62828;
+
+  /* Header */
+  --color-header-background: #ffffff;
+  --color-header-text: #20252b;
+
+  /* Schatten */
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 16px 30px rgba(0, 0, 0, 0.08);
+  --shadow-header: 0 4px 18px rgba(0, 0, 0, 0.08);
+
+  --color-error: #c62828;
+}

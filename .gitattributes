@@ -1,0 +1,6 @@
+# Normalize text files and store them with LF in Git
+* text=auto eol=lf
+
+# Windows command scripts may keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

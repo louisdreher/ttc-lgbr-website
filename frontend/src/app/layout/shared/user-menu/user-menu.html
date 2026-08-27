@@ -1,0 +1,207 @@
+@if (authService.user(); as user) {
+
+  <!-- ========================================
+       Desktop
+       ======================================== -->
+
+  @if (variant === 'desktop') {
+
+    <div class="user-menu">
+
+      <button
+        class="user-menu-button"
+        type="button"
+        (click)="toggleMenu()"
+        [attr.aria-expanded]="menuOpen"
+        aria-haspopup="menu"
+      >
+
+        <span>
+          {{ user.name }}
+        </span>
+
+        <span
+          class="user-menu-arrow"
+          [class.open]="menuOpen"
+        >
+          ▾
+        </span>
+
+      </button>
+
+
+      @if (menuOpen) {
+
+        <div
+          class="user-dropdown"
+          role="menu"
+        >
+
+          <div class="user-dropdown-header">
+
+            <strong>
+              {{ user.name }}
+            </strong>
+
+            <span>
+              {{ user.email }}
+            </span>
+
+          </div>
+
+
+          <div class="user-dropdown-divider"></div>
+
+
+          @if (context !== 'public') {
+
+            <a
+              routerLink="/"
+              class="user-dropdown-link"
+              (click)="onNavigate()"
+            >
+              Zur Website
+            </a>
+
+          }
+
+
+          @if (context !== 'intern') {
+
+            <a
+              routerLink="/intern"
+              class="user-dropdown-link"
+              (click)="onNavigate()"
+            >
+              Mein Bereich
+            </a>
+
+          }
+
+
+          @if (
+            context !== 'admin' &&
+            authService.hasAnyRole('ADMIN', 'EDITOR')
+          ) {
+
+            <a
+              routerLink="/admin"
+              class="user-dropdown-link"
+              (click)="onNavigate()"
+            >
+              Administration
+            </a>
+
+          }
+
+
+          <div class="user-dropdown-divider"></div>
+
+
+          <button
+            class="user-dropdown-link logout-button"
+            type="button"
+            (click)="logout()"
+          >
+            Abmelden
+          </button>
+
+        </div>
+
+      }
+
+    </div>
+
+  }
+
+
+  <!-- ========================================
+       Mobile
+       ======================================== -->
+
+  @else {
+
+    <div class="mobile-user-area">
+
+      <div class="mobile-user-info">
+
+        <strong>
+          {{ user.name }}
+        </strong>
+
+        <span>
+          {{ user.email }}
+        </span>
+
+      </div>
+
+
+      @if (context !== 'public') {
+
+        <a
+          routerLink="/"
+          class="mobile-user-link"
+          (click)="onNavigate()"
+        >
+          Zur Website
+        </a>
+
+      }
+
+
+      @if (context !== 'intern') {
+
+        <a
+          routerLink="/intern"
+          class="mobile-user-link"
+          (click)="onNavigate()"
+        >
+          Mein Bereich
+        </a>
+
+      }
+
+
+      @if (
+        context !== 'admin' &&
+        authService.hasAnyRole('ADMIN', 'EDITOR')
+      ) {
+
+        <a
+          routerLink="/admin"
+          class="mobile-user-link"
+          (click)="onNavigate()"
+        >
+          Administration
+        </a>
+
+      }
+
+
+      <button
+        class="mobile-logout"
+        type="button"
+        (click)="logout()"
+      >
+        Abmelden
+      </button>
+
+    </div>
+
+  }
+
+} @else {
+
+  <!-- ========================================
+       Nicht angemeldet
+       ======================================== -->
+
+  <a
+    class="login-button"
+    routerLink="/login"
+    (click)="onNavigate()"
+  >
+    Anmelden
+  </a>
+
+}
