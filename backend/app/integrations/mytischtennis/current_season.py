@@ -5,6 +5,11 @@ from datetime import date
 import httpx
 from sqlmodel import Session, select
 
+from app.core.database import engine
+from app.domains.competition.league.model import LeagueGroup
+from app.domains.competition.matches.models import TeamMatch
+from app.domains.competition.season.model import Season, SeasonHalf
+from app.domains.competition.teams.model import Team
 from app.integrations.mytischtennis.sync.league_table import (
     LeagueTableSync,
 )
@@ -17,11 +22,6 @@ from app.integrations.mytischtennis.sync.registrations import (
 from app.integrations.mytischtennis.sync.schedule import (
     ScheduleSync,
 )
-from backend.app.core.database import engine
-from backend.app.domains.competition.league.model import LeagueGroup
-from backend.app.domains.competition.matches.models import TeamMatch
-from backend.app.domains.competition.season.model import Season, SeasonHalf
-from backend.app.domains.competition.teams.model import Team
 
 # ---------------------------------------------------------------------------
 # Allgemeine Pause zwischen mehreren myTT-Requests

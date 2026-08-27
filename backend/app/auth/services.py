@@ -1,12 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+from app.core.settings import settings
+from app.domains.users.model import User
+from app.domains.users.service import get_user_by_email
 from fastapi import HTTPException, status
 from sqlmodel import Session
-
-from backend.app.core.settings import settings
-from backend.app.domains.users.model import User
-from backend.app.domains.users.service import get_user_by_email
 
 from .model import RefreshSession
 from .schemas import UserCredentials

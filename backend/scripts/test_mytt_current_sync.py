@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import traceback
 
-from backend.app.integrations.mytischtennis.current_season import CurrentSeasonSync
+from app.integrations.mytischtennis.current_season import CurrentSeasonSync
 
 
 async def main() -> None:

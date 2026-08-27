@@ -1,8 +1,8 @@
 # import nötig für db erstellung
 from app.auth.model import RefreshSession
-from backend.app.domains.articles.model import Article
-from backend.app.domains.competition.league.model import LeagueGroup, LeagueTableEntry
-from backend.app.domains.competition.matches.models import (
+from app.domains.articles.model import Article
+from app.domains.competition.league.model import LeagueGroup, LeagueTableEntry
+from app.domains.competition.matches.models import (
     Match,
     MatchLineup,
     MatchParticipant,
@@ -10,11 +10,11 @@ from backend.app.domains.competition.matches.models import (
     TeamMatch,
     TeamMatchNotice,
 )
-from backend.app.domains.competition.season.model import Season, SeasonHalf
-from backend.app.domains.competition.teams.model import (
+from app.domains.competition.season.model import Season, SeasonHalf
+from app.domains.competition.teams.model import (
     Team,
     TeamAssignment,
     TeamMembership,
 )
-from backend.app.domains.members.model import Member, Player, PlayerRating
-from backend.app.domains.users.model import User, create_default_roles
+from app.domains.members.model import Member, Player, PlayerRating
+from app.domains.users.model import User, create_default_roles

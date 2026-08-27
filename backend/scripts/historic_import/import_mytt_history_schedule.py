@@ -1,10 +1,9 @@
 import asyncio
 
+from app.domains.competition.teams.model import SeasonHalf
 from app.integrations.mytischtennis.sync.schedule import (
     ScheduleSync,
 )
-
-from backend.app.domains.competition.teams.model import SeasonHalf
 
 PERIODS = [
     # (2009, 2010, SeasonHalf.RR),

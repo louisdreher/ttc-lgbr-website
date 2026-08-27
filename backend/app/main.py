@@ -4,10 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth.router import router as auth_router
-from backend.app.core.database import initialize_database
-from backend.app.domains.articles.intern_router import router as article_admin_router
-from backend.app.domains.articles.public_router import router as article_router
-from backend.app.domains.users.router import router as user_router
+from app.core.database import initialize_database
+from app.domains.articles.intern_router import router as article_admin_router
+from app.domains.articles.public_router import router as article_router
+from app.domains.users.router import router as user_router
 
 
 @asynccontextmanager

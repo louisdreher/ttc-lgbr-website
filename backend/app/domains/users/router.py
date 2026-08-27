@@ -1,8 +1,7 @@
 from app.auth.permissions import require_role
+from app.core.database import get_session
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
-
-from backend.app.core.database import get_session
 
 from .model import RoleName, User
 from .schemas import UserCreate, UserPublic

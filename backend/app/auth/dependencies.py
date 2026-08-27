@@ -1,10 +1,9 @@
+from app.core.database import get_session
+from app.domains.users.model import User
+from app.domains.users.service import get_user_by_id
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
-
-from backend.app.core.database import get_session
-from backend.app.domains.users.model import User
-from backend.app.domains.users.service import get_user_by_id
 
 from .security import decode_access_token
 

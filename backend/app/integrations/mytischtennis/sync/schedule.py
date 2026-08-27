@@ -1,21 +1,20 @@
 from datetime import date, datetime
 from enum import StrEnum
 
-from app.integrations.mytischtennis.api import (
-    MyTischtennisClient,
-)
-from sqlmodel import Session, select
-
-from backend.app.core.database import engine
-from backend.app.core.settings import settings
-from backend.app.domains.competition.league.model import LeagueGroup
-from backend.app.domains.competition.matches.models import (
+from app.core.database import engine
+from app.core.settings import settings
+from app.domains.competition.league.model import LeagueGroup
+from app.domains.competition.matches.models import (
     TeamMatch,
     TeamMatchNotice,
     TeamMatchNoticeCode,
 )
-from backend.app.domains.competition.season.model import Season, SeasonHalf
-from backend.app.domains.competition.teams.model import Team
+from app.domains.competition.season.model import Season, SeasonHalf
+from app.domains.competition.teams.model import Team
+from app.integrations.mytischtennis.api import (
+    MyTischtennisClient,
+)
+from sqlmodel import Session, select
 
 # =============================================================================
 # Wettbewerbsart

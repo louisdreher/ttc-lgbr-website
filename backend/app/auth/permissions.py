@@ -1,7 +1,6 @@
 from app.auth.dependencies import get_current_user
+from app.domains.users.model import RoleName, User
 from fastapi import Depends, HTTPException, status
-
-from backend.app.domains.users.model import RoleName, User
 
 
 def require_role(required_role: RoleName):

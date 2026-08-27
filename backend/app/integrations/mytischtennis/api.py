@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 import httpx
 
-from backend.app.core.settings import settings
+from app.core.settings import settings
 
 RoundFilter = Literal["gesamt", "vr", "rr"]
 

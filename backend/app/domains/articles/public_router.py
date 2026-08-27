@@ -1,8 +1,7 @@
+from app.core.database import get_session
+from app.domains.articles.model import Article
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
-
-from backend.app.core.database import get_session
-from backend.app.domains.articles.model import Article
 
 router = APIRouter(prefix="/api/articles", tags=["Articles"])
 

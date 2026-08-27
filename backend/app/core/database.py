@@ -1,11 +1,10 @@
 from unittest import skip
 
-from sqlmodel import Session, SQLModel, create_engine
-
 # import nötig für db erstellung
-import backend.app.model_registry
-from backend.app.core.settings import settings
-from backend.app.domains.users.model import create_default_roles
+import app.model_registry
+from app.core.settings import settings
+from app.domains.users.model import create_default_roles
+from sqlmodel import Session, SQLModel, create_engine
 
 engine = create_engine(settings.database_url)
 

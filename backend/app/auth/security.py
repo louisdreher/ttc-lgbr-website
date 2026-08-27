@@ -4,9 +4,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 import jwt
+from app.core.settings import settings
 from pwdlib import PasswordHash
-
-from backend.app.core.settings import settings
 
 password_hash = PasswordHash.recommended()
 

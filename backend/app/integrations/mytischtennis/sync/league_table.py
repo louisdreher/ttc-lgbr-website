@@ -1,10 +1,9 @@
+from app.core.database import engine
+from app.domains.competition.league.model import LeagueGroup, LeagueTableEntry
+from app.domains.competition.season.model import Season, SeasonHalf
+from app.domains.competition.teams.model import Team
 from app.integrations.mytischtennis.api import MyTischtennisClient
 from sqlmodel import Session, select
-
-from backend.app.core.database import engine
-from backend.app.domains.competition.league.model import LeagueGroup, LeagueTableEntry
-from backend.app.domains.competition.season.model import Season, SeasonHalf
-from backend.app.domains.competition.teams.model import Team
 
 
 class LeagueTableSync:

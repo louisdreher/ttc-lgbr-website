@@ -1,12 +1,7 @@
 from datetime import datetime, timezone
 
-from app.integrations.mytischtennis.api import (
-    MyTischtennisClient,
-)
-from sqlmodel import Session, select
-
-from backend.app.core.database import engine
-from backend.app.domains.competition.matches.models import (
+from app.core.database import engine
+from app.domains.competition.matches.models import (
     GameType,
     Match,
     MatchLineup,
@@ -14,7 +9,11 @@ from backend.app.domains.competition.matches.models import (
     SetResult,
     TeamMatch,
 )
-from backend.app.domains.members.model import Member, Player
+from app.domains.members.model import Member, Player
+from app.integrations.mytischtennis.api import (
+    MyTischtennisClient,
+)
+from sqlmodel import Session, select
 
 
 class MeetingSync:

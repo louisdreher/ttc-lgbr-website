@@ -1,11 +1,10 @@
 from app.auth.permissions import require_any_role
+from app.core.database import get_session
+from app.domains.articles.model import Article
+from app.domains.articles.schemas import ArticleCreate, ArticleUpdate
+from app.domains.users.model import RoleName, User
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
-
-from backend.app.core.database import get_session
-from backend.app.domains.articles.model import Article
-from backend.app.domains.articles.schemas import ArticleCreate, ArticleUpdate
-from backend.app.domains.users.model import RoleName, User
 
 router = APIRouter(prefix="/api/admin/articles", tags=["Admin - Articles"])
 

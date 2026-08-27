@@ -1,12 +1,11 @@
 from datetime import timedelta
 
+from app.core.database import get_session
+from app.core.settings import settings
+from app.domains.users.model import User
+from app.domains.users.schemas import UserPublic
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlmodel import Session
-
-from backend.app.core.database import get_session
-from backend.app.core.settings import settings
-from backend.app.domains.users.model import User
-from backend.app.domains.users.schemas import UserPublic
 
 from .dependencies import get_current_user
 from .schemas import Token, UserCredentials

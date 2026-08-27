@@ -2,17 +2,16 @@ import asyncio
 import json
 
 import httpx
+from app.core.database import engine
+from app.domains.competition.league.model import (
+    LeagueGroup,
+    LeagueTableEntry,
+)
+from app.domains.competition.teams.model import Team
 from app.integrations.mytischtennis.sync.league_table import (
     LeagueTableSync,
 )
 from sqlmodel import Session, select
-
-from backend.app.core.database import engine
-from backend.app.domains.competition.league.model import (
-    LeagueGroup,
-    LeagueTableEntry,
-)
-from backend.app.domains.competition.teams.model import Team
 
 # ---------------------------------------------------------------------------
 # KONFIGURATION
