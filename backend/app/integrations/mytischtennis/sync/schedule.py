@@ -12,6 +12,7 @@ from app.domains.competition.matches.models import (
 )
 from app.domains.competition.season.model import Season, SeasonHalf
 from app.domains.competition.teams.model import Team
+from app.domains.content.events.service import TeamMatchEventSync
 from app.integrations.mytischtennis.api import (
     MyTischtennisClient,
 )
@@ -77,6 +78,7 @@ NOTICE_FIELDS = {
 class ScheduleSync:
     def __init__(self):
         self.client = MyTischtennisClient()
+        self.team_match_event_sync = TeamMatchEventSync()
 
     # =========================================================================
     # Öffentlicher Einstieg
@@ -610,6 +612,7 @@ class ScheduleSync:
                 venue_city=location.get("city"),
                 score_ttc=score_ttc,
                 score_opponent=score_opponent,
+                ended_at=new_ended_at,
             )
 
             session.add(team_match)
@@ -672,6 +675,8 @@ class ScheduleSync:
 
             team_match.is_home = is_home
 
+            team_match.is_completed = is_complete
+
             team_match.status = meeting.get(
                 "state",
                 team_match.status,
@@ -686,6 +691,8 @@ class ScheduleSync:
             team_match.score_ttc = score_ttc
 
             team_match.score_opponent = score_opponent
+
+            team_match.ended_at = new_ended_at
 
             # -----------------------------------------------------------------
             # WICHTIG:
@@ -714,6 +721,13 @@ class ScheduleSync:
             session=session,
             team_match=team_match,
             meeting=meeting,
+        )
+
+        # TeamMatch und abgeleitetes Event werden in derselben Transaktion
+        # gespeichert. Der Service arbeitet idempotent über team_match_id.
+        self.team_match_event_sync.sync_one(
+            session=session,
+            team_match=team_match,
         )
 
         return action

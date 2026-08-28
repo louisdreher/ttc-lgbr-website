@@ -107,9 +107,13 @@ value for a newly created event; changing the category later does not
 implicitly change existing events.
 
 An event may reference one `TeamMatch`, and that reference is unique. The
-competition domain remains the owner of imported match data. The future
-synchronization workflow is responsible for creating or updating the related
-event without overwriting editorial fields.
+competition domain remains the owner of imported match data. The schedule
+synchronization creates or updates the related event whenever the
+myTischtennis schedule is synchronized. Title, start, end, location, category,
+and status follow the imported team match. Description, visibility, and
+`report_expected` remain editorial fields and are preserved on later schedule
+updates. The same idempotent service can backfill events for existing matches;
+the unique `team_match_id` prevents duplicates.
 
 `report_expected` controls whether a completed event should be offered as a
 report suggestion. Whether an article already exists is derived from the
