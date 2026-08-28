@@ -6,6 +6,7 @@ from app.core.logging import configure_logging
 from app.core.settings import settings
 from app.domains.articles.intern_router import router as article_admin_router
 from app.domains.articles.public_router import router as article_router
+from app.domains.content.events.admin_router import router as event_admin_router
 from app.domains.users.router import router as user_router
 
 configure_logging(
@@ -30,6 +31,7 @@ app.add_middleware(
         "GET",
         "POST",
         "PUT",
+        "PATCH",
         "DELETE",
         "OPTIONS",
     ],
@@ -43,6 +45,7 @@ app.add_middleware(
 app.include_router(user_router)
 app.include_router(article_router)
 app.include_router(article_admin_router)
+app.include_router(event_admin_router)
 app.include_router(auth_router)
 
 

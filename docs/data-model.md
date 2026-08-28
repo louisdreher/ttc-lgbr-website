@@ -75,9 +75,10 @@ position and won/lost counts for meetings, points, matches, sets, and games.
 ## Content
 
 The content domain groups calendar entries, editorial articles, and media
-around a shared event. The database models and their migration exist. The API,
-editorial workflows, media storage, and CMS user interface are still planned
-and must not be presented as completed functionality.
+around a shared event. The database models, their migration, and the
+administrative API for events and event categories exist. The public calendar,
+article workflows, media storage, and CMS user interface are still planned and
+must not be presented as completed functionality.
 
 ```text
 EventCategory

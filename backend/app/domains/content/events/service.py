@@ -3,10 +3,243 @@ from datetime import datetime, timezone
 from app.domains.competition.matches.models import TeamMatch
 from app.domains.competition.teams.model import Team
 from app.domains.content.events.model import Event, EventCategory, EventStatus
+from app.domains.content.events.schemas import (
+    EventCategoryCreate,
+    EventCategoryUpdate,
+    EventCreate,
+    EventUpdate,
+)
 from sqlmodel import Session, select
 
 TEAM_MATCH_CATEGORY_SLUG = "mannschaftsspiel"
 TEAM_MATCH_CATEGORY_NAME = "Mannschaftsspiel"
+
+SYNCED_EVENT_FIELDS = {
+    "title",
+    "starts_at",
+    "ends_at",
+    "category_id",
+    "status",
+    "location",
+}
+
+
+class EventServiceError(ValueError):
+    """Base class for expected event-domain validation errors."""
+
+
+class EventNotFoundError(EventServiceError):
+    pass
+
+
+class EventCategoryNotFoundError(EventServiceError):
+    pass
+
+
+class EventCategoryInactiveError(EventServiceError):
+    pass
+
+
+class EventCategorySlugConflictError(EventServiceError):
+    pass
+
+
+class SyncedEventFieldError(EventServiceError):
+    pass
+
+
+def list_event_categories(session: Session) -> list[EventCategory]:
+    return list(
+        session.exec(
+            select(EventCategory).order_by(
+                EventCategory.sort_order,
+                EventCategory.name,
+            )
+        ).all()
+    )
+
+
+def create_event_category(
+    session: Session,
+    category_data: EventCategoryCreate,
+) -> EventCategory:
+    slug = category_data.slug.strip().lower()
+    _ensure_category_slug_available(session, slug)
+
+    category = EventCategory(
+        **category_data.model_dump(exclude={"name", "slug"}),
+        name=_required_text(category_data.name, "Der Kategoriename"),
+        slug=slug,
+    )
+    session.add(category)
+    session.commit()
+    session.refresh(category)
+    return category
+
+
+def update_event_category(
+    session: Session,
+    category_id: int,
+    category_data: EventCategoryUpdate,
+) -> EventCategory:
+    category = session.get(EventCategory, category_id)
+    if category is None:
+        raise EventCategoryNotFoundError("Event-Kategorie nicht gefunden.")
+
+    changes = category_data.model_dump(exclude_unset=True)
+    _reject_nulls(
+        changes,
+        {
+            "name",
+            "slug",
+            "default_report_expected",
+            "is_active",
+            "sort_order",
+        },
+    )
+
+    if "name" in changes:
+        changes["name"] = _required_text(changes["name"], "Der Kategoriename")
+
+    if "slug" in changes:
+        slug = changes["slug"].strip().lower()
+        _ensure_category_slug_available(session, slug, exclude_id=category.id)
+        changes["slug"] = slug
+
+    category.sqlmodel_update(changes)
+    session.add(category)
+    session.commit()
+    session.refresh(category)
+    return category
+
+
+def list_events(session: Session) -> list[Event]:
+    return list(session.exec(select(Event).order_by(Event.starts_at.desc())).all())
+
+
+def get_event(session: Session, event_id: int) -> Event:
+    event = session.get(Event, event_id)
+    if event is None:
+        raise EventNotFoundError("Event nicht gefunden.")
+    return event
+
+
+def create_event(session: Session, event_data: EventCreate) -> Event:
+    category = _get_active_category(session, event_data.category_id)
+    _validate_period(event_data.starts_at, event_data.ends_at)
+
+    data = event_data.model_dump(exclude={"title", "report_expected"})
+    event = Event(
+        **data,
+        title=_required_text(event_data.title, "Der Event-Titel"),
+        report_expected=(
+            category.default_report_expected
+            if event_data.report_expected is None
+            else event_data.report_expected
+        ),
+    )
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
+
+def update_event(
+    session: Session,
+    event_id: int,
+    event_data: EventUpdate,
+) -> Event:
+    event = get_event(session, event_id)
+    changes = event_data.model_dump(exclude_unset=True)
+    _reject_nulls(
+        changes,
+        {
+            "title",
+            "starts_at",
+            "category_id",
+            "status",
+            "visibility",
+            "report_expected",
+        },
+    )
+
+    if event.team_match_id is not None:
+        protected_changes = SYNCED_EVENT_FIELDS.intersection(changes)
+        if protected_changes:
+            fields = ", ".join(sorted(protected_changes))
+            raise SyncedEventFieldError(
+                f"Synchronisierte Event-Felder können nicht geändert werden: {fields}."
+            )
+
+    if "category_id" in changes:
+        _get_active_category(session, changes["category_id"])
+
+    if "title" in changes:
+        changes["title"] = _required_text(changes["title"], "Der Event-Titel")
+
+    starts_at = changes.get("starts_at", event.starts_at)
+    ends_at = changes.get("ends_at", event.ends_at)
+    if "starts_at" in changes or "ends_at" in changes:
+        _validate_period(starts_at, ends_at)
+
+    event.sqlmodel_update(changes)
+    event.updated_at = datetime.now(timezone.utc)
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    return event
+
+
+def _get_active_category(session: Session, category_id: int) -> EventCategory:
+    category = session.get(EventCategory, category_id)
+    if category is None:
+        raise EventCategoryNotFoundError("Event-Kategorie nicht gefunden.")
+    if not category.is_active:
+        raise EventCategoryInactiveError(
+            "Deaktivierte Event-Kategorien können nicht verwendet werden."
+        )
+    return category
+
+
+def _ensure_category_slug_available(
+    session: Session,
+    slug: str,
+    *,
+    exclude_id: int | None = None,
+) -> None:
+    statement = select(EventCategory).where(EventCategory.slug == slug)
+    existing = session.exec(statement).first()
+    if existing is not None and existing.id != exclude_id:
+        raise EventCategorySlugConflictError(
+            "Eine Event-Kategorie mit diesem Slug existiert bereits."
+        )
+
+
+def _required_text(value: str, field_name: str) -> str:
+    normalized = value.strip()
+    if not normalized:
+        raise EventServiceError(f"{field_name} darf nicht leer sein.")
+    return normalized
+
+
+def _validate_period(starts_at: datetime, ends_at: datetime | None) -> None:
+    if starts_at.utcoffset() is None:
+        raise EventServiceError("Der Beginn muss eine Zeitzone enthalten.")
+    if ends_at is not None and ends_at.utcoffset() is None:
+        raise EventServiceError("Das Ende muss eine Zeitzone enthalten.")
+    if ends_at is not None and ends_at < starts_at:
+        raise EventServiceError(
+            "Das Ende eines Events darf nicht vor seinem Beginn liegen."
+        )
+
+
+def _reject_nulls(changes: dict, required_fields: set[str]) -> None:
+    null_fields = sorted(
+        field for field in required_fields if field in changes and changes[field] is None
+    )
+    if null_fields:
+        fields = ", ".join(null_fields)
+        raise EventServiceError(f"Diese Felder dürfen nicht null sein: {fields}.")
 
 
 class TeamMatchEventSync:

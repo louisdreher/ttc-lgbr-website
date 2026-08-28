@@ -70,6 +70,12 @@ acts as the shared editorial context and calendar entry. It may reference a
 does not depend on content models. Articles and galleries may exist without an
 event.
 
+The event subdomain exposes an authenticated administrative API for listing,
+creating, and updating events and event categories. `ADMIN` and `EDITOR` may
+use it. Fields synchronized from a linked team match are protected from manual
+changes, while editorial fields remain editable. A public calendar API and the
+Angular event-management interface are still planned.
+
 The previous `app/domains/articles` model path remains as a compatibility
 import. Its existing routers and schemas still require migration to the new
 article model and should not yet be treated as a working CMS API.
