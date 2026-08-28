@@ -72,12 +72,86 @@ imported.
 `LeagueTableEntry` stores a snapshot row for a league group, including table
 position and won/lost counts for meetings, points, matches, sets, and games.
 
-## Articles
+## Content
 
-`Article` is intended to store public news and editorial content. The model and
-some routes exist, but creation and publication behavior are not yet fully
-implemented. Current fields and endpoints should therefore not be treated as a
-finished content-management contract.
+The content domain groups calendar entries, editorial articles, and media
+around a shared event. The database models and their migration exist. The API,
+editorial workflows, media storage, and CMS user interface are still planned
+and must not be presented as completed functionality.
+
+```text
+EventCategory
+      |
+      | 1:n
+      v
+Event 0..1 ------ 1 TeamMatch
+  |
+  | 1:n
+  |-- Article n ------ m Tag
+  |
+  | 1:0..1
+  `-- Gallery n ------ m MediaAsset
+```
+
+### Events and calendar entries
+
+`Event` is both the common editorial context and the calendar entry. It stores
+its title, start and optional end, location, description, status, visibility,
+and whether an article is expected. `EventStatus` supports `PLANNED`,
+`COMPLETED`, `CANCELLED`, and `POSTPONED`. Content visibility is one of
+`PUBLIC`, `MEMBERS_ONLY`, or `HIDDEN`.
+
+An event belongs to one `EventCategory`. Categories are stored as data so they
+can be ordered and deactivated. `default_report_expected` supplies the initial
+value for a newly created event; changing the category later does not
+implicitly change existing events.
+
+An event may reference one `TeamMatch`, and that reference is unique. The
+competition domain remains the owner of imported match data. The future
+synchronization workflow is responsible for creating or updating the related
+event without overwriting editorial fields.
+
+`report_expected` controls whether a completed event should be offered as a
+report suggestion. Whether an article already exists is derived from the
+article relation instead of being duplicated as another event flag.
+
+### Articles and tags
+
+`Article` stores editorial content and may reference an event. Articles without
+an event remain valid for general news and annual reports. Every article has an
+author, a unique slug, an `ArticleStatus`, an `ArticleType`, and an independent
+visibility setting. A cover image may reference a `MediaAsset`.
+
+Article statuses currently are `DRAFT`, `IN_REVIEW`, `PUBLISHED`, and
+`ARCHIVED`. Article types currently are `NEWS`, `MATCH_REPORT`, `EVENT_REPORT`,
+`ANNUAL_REPORT`, and `ANNOUNCEMENT`.
+
+`Tag` provides flexible editorial classification independently of event
+categories. `ArticleTag` implements the many-to-many relation with a composite
+primary key, preventing duplicate assignments. An event category describes
+what kind of calendar entry an event is; tags describe the subjects covered by
+an article.
+
+The old `published` and `image_url` columns were replaced by `status` and
+`cover_image_id`. Existing article routers and request schemas have not yet
+been adapted to this model.
+
+### Galleries and media
+
+`MediaAsset` stores file metadata and a storage key, not the file contents. It
+also records the original filename, MIME type, size, optional image dimensions,
+caption, alternative text, photographer, uploader, and upload time. The actual
+storage implementation is planned.
+
+`Gallery` optionally belongs to an event. Its event reference is currently
+unique, limiting an event to at most one gallery. `GalleryMedia` relates media
+assets to galleries and stores their order and an optional gallery-specific
+caption. Its composite primary key prevents the same asset from appearing
+twice in one gallery.
+
+Deleting an event sets optional article and gallery event references to null.
+Deleting a gallery, article, or tag removes the corresponding association rows.
+An event end cannot be earlier than its start.
 
 ## Integrity principles
 
@@ -89,4 +163,3 @@ identifiable. Future model changes should explicitly consider:
 - foreign-key delete behavior;
 - transaction boundaries during synchronization;
 - whether free-form status strings should become enums.
-

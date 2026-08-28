@@ -55,7 +55,7 @@ The backend is split into technical infrastructure and domain-oriented code:
 - `app/auth`: authentication, refresh sessions, and permission dependencies;
 - `app/domains/users`: users and roles;
 - `app/domains/members`: members and players;
-- `app/domains/articles`: public and administrative article endpoints;
+- `app/domains/content`: events, articles, galleries, and media metadata;
 - `app/domains/competition`: seasons, teams, matches, and league tables;
 - `app/integrations/mytischtennis`: external API access and synchronization;
 - `app/jobs`: planned scheduled synchronization.
@@ -63,6 +63,16 @@ The backend is split into technical infrastructure and domain-oriented code:
 `app.*` is the canonical Python import path. Backend commands therefore need
 to run with `backend/` as the working directory, or otherwise make that package
 root available explicitly.
+
+The content domain is divided into `events`, `articles`, and `media`. `Event`
+acts as the shared editorial context and calendar entry. It may reference a
+`TeamMatch`, but the competition domain remains the owner of match data and
+does not depend on content models. Articles and galleries may exist without an
+event.
+
+The previous `app/domains/articles` model path remains as a compatibility
+import. Its existing routers and schemas still require migration to the new
+article model and should not yet be treated as a working CMS API.
 
 ## Authentication
 
@@ -88,9 +98,11 @@ SQLModel defines the application tables and SQLAlchemy creates the PostgreSQL
 engine. Alembic is intended to be the only mechanism for evolving the schema;
 runtime table creation is disabled.
 
-The current migration chain was created for an already existing development
-database. Its baseline is empty and cannot recreate the full schema on a new
-database. This limitation is documented but intentionally not fixed yet.
+The current migration chain contains a complete initial schema followed by the
+content-domain migration. It has been verified by upgrading a new empty
+PostgreSQL database to the current head, downgrading the content revision, and
+upgrading it again. New migrations must continue to be tested against both a
+new empty database and the intended upgrade path.
 
 ## myTischtennis integration
 
@@ -106,4 +118,3 @@ run manually at present.
 
 A scheduler is planned but has not been implemented or connected to the
 FastAPI lifecycle.
-

@@ -24,4 +24,4 @@ Open problems without an accepted decision belong in
 ## Records
 
 - [0001: Access tokens and refresh-token cookies](0001-authentication.md)
-
+- [0002: Event-centered content domain](0002-content-domain.md)
