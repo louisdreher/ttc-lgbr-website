@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import json
 
@@ -29,18 +30,6 @@ MAX_RETRIES = 3
 # Versuch 2 fehlgeschlagen -> 10 Sekunden
 RETRY_BASE_DELAY = 5.0
 
-# Für den historischen Erstimport sinnvoll:
-#
-# True:
-#   LeagueGroups, für die bereits Tabellenzeilen vorhanden sind,
-#   werden übersprungen.
-#
-# False:
-#   Auch vorhandene Tabellen werden erneut über die API geladen
-#   und durch LeagueTableSync ersetzt.
-SKIP_EXISTING = True
-
-
 # ---------------------------------------------------------------------------
 # HILFSFUNKTION
 # ---------------------------------------------------------------------------
@@ -68,13 +57,14 @@ def has_existing_table(
 async def import_league_group(
     sync: LeagueTableSync,
     league_group_id: int,
+    skip_existing: bool,
 ) -> str:
 
     # -----------------------------------------------------------------------
     # Bereits vorhanden
     # -----------------------------------------------------------------------
 
-    if SKIP_EXISTING and has_existing_table(league_group_id):
+    if skip_existing and has_existing_table(league_group_id):
         print(f"LeagueGroup {league_group_id}: Tabelle bereits vorhanden.")
 
         return "skipped"
@@ -142,7 +132,17 @@ async def import_league_group(
 # ---------------------------------------------------------------------------
 
 
-async def main():
+async def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Importiert historische myTT-Ligatabellen."
+    )
+    parser.add_argument(
+        "--include-existing",
+        action="store_true",
+        help="Bereits importierte Tabellen erneut laden und ersetzen.",
+    )
+    args = parser.parse_args()
+    skip_existing = not args.include_existing
 
     print()
     print("=" * 70)
@@ -178,7 +178,7 @@ async def main():
     print()
     print(f"Gefundene LeagueGroups: {len(league_group_ids)}")
 
-    print(f"Bereits vorhandene überspringen: {SKIP_EXISTING}")
+    print(f"Bereits vorhandene überspringen: {skip_existing}")
 
     # -----------------------------------------------------------------------
     # Sync einmal erzeugen und für alle Gruppen wiederverwenden
@@ -208,6 +208,7 @@ async def main():
         result = await import_league_group(
             sync=sync,
             league_group_id=league_group_id,
+            skip_existing=skip_existing,
         )
 
         if result == "imported":

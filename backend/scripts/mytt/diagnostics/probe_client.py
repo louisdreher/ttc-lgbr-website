@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import json
 from collections.abc import Awaitable, Callable
@@ -6,22 +7,6 @@ from pathlib import Path
 
 import httpx
 from app.integrations.mytischtennis.api import MyTischtennisClient
-
-# ---------------------------------------------------------------------------
-# TESTDATEN
-# ---------------------------------------------------------------------------
-
-TEAM_ID = 2094640
-MEETING_ID = 10971025
-
-SEASON = "18--19"
-
-GROUP_ID: int | None = 336737
-LEAGUE_SLUG: str | None = "Kreisliga"
-TEAM_NAME: str | None = "TTC Langen-Brombach"
-
-DATE_START = date(2018, 7, 1)
-DATE_END = date(2018, 12, 30)
 
 REQUEST_DELAY = 1.0
 
@@ -102,7 +87,19 @@ async def run_test(
 # ---------------------------------------------------------------------------
 
 
-async def main():
+async def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Ruft myTT-Endpunkte ab und speichert Antworten zur Diagnose."
+    )
+    parser.add_argument("season", help="myTT-Saison, zum Beispiel 26--27")
+    parser.add_argument("team_id", type=int, help="myTT-Team-ID")
+    parser.add_argument("meeting_id", type=int, help="myTT-Begegnungs-ID")
+    parser.add_argument("date_start", type=date.fromisoformat, help="YYYY-MM-DD")
+    parser.add_argument("date_end", type=date.fromisoformat, help="YYYY-MM-DD")
+    parser.add_argument("--group-id", type=int)
+    parser.add_argument("--league-slug")
+    parser.add_argument("--team-name")
+    args = parser.parse_args()
 
     api = MyTischtennisClient()
 
@@ -113,9 +110,9 @@ async def main():
     await run_test(
         "01_club_schedule",
         lambda: api.get_club_schedule_data(
-            date_start=DATE_START,
-            date_end=DATE_END,
-            season=SEASON,
+            date_start=args.date_start,
+            date_end=args.date_end,
+            season=args.season,
         ),
     )
 
@@ -135,7 +132,7 @@ async def main():
     await run_test(
         "03_club_teams",
         lambda: api.get_club_teams_data(
-            season=SEASON,
+            season=args.season,
         ),
     )
 
@@ -146,7 +143,7 @@ async def main():
     await run_test(
         "04_team_players",
         lambda: api.get_team_players(
-            team_id=TEAM_ID,
+            team_id=args.team_id,
         ),
     )
 
@@ -157,8 +154,8 @@ async def main():
     await run_test(
         "05_team_schedule",
         lambda: api.get_team_schedule(
-            team_id=TEAM_ID,
-            season=SEASON,
+            team_id=args.team_id,
+            season=args.season,
         ),
     )
 
@@ -166,7 +163,11 @@ async def main():
     # Gruppenabhängige Endpoints
     # -----------------------------------------------------------------------
 
-    if GROUP_ID is not None and LEAGUE_SLUG is not None and TEAM_NAME is not None:
+    if (
+        args.group_id is not None
+        and args.league_slug is not None
+        and args.team_name is not None
+    ):
         # -------------------------------------------------------------------
         # 06 - Ausführlicher Mannschaftsspielplan
         # -------------------------------------------------------------------
@@ -174,11 +175,11 @@ async def main():
         await run_test(
             "06_team_schedule_data",
             lambda: api.get_team_schedule_data(
-                season=SEASON,
-                league_slug=LEAGUE_SLUG,
-                group_id=GROUP_ID,
-                team_id=TEAM_ID,
-                team_name=TEAM_NAME,
+                season=args.season,
+                league_slug=args.league_slug,
+                group_id=args.group_id,
+                team_id=args.team_id,
+                team_name=args.team_name,
             ),
         )
 
@@ -189,11 +190,11 @@ async def main():
         await run_test(
             "07a_team_player_balances",
             lambda: api.get_team_player_balances(
-                season=SEASON,
-                league_slug=LEAGUE_SLUG,
-                group_id=GROUP_ID,
-                team_id=TEAM_ID,
-                team_name=TEAM_NAME,
+                season=args.season,
+                league_slug=args.league_slug,
+                group_id=args.group_id,
+                team_id=args.team_id,
+                team_name=args.team_name,
                 round_filter="vr",
             ),
         )
@@ -201,11 +202,11 @@ async def main():
         await run_test(
             "07b_team_player_balances",
             lambda: api.get_team_player_balances(
-                season=SEASON,
-                league_slug=LEAGUE_SLUG,
-                group_id=GROUP_ID,
-                team_id=TEAM_ID,
-                team_name=TEAM_NAME,
+                season=args.season,
+                league_slug=args.league_slug,
+                group_id=args.group_id,
+                team_id=args.team_id,
+                team_name=args.team_name,
                 round_filter="rr",
             ),
         )
@@ -217,11 +218,11 @@ async def main():
         await run_test(
             "08_team_info",
             lambda: api.get_team_info(
-                season=SEASON,
-                league_slug=LEAGUE_SLUG,
-                group_id=GROUP_ID,
-                team_id=TEAM_ID,
-                team_name=TEAM_NAME,
+                season=args.season,
+                league_slug=args.league_slug,
+                group_id=args.group_id,
+                team_id=args.team_id,
+                team_name=args.team_name,
             ),
         )
 
@@ -235,7 +236,7 @@ async def main():
     await run_test(
         "09_meeting",
         lambda: api.get_meeting(
-            meeting_id=MEETING_ID,
+            meeting_id=args.meeting_id,
         ),
     )
 
@@ -243,11 +244,11 @@ async def main():
     # 10 - Ligatabelle
     # -----------------------------------------------------------------------
 
-    if GROUP_ID is not None:
+    if args.group_id is not None:
         await run_test(
             "10_league_table",
             lambda: api.get_league_table(
-                group_id=GROUP_ID,
+                group_id=args.group_id,
             ),
         )
 
@@ -258,14 +259,14 @@ async def main():
     # 11 + 12 - Historische Mannschaftsmeldungen
     # -----------------------------------------------------------------------
 
-    if GROUP_ID is not None and LEAGUE_SLUG is not None:
+    if args.group_id is not None and args.league_slug is not None:
         # Vorrunde
         await run_test(
             "11_team_registrations_vr",
             lambda: api.get_team_registrations(
-                season=SEASON,
-                league_slug=LEAGUE_SLUG,
-                group_id=GROUP_ID,
+                season=args.season,
+                league_slug=args.league_slug,
+                group_id=args.group_id,
                 round_filter="vr",
             ),
         )
@@ -274,9 +275,9 @@ async def main():
         await run_test(
             "12_team_registrations_rr",
             lambda: api.get_team_registrations(
-                season=SEASON,
-                league_slug=LEAGUE_SLUG,
-                group_id=GROUP_ID,
+                season=args.season,
+                league_slug=args.league_slug,
+                group_id=args.group_id,
                 round_filter="rr",
             ),
         )

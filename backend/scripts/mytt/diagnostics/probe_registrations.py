@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import json
 from pathlib import Path
@@ -7,17 +8,6 @@ import httpx
 
 from app.integrations.mytischtennis.api import MyTischtennisClient
 
-
-# ---------------------------------------------------------------------------
-# TESTDATEN
-# ---------------------------------------------------------------------------
-
-# Aktuelle Saison 2026/27
-SEASON = "20--21"
-
-# Erwachsene I
-GROUP_ID = 385903
-LEAGUE_SLUG = "Kreisliga"
 
 REQUEST_DELAY = 1.0
 
@@ -142,7 +132,14 @@ async def run_test(
 # MAIN
 # ---------------------------------------------------------------------------
 
-async def main():
+async def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Ruft Mannschaftsmeldungen zu Diagnosezwecken von myTT ab."
+    )
+    parser.add_argument("season", help="myTT-Saison, zum Beispiel 26--27")
+    parser.add_argument("league_slug", help="Liga-Slug, zum Beispiel Kreisliga")
+    parser.add_argument("group_id", type=int, help="myTT-Gruppen-ID")
+    args = parser.parse_args()
 
     api = MyTischtennisClient()
 
@@ -152,11 +149,11 @@ async def main():
     # -----------------------------------------------------------------------
 
     await run_test(
-        "registrations_26_27_vr",
+        "registrations_vr",
         lambda: api.get_team_registrations(
-            season=SEASON,
-            league_slug=LEAGUE_SLUG,
-            group_id=GROUP_ID,
+            season=args.season,
+            league_slug=args.league_slug,
+            group_id=args.group_id,
             round_filter="vr",
         ),
     )
@@ -167,11 +164,11 @@ async def main():
     # -----------------------------------------------------------------------
 
     await run_test(
-        "registrations_26_27_rr",
+        "registrations_rr",
         lambda: api.get_team_registrations(
-            season=SEASON,
-            league_slug=LEAGUE_SLUG,
-            group_id=GROUP_ID,
+            season=args.season,
+            league_slug=args.league_slug,
+            group_id=args.group_id,
             round_filter="rr",
         ),
     )

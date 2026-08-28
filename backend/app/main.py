@@ -1,10 +1,7 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth.router import router as auth_router
-from app.core.database import initialize_database
 from app.core.logging import configure_logging
 from app.core.settings import settings
 from app.domains.articles.intern_router import router as article_admin_router
@@ -21,18 +18,7 @@ configure_logging(
 )
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-
-    # Startup
-    initialize_database()
-
-    yield
-
-    # Shutdown
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,

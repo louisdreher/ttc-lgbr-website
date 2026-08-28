@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import json
 
@@ -13,9 +14,6 @@ from sqlmodel import Session, select
 # ---------------------------------------------------------------------------
 # EINSTELLUNGEN
 # ---------------------------------------------------------------------------
-
-START_YEAR = 2009
-END_YEAR = 2012
 
 MAX_RETRIES = 2
 
@@ -120,6 +118,15 @@ async def import_league_group(
 
 
 async def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Importiert historische Mannschaftsmeldungen."
+    )
+    parser.add_argument("start_year", type=int, help="Erstes Kalenderjahr")
+    parser.add_argument("end_year", type=int, help="Letztes Kalenderjahr")
+    args = parser.parse_args()
+
+    if args.end_year < args.start_year:
+        parser.error("end_year darf nicht vor start_year liegen")
 
     registration_sync = RegistrationsSync()
 
@@ -142,8 +149,8 @@ async def main() -> None:
     # -----------------------------------------------------------------------
 
     for year in range(
-        START_YEAR,
-        END_YEAR + 1,
+        args.start_year,
+        args.end_year + 1,
     ):
         seasons = get_seasons_for_year(year)
 

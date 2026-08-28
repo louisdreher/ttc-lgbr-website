@@ -7,7 +7,7 @@ from app.integrations.mytischtennis.current_season import CurrentSeasonSync
 
 async def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Testet die CurrentSync-Funktionen für myTischtennis."
+        description="Startet einen Teil der aktuellen myTT-Synchronisierung."
     )
 
     parser.add_argument(
@@ -18,7 +18,7 @@ async def main() -> None:
             "tables",
             "registrations",
         ],
-        help="Welcher Sync getestet werden soll.",
+        help="Welcher Sync gestartet werden soll.",
     )
 
     args = parser.parse_args()
@@ -27,7 +27,7 @@ async def main() -> None:
 
     print()
     print("=" * 70)
-    print(f"TEST: {args.sync_type.upper()}")
+    print(f"SYNC: {args.sync_type.upper()}")
     print("=" * 70)
 
     try:
@@ -46,7 +46,7 @@ async def main() -> None:
     except Exception:
         print()
         print("=" * 70)
-        print("TEST FEHLGESCHLAGEN")
+        print("SYNC FEHLGESCHLAGEN")
         print("=" * 70)
 
         traceback.print_exc()
@@ -55,7 +55,7 @@ async def main() -> None:
 
     print()
     print("=" * 70)
-    print("TEST ERFOLGREICH ABGESCHLOSSEN")
+    print("SYNC ERFOLGREICH ABGESCHLOSSEN")
     print("=" * 70)
 
 
