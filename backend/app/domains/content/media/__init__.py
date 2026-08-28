@@ -1,0 +1,1 @@
+"""Media assets and galleries."""
