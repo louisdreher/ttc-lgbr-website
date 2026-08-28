@@ -50,16 +50,24 @@ working directory.
 
 ## Database migrations
 
-The intended command is:
+The migration history starts with a complete schema baseline. After starting
+PostgreSQL and configuring `backend/.env`, a new empty database can be built
+entirely from the migration history with:
 
 ```powershell
 alembic upgrade head
 ```
 
-However, the current migration history only works with the existing baseline
-database. It cannot build the full schema from an empty database. Read
-[known-issues.md](known-issues.md) before creating, stamping, downgrading, or
-replacing a database.
+To verify that the migrated schema matches the current SQLModel metadata, run:
+
+```powershell
+alembic check
+```
+
+Generated revisions are drafts and must be reviewed before they are applied.
+Schema migrations also do not create application bootstrap data such as roles
+or the first administrator; that remains a separate setup concern documented
+in [known-issues.md](known-issues.md).
 
 Do not use `alembic stamp` as a repair command without first comparing the
 actual schema with the target revision. `stamp` changes Alembic's recorded
