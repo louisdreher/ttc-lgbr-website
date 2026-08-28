@@ -1,9 +1,13 @@
+import logging
+
 from app.core.database import engine
 from app.domains.competition.league.model import LeagueGroup, LeagueTableEntry
 from app.domains.competition.season.model import Season, SeasonHalf
 from app.domains.competition.teams.model import Team
 from app.integrations.mytischtennis.api import MyTischtennisClient
 from sqlmodel import Session, select
+
+logger = logging.getLogger(__name__)
 
 
 class LeagueTableSync:
@@ -86,17 +90,17 @@ class LeagueTableSync:
         # Tabelle von myTischtennis laden
         # ---------------------------------------------------------------------
 
-        print()
-        print("=" * 60)
-        print("MYTT LEAGUE TABLE SYNC")
-        print("=" * 60)
-
-        print(f"LeagueGroup-ID:     {league_group_id}")
-        print(f"myTT Group-ID:      {mytt_group_id}")
-        print(f"Saison:             {season_string}")
-        print(f"Halbserie:          {round_filter}")
-        print(f"API-Team:           {team_name}")
-        print(f"myTT Team-ID:       {mytt_team_id}")
+        logger.info(
+            "Ligatabellen-Sync gestartet: "
+            "league_group_id=%s mytt_group_id=%s season=%s "
+            "round=%s team_id=%s team_name=%s",
+            league_group_id,
+            mytt_group_id,
+            season_string,
+            round_filter,
+            mytt_team_id,
+            team_name,
+        )
 
         result = await self.client.get_team_player_balances(
             season=season_string,
@@ -144,9 +148,10 @@ class LeagueTableSync:
         # ---------------------------------------------------------------------
 
         if not rows:
-            print("Keine Tabellendaten vorhanden.")
-
-            return False
+            logger.info(
+                "Keine Tabellendaten vorhanden: league_group_id=%s",
+                league_group_id,
+            )
 
         # ---------------------------------------------------------------------
         # Zusätzliche Sicherheitsprüfung
@@ -241,9 +246,11 @@ class LeagueTableSync:
 
             session.commit()
 
-        print()
-        print("Ligatabelle erfolgreich importiert.")
-        print(f"  Tabellenzeilen: {len(parsed_rows)}")
+        logger.info(
+            "Ligatabellen-Sync abgeschlossen: league_group_id=%s rows=%s",
+            league_group_id,
+            len(parsed_rows),
+        )
 
         return True
 

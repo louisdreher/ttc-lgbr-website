@@ -12,6 +12,14 @@ class Settings(BaseSettings):
     # Anwendung
     environment: str = "development"
 
+    # Logging
+    log_level: str = "INFO"
+    mytt_log_level: str = "INFO"
+    log_to_file: bool = True
+    log_directory: str = "output/logs"
+    log_max_bytes: int = 5 * 1024 * 1024
+    log_backup_count: int = 5
+
     # Datenbank
     database_url: str
 
@@ -30,3 +38,6 @@ class Settings(BaseSettings):
     cookie_path: str = "/api/auth"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+
+settings = Settings()

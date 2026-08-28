@@ -1,3 +1,5 @@
+import logging
+
 from app.core.database import engine
 from app.core.settings import settings
 from app.domains.competition.league.model import LeagueGroup
@@ -8,6 +10,9 @@ from app.integrations.mytischtennis.api import (
     MyTischtennisClient,
 )
 from sqlmodel import Session, select
+
+
+logger = logging.getLogger(__name__)
 
 
 class RegistrationsSync:
@@ -48,7 +53,11 @@ class RegistrationsSync:
                 raise RuntimeError(f"Season {league_group.season_id} existiert nicht.")
 
             if not league_group.mytt_slug:
-                print(f"LeagueGroup {league_group_id} übersprungen: kein mytt_slug")
+                logger.warning(
+                    "Mannschaftsmeldungs-Sync übersprungen: "
+                    "league_group_id=%s reason=missing_mytt_slug",
+                    league_group_id,
+                )
 
                 return False
 
@@ -70,16 +79,15 @@ class RegistrationsSync:
         # Ausgabe
         # ---------------------------------------------------------------------
 
-        print()
-        print("=" * 60)
-        print("MYTT REGISTRATIONS SYNC")
-        print("=" * 60)
-
-        print(f"LeagueGroup-ID: {league_group_id}")
-
-        print(f"myTT Group-ID:  {mytt_group_id}")
-
-        print(f"Saison:         {start_year}/{str(end_year)[-2:]} {half.value.upper()}")
+        logger.info(
+            "Mannschaftsmeldungs-Sync gestartet: "
+            "league_group_id=%s mytt_group_id=%s season=%s/%s half=%s",
+            league_group_id,
+            mytt_group_id,
+            start_year,
+            str(end_year)[-2:],
+            half.value.upper(),
+        )
 
         # ---------------------------------------------------------------------
         # Mannschaftsmeldung von myTischtennis laden
@@ -135,7 +143,11 @@ class RegistrationsSync:
         ]
 
         if not own_teampools:
-            print("Kein eigenes Team in dieser Gruppe gefunden.")
+            logger.info(
+                "Mannschaftsmeldungs-Sync übersprungen: "
+                "league_group_id=%s reason=no_own_team",
+                league_group_id,
+            )
 
             return False
 
@@ -207,7 +219,10 @@ class RegistrationsSync:
                 memberships_deleted += result_stats["memberships_deleted"]
 
             if not group_was_processed:
-                print("Keine Mannschaftsmeldung konnte verarbeitet werden.")
+                logger.warning(
+                    "Keine Mannschaftsmeldung verarbeitet: league_group_id=%s",
+                    league_group_id,
+                )
 
                 return False
 
@@ -217,20 +232,19 @@ class RegistrationsSync:
         # Zusammenfassung
         # ---------------------------------------------------------------------
 
-        print()
-        print("Mannschaftsmeldung erfolgreich importiert:")
-
-        print(f"  Teams aktualisiert:       {teams_updated}")
-
-        print(f"  Spieler neu:              {players_created}")
-
-        print(f"  Spieler aktualisiert:     {players_updated}")
-
-        print(f"  Memberships neu:          {memberships_created}")
-
-        print(f"  Memberships aktualisiert: {memberships_updated}")
-
-        print(f"  Memberships entfernt:     {memberships_deleted}")
+        logger.info(
+            "Mannschaftsmeldungs-Sync abgeschlossen: league_group_id=%s "
+            "teams_updated=%s players_created=%s players_updated=%s "
+            "memberships_created=%s memberships_updated=%s "
+            "memberships_deleted=%s",
+            league_group_id,
+            teams_updated,
+            players_created,
+            players_updated,
+            memberships_created,
+            memberships_updated,
+            memberships_deleted,
+        )
 
         return True
 
@@ -265,7 +279,12 @@ class RegistrationsSync:
             players_data,
             list,
         ):
-            print(f"  Team {team_name} übersprungen: teampool ist keine Liste")
+            logger.warning(
+                "Team übersprungen: league_group_id=%s team_name=%s "
+                "reason=invalid_teampool",
+                league_group.id,
+                team_name,
+            )
 
             return None
 
@@ -288,7 +307,12 @@ class RegistrationsSync:
         )
 
         if team is None:
-            print(f"  Team nicht eindeutig gefunden: {team_name}")
+            logger.warning(
+                "Team nicht eindeutig gefunden: "
+                "league_group_id=%s team_name=%s",
+                league_group.id,
+                team_name,
+            )
 
             return None
 
@@ -302,7 +326,12 @@ class RegistrationsSync:
         if team_name:
             team.name = team_name
 
-        print(f"  Team: {team.name} (Nr. {team.team_number})")
+        logger.debug(
+            "Mannschaftsmeldung für Team wird verarbeitet: "
+            "team_id=%s team_number=%s",
+            team.id,
+            team.team_number,
+        )
 
         # ---------------------------------------------------------------------
         # Spieler / Memberships
@@ -453,7 +482,10 @@ class RegistrationsSync:
         nuid = (player_data.get("player_id") or "").strip()
 
         if not nuid:
-            print("    Spieler ohne NUID übersprungen")
+            logger.warning(
+                "Spieler ohne NUID übersprungen: team_id=%s",
+                team.id,
+            )
 
             return None, False
 
@@ -521,7 +553,11 @@ class RegistrationsSync:
         if player.id is None:
             raise RuntimeError("Player besitzt nach flush() keine ID.")
 
-        print(f"    NEU: {first_name} {last_name} ({nuid})")
+        logger.debug(
+            "Player aus Mannschaftsmeldung angelegt: player_id=%s nuid=%s",
+            player.id,
+            nuid,
+        )
 
         return player, True
 

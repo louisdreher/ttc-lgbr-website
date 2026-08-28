@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime
 from enum import StrEnum
 
@@ -15,6 +16,9 @@ from app.integrations.mytischtennis.api import (
     MyTischtennisClient,
 )
 from sqlmodel import Session, select
+
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Wettbewerbsart
@@ -96,14 +100,15 @@ class ScheduleSync:
             half=half,
         )
 
-        print()
-        print("=" * 60)
-        print("MYTT SCHEDULE SYNC")
-        print("=" * 60)
-
-        print(f"Saison: {start_year}/{str(end_year)[-2:]} {half.value.upper()}")
-
-        print(f"Zeitraum: {date_start} - {date_end}")
+        logger.info(
+            "Schedule-Sync gestartet: season=%s/%s half=%s "
+            "date_start=%s date_end=%s",
+            start_year,
+            str(end_year)[-2:],
+            half.value.upper(),
+            date_start,
+            date_end,
+        )
 
         # =====================================================================
         # Schedule von myTT laden
@@ -123,7 +128,12 @@ class ScheduleSync:
         data = result.get("data")
 
         if not data:
-            print("Keine Begegnungen gefunden.")
+            logger.info(
+                "Schedule-Sync abgeschlossen: season=%s/%s half=%s meetings=0",
+                start_year,
+                str(end_year)[-2:],
+                half.value.upper(),
+            )
 
             return
 
@@ -141,7 +151,7 @@ class ScheduleSync:
             {int(meeting["meeting_id"]): meeting for meeting in meetings}.values()
         )
 
-        print(f"{len(meetings)} Begegnungen gefunden")
+        logger.info("Schedule-Daten geladen: meetings=%s", len(meetings))
 
         # =====================================================================
         # DB synchronisieren
@@ -227,15 +237,6 @@ class ScheduleSync:
         # Zusammenfassung
         # =====================================================================
 
-        print()
-        print("Synchronisation abgeschlossen:")
-
-        print(f"  Begegnungen neu:          {created_matches}")
-
-        print(f"  Begegnungen aktualisiert: {updated_matches}")
-
-        print(f"  Begegnungen übersprungen: {skipped_matches}")
-
         # ---------------------------------------------------------------------
         # Nicht unterstützte Wettbewerbe separat anzeigen
         # ---------------------------------------------------------------------
@@ -255,9 +256,20 @@ class ScheduleSync:
             0,
         )
 
-        print(f"  Pokal ignoriert:          {cup_count}")
-        print(f"  Relegation ignoriert:          {relegation}")
-        print(f"  Unbekannter Wettbewerb:   {unknown_count}")
+        logger.info(
+            "Schedule-Sync abgeschlossen: season=%s/%s half=%s "
+            "matches_created=%s matches_updated=%s matches_skipped=%s "
+            "cup_ignored=%s relegation_ignored=%s competition_unknown=%s",
+            start_year,
+            str(end_year)[-2:],
+            half.value.upper(),
+            created_matches,
+            updated_matches,
+            skipped_matches,
+            cup_count,
+            relegation,
+            unknown_count,
+        )
 
     # =========================================================================
     # Meeting-Dispatcher
@@ -392,10 +404,12 @@ class ScheduleSync:
 
         session.flush()
 
-        print(
-            f"  Season neu angelegt: "
-            f"{start_year}/{str(end_year)[-2:]} "
-            f"{half.value.upper()}"
+        logger.debug(
+            "Season angelegt: season_id=%s season=%s/%s half=%s",
+            season.id,
+            start_year,
+            str(end_year)[-2:],
+            half.value.upper(),
         )
 
         return season
@@ -471,7 +485,11 @@ class ScheduleSync:
 
             session.flush()
 
-            print(f"  Team neu angelegt: {team_name} ({mytt_team_id})")
+            logger.debug(
+                "Team aus Schedule angelegt: team_id=%s mytt_team_id=%s",
+                team.id,
+                mytt_team_id,
+            )
 
         # =====================================================================
         # Bestehendes Team aktualisieren

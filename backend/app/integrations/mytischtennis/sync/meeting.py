@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from app.core.database import engine
@@ -14,6 +15,9 @@ from app.integrations.mytischtennis.api import (
     MyTischtennisClient,
 )
 from sqlmodel import Session, select
+
+
+logger = logging.getLogger(__name__)
 
 
 class MeetingSync:
@@ -51,7 +55,11 @@ class MeetingSync:
                 )
 
             if team_match.details_imported_at is not None and not force:
-                print(f"TeamMatch {team_match_id}: Details bereits importiert.")
+                logger.info(
+                    "Meeting-Sync übersprungen: "
+                    "team_match_id=%s reason=details_already_imported",
+                    team_match_id,
+                )
 
                 return False
 
@@ -61,14 +69,12 @@ class MeetingSync:
         # Meeting von myTischtennis laden
         # ---------------------------------------------------------------------
 
-        print()
-        print("=" * 60)
-        print("MYTT MEETING SYNC")
-        print("=" * 60)
-
-        print(f"TeamMatch-ID: {team_match_id}")
-
-        print(f"myTT Meeting-ID: {meeting_id}")
+        logger.info(
+            "Meeting-Sync gestartet: team_match_id=%s mytt_meeting_id=%s force=%s",
+            team_match_id,
+            meeting_id,
+            force,
+        )
 
         result = await self.client.get_meeting(
             meeting_id=meeting_id,
@@ -98,7 +104,12 @@ class MeetingSync:
         )
 
         if not is_completed:
-            print("Begegnung ist noch nicht abgeschlossen.")
+            logger.info(
+                "Meeting-Sync übersprungen: "
+                "team_match_id=%s mytt_meeting_id=%s reason=not_completed",
+                team_match_id,
+                meeting_id,
+            )
 
             return False
 
@@ -219,18 +230,18 @@ class MeetingSync:
         # Zusammenfassung
         # ---------------------------------------------------------------------
 
-        print()
-        print("Meeting erfolgreich importiert:")
-
-        print(f"  Aufstellung:             {lineup_count} Spieler")
-
-        print(f"  Matches:                 {imported_matches}")
-
-        print(f"  Nicht ausgespielt:       {skipped_matches}")
-
-        print(f"  TTC-Teilnahmen:          {participant_count}")
-
-        print(f"  Satzergebnisse:          {set_count}")
+        logger.info(
+            "Meeting-Sync abgeschlossen: team_match_id=%s mytt_meeting_id=%s "
+            "lineup_players=%s matches=%s skipped_matches=%s "
+            "participants=%s sets=%s",
+            team_match_id,
+            meeting_id,
+            lineup_count,
+            imported_matches,
+            skipped_matches,
+            participant_count,
+            set_count,
+        )
 
         return True
 
@@ -871,7 +882,11 @@ def _update_team_match(
         if player.id is None:
             raise RuntimeError("Player besitzt nach flush() keine ID.")
 
-        print(f"  Neuer Player aus Meeting: {first_name} {last_name} ({nuid})")
+        logger.debug(
+            "Player aus Meeting angelegt: player_id=%s nuid=%s",
+            player.id,
+            nuid,
+        )
 
         return player
 

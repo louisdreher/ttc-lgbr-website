@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from datetime import date
 
 import httpx
@@ -22,6 +23,9 @@ from app.integrations.mytischtennis.sync.registrations import (
 from app.integrations.mytischtennis.sync.schedule import (
     ScheduleSync,
 )
+
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Allgemeine Pause zwischen mehreren myTT-Requests
@@ -62,12 +66,12 @@ class CurrentSeasonSync:
 
         start_year, end_year, half = self._get_current_season()
 
-        print()
-        print("=" * 70)
-        print("CURRENT SCHEDULE SYNC")
-        print("=" * 70)
-
-        print(f"Saison: {start_year}/{str(end_year)[-2:]} {half.value.upper()}")
+        logger.info(
+            "Aktueller Schedule-Sync gestartet: season=%s/%s half=%s",
+            start_year,
+            str(end_year)[-2:],
+            half.value.upper(),
+        )
 
         await self.schedule_sync.sync(
             start_year=start_year,
@@ -95,10 +99,7 @@ class CurrentSeasonSync:
         - noch keine importierten Detaildaten besitzen
         """
 
-        print()
-        print("=" * 70)
-        print("CURRENT MEETING SYNC")
-        print("=" * 70)
+        logger.info("Aktueller Meeting-Sync gestartet")
 
         # ---------------------------------------------------------------------
         # Vor der Suche nach neuen Spielen immer zuerst den Schedule laden.
@@ -112,8 +113,12 @@ class CurrentSeasonSync:
             season_id=season_id,
         )
 
-        print()
-        print(f"{len(team_match_ids)} neue abgeschlossene Begegnungen gefunden.")
+        logger.info(
+            "Abgeschlossene Begegnungen für Meeting-Sync gefunden: "
+            "season_id=%s count=%s",
+            season_id,
+            len(team_match_ids),
+        )
 
         imported = 0
         skipped = 0
@@ -123,8 +128,12 @@ class CurrentSeasonSync:
             team_match_ids,
             start=1,
         ):
-            print()
-            print(f"[{index}/{len(team_match_ids)}] TeamMatch {team_match_id}")
+            logger.debug(
+                "Meeting wird synchronisiert: team_match_id=%s progress=%s/%s",
+                team_match_id,
+                index,
+                len(team_match_ids),
+            )
 
             try:
                 result = await self.meeting_sync.sync(
@@ -137,22 +146,25 @@ class CurrentSeasonSync:
                 else:
                     skipped += 1
 
-            except Exception as exc:
+            except Exception:
                 failed += 1
 
-                print(f"  FEHLER: {type(exc).__name__}: {exc}")
+                logger.exception(
+                    "Meeting-Sync fehlgeschlagen: team_match_id=%s",
+                    team_match_id,
+                )
 
             if index < len(team_match_ids):
                 await asyncio.sleep(REQUEST_DELAY)
 
-        print()
-        print("=" * 70)
-        print("MEETING SYNC ABGESCHLOSSEN")
-        print("=" * 70)
-
-        print(f"Importiert:     {imported}")
-        print(f"Übersprungen:   {skipped}")
-        print(f"Fehlgeschlagen: {failed}")
+        logger.info(
+            "Aktueller Meeting-Sync abgeschlossen: season_id=%s "
+            "imported=%s skipped=%s failed=%s",
+            season_id,
+            imported,
+            skipped,
+            failed,
+        )
 
     # =========================================================================
     # Ligatabellen
@@ -165,10 +177,7 @@ class CurrentSeasonSync:
         Dieser Sync kann später z. B. einmal täglich ausgeführt werden.
         """
 
-        print()
-        print("=" * 70)
-        print("CURRENT LEAGUE TABLE SYNC")
-        print("=" * 70)
+        logger.info("Aktueller Ligatabellen-Sync gestartet")
 
         # ---------------------------------------------------------------------
         # Schedule vorher aktualisieren.
@@ -182,8 +191,12 @@ class CurrentSeasonSync:
             season_id=season_id,
         )
 
-        print()
-        print(f"{len(league_group_ids)} LeagueGroups gefunden.")
+        logger.info(
+            "LeagueGroups für Ligatabellen-Sync gefunden: "
+            "season_id=%s count=%s",
+            season_id,
+            len(league_group_ids),
+        )
 
         successful = 0
         skipped = 0
@@ -193,8 +206,13 @@ class CurrentSeasonSync:
             league_group_ids,
             start=1,
         ):
-            print()
-            print(f"[{index}/{len(league_group_ids)}] LeagueGroup {league_group_id}")
+            logger.debug(
+                "Ligatabelle wird synchronisiert: "
+                "league_group_id=%s progress=%s/%s",
+                league_group_id,
+                index,
+                len(league_group_ids),
+            )
 
             try:
                 result = await self.league_table_sync.sync(
@@ -207,22 +225,25 @@ class CurrentSeasonSync:
                 else:
                     skipped += 1
 
-            except Exception as exc:
+            except Exception:
                 failed += 1
 
-                print(f"  FEHLER: {type(exc).__name__}: {exc}")
+                logger.exception(
+                    "Ligatabellen-Sync fehlgeschlagen: league_group_id=%s",
+                    league_group_id,
+                )
 
             if index < len(league_group_ids):
                 await asyncio.sleep(REQUEST_DELAY)
 
-        print()
-        print("=" * 70)
-        print("LEAGUE TABLE SYNC ABGESCHLOSSEN")
-        print("=" * 70)
-
-        print(f"Erfolgreich:    {successful}")
-        print(f"Übersprungen:   {skipped}")
-        print(f"Fehlgeschlagen: {failed}")
+        logger.info(
+            "Aktueller Ligatabellen-Sync abgeschlossen: season_id=%s "
+            "successful=%s skipped=%s failed=%s",
+            season_id,
+            successful,
+            skipped,
+            failed,
+        )
 
     # =========================================================================
     # Mannschaftsmeldungen
@@ -236,10 +257,7 @@ class CurrentSeasonSync:
         ausgeführt werden.
         """
 
-        print()
-        print("=" * 70)
-        print("CURRENT REGISTRATIONS SYNC")
-        print("=" * 70)
+        logger.info("Aktueller Mannschaftsmeldungs-Sync gestartet")
 
         # ---------------------------------------------------------------------
         # Schedule zuerst aktualisieren.
@@ -254,8 +272,12 @@ class CurrentSeasonSync:
             season_id=season_id,
         )
 
-        print()
-        print(f"{len(league_group_ids)} LeagueGroups gefunden.")
+        logger.info(
+            "LeagueGroups für Mannschaftsmeldungs-Sync gefunden: "
+            "season_id=%s count=%s",
+            season_id,
+            len(league_group_ids),
+        )
 
         successful = 0
         skipped = 0
@@ -265,8 +287,13 @@ class CurrentSeasonSync:
             league_group_ids,
             start=1,
         ):
-            print()
-            print(f"[{index}/{len(league_group_ids)}] LeagueGroup {league_group_id}")
+            logger.debug(
+                "Mannschaftsmeldung wird synchronisiert: "
+                "league_group_id=%s progress=%s/%s",
+                league_group_id,
+                index,
+                len(league_group_ids),
+            )
 
             try:
                 result = await self._sync_registration_with_retry(
@@ -279,22 +306,26 @@ class CurrentSeasonSync:
                 else:
                     skipped += 1
 
-            except Exception as exc:
+            except Exception:
                 failed += 1
 
-                print(f"  FEHLER: {type(exc).__name__}: {exc}")
+                logger.exception(
+                    "Mannschaftsmeldungs-Sync fehlgeschlagen: "
+                    "league_group_id=%s",
+                    league_group_id,
+                )
 
             if index < len(league_group_ids):
                 await asyncio.sleep(REQUEST_DELAY)
 
-        print()
-        print("=" * 70)
-        print("REGISTRATIONS SYNC ABGESCHLOSSEN")
-        print("=" * 70)
-
-        print(f"Erfolgreich:    {successful}")
-        print(f"Übersprungen:   {skipped}")
-        print(f"Fehlgeschlagen: {failed}")
+        logger.info(
+            "Aktueller Mannschaftsmeldungs-Sync abgeschlossen: season_id=%s "
+            "successful=%s skipped=%s failed=%s",
+            season_id,
+            successful,
+            skipped,
+            failed,
+        )
 
     # =========================================================================
     # Mannschaftsmeldung mit Retry
@@ -349,15 +380,14 @@ class CurrentSeasonSync:
                 if not retryable:
                     raise
 
-                print(
-                    f"  Temporärer HTTP-Fehler "
-                    f"{status_code} "
-                    f"(Versuch "
-                    f"{attempt}/"
-                    f"{REGISTRATION_MAX_ATTEMPTS})"
+                logger.warning(
+                    "Temporärer HTTP-Fehler beim Mannschaftsmeldungs-Sync: "
+                    "league_group_id=%s status_code=%s attempt=%s/%s",
+                    league_group_id,
+                    status_code,
+                    attempt,
+                    REGISTRATION_MAX_ATTEMPTS,
                 )
-
-                print(f"  URL: {exc.request.url}")
 
                 if attempt >= REGISTRATION_MAX_ATTEMPTS:
                     raise
@@ -367,14 +397,16 @@ class CurrentSeasonSync:
             # -----------------------------------------------------------------
 
             except httpx.RequestError as exc:
-                print(
-                    f"  Temporärer Verbindungsfehler "
-                    f"(Versuch "
-                    f"{attempt}/"
-                    f"{REGISTRATION_MAX_ATTEMPTS})"
+                logger.warning(
+                    "Temporärer Verbindungsfehler beim "
+                    "Mannschaftsmeldungs-Sync: league_group_id=%s "
+                    "attempt=%s/%s error_type=%s error=%s",
+                    league_group_id,
+                    attempt,
+                    REGISTRATION_MAX_ATTEMPTS,
+                    type(exc).__name__,
+                    exc,
                 )
-
-                print(f"  {type(exc).__name__}: {exc}")
 
                 if attempt >= REGISTRATION_MAX_ATTEMPTS:
                     raise
@@ -384,14 +416,14 @@ class CurrentSeasonSync:
             # -----------------------------------------------------------------
 
             except json.JSONDecodeError as exc:
-                print(
-                    f"  Ungültige JSON-Antwort "
-                    f"(Versuch "
-                    f"{attempt}/"
-                    f"{REGISTRATION_MAX_ATTEMPTS})"
+                logger.warning(
+                    "Ungültige JSON-Antwort beim Mannschaftsmeldungs-Sync: "
+                    "league_group_id=%s attempt=%s/%s error=%s",
+                    league_group_id,
+                    attempt,
+                    REGISTRATION_MAX_ATTEMPTS,
+                    exc,
                 )
-
-                print(f"  {type(exc).__name__}: {exc}")
 
                 if attempt >= REGISTRATION_MAX_ATTEMPTS:
                     raise
@@ -400,7 +432,12 @@ class CurrentSeasonSync:
             # Vor erneutem Request warten
             # -----------------------------------------------------------------
 
-            print(f"  Neuer Versuch in {REGISTRATION_RETRY_DELAY} Sekunden ...")
+            logger.info(
+                "Mannschaftsmeldungs-Sync wird erneut versucht: "
+                "league_group_id=%s delay_seconds=%s",
+                league_group_id,
+                REGISTRATION_RETRY_DELAY,
+            )
 
             await asyncio.sleep(REGISTRATION_RETRY_DELAY)
 

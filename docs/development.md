@@ -76,6 +76,37 @@ fastapi dev app/main.py
 The API is then normally available at `http://localhost:8000`; interactive API
 documentation is available at `http://localhost:8000/docs`.
 
+## Logging
+
+The backend writes application logs to the console. File logging is enabled by
+default and writes size-rotated files below `backend/output/logs`:
+
+- `application.log` contains application messages;
+- `mytischtennis.log` additionally collects messages from
+  `app.integrations.mytischtennis` and its child loggers.
+
+The following `.env` settings control logging:
+
+```dotenv
+LOG_LEVEL=INFO
+MYTT_LOG_LEVEL=INFO
+LOG_TO_FILE=true
+LOG_DIRECTORY=output/logs
+LOG_MAX_BYTES=5242880
+LOG_BACKUP_COUNT=5
+```
+
+Relative log directories are resolved from `backend/`, independent of the
+process working directory. Rotated files use suffixes such as `.1` and `.2`.
+Do not log passwords, tokens, cookies, authorization headers, or complete API
+responses containing unnecessary personal data. Player names and external
+identifiers should be limited to `DEBUG` messages where possible.
+
+Python's standard `RotatingFileHandler` is suitable for the current
+single-process development setup. When running multiple Uvicorn workers or in
+containers, prefer console logging with rotation handled by the runtime. A
+shared file handler is not safe for concurrent rotation by multiple processes.
+
 ## Start Angular
 
 Run from `frontend/`:
@@ -113,4 +144,3 @@ Prefix a task with the kind of collaboration you want:
 
 For database work, ask Codex to explain whether a command changes schema, data,
 or only Alembic's recorded revision before executing it.
-
