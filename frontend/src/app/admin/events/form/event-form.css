@@ -1,0 +1,190 @@
+:host {
+  display: block;
+}
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(20, 30, 40, 0.42);
+}
+.drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 21;
+  box-sizing: border-box;
+  width: min(900px, 92vw);
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: var(--color-background);
+  box-shadow: -12px 0 30px rgba(0, 0, 0, 0.18);
+}
+.close-button {
+  float: right;
+  border: 0;
+  background: transparent;
+  font-size: 2rem;
+  cursor: pointer;
+}
+.page-header {
+  margin-bottom: 1.5rem;
+}
+.page-header a,
+.actions a {
+  color: #236a8d;
+}
+h1 {
+  margin: 0.65rem 0 0;
+  font-size: 2rem;
+}
+.notice {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-left: 4px solid var(--club-primary-dark);
+  background: var(--club-primary-light);
+}
+.notice p {
+  margin: 0.35rem 0 0;
+}
+.error-summary {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--color-error);
+  border-radius: 0.5rem;
+  color: var(--color-error);
+}
+form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.field--wide {
+  grid-column: 1 / -1;
+}
+label {
+  font-weight: 600;
+}
+label span {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+input,
+select,
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid #aeb5bd;
+  border-radius: 0.4rem;
+  background: white;
+  color: var(--color-text);
+}
+input[type='date'],
+input[type='datetime-local'] {
+  border: 2px solid #87919c;
+  background: #fff;
+  color-scheme: light;
+}
+.date-panel {
+  padding: 1rem;
+  border: 1px solid #c3cad2;
+  border-radius: 0.75rem;
+  background: #eef3f7;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.75);
+}
+.date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.date-grid .checkbox-field {
+  padding-top: 0.25rem;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(43, 127, 168, 0.25);
+  border-color: var(--club-primary-dark);
+}
+input:disabled,
+select:disabled {
+  background: var(--color-surface-soft);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+.checkbox-field {
+  flex-direction: row;
+  align-items: center;
+  padding-top: 1.8rem;
+}
+.checkbox-field input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.field-error {
+  margin: 0;
+  color: var(--color-error);
+  font-size: 0.85rem;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+.actions button {
+  padding: 0.75rem 1.2rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: var(--club-primary-dark);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+.actions button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.secondary-button,
+.link-button {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: #236a8d;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.category-dialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  z-index: 23;
+  width: min(480px, calc(100vw - 2rem));
+  transform: translate(-50%, -50%);
+  box-shadow: 0 12px 50px rgba(0, 0, 0, 0.3);
+}
+@media (max-width: 640px) {
+  .drawer {
+    width: 100vw;
+    padding: 1rem;
+  }
+  form,
+  .date-grid {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+  .date-grid {
+    padding: 0;
+  }
+  .field {
+    grid-column: 1;
+  }
+}

@@ -15,7 +15,6 @@ import { InternArticles } from './intern/articles/articles';
 import { InternTeams } from './intern/teams/teams';
 import { InternEvents } from './intern/events/events';
 
-
 import { AdminDashboard } from './admin/dashboard/dashboard';
 
 import { AdminArticles } from './admin/articles/articles';
@@ -26,14 +25,14 @@ import { AdminNewsletter } from './admin/articles/newsletter/newsletter';
 
 import { AdminTeams } from './admin/teams/teams';
 import { AdminEvents } from './admin/events/events';
+import { EventForm } from './admin/events/form/event-form';
 import { AdminUsers } from './admin/users/users';
 
-import { Login } from './auth/login/login'
+import { Login } from './auth/login/login';
 
 import { authGuard, roleGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
-  
   // Öffentliche Website
   {
     path: '',
@@ -42,29 +41,29 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        component: Home
+        component: Home,
       },
       {
         path: 'news',
-        component: News
+        component: News,
       },
       {
         path: 'mannschaften',
-        component: Teams
+        component: Teams,
       },
       {
         path: 'training',
-        component: Training
+        component: Training,
       },
       {
         path: 'kontakt',
-        component: Contact
+        component: Contact,
       },
       {
         path: 'login',
-        component: Login
-      }
-    ]
+        component: Login,
+      },
+    ],
   },
 
   // Interner Bereich
@@ -76,24 +75,22 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        component: InternDashboard
+        component: InternDashboard,
       },
       {
         path: 'articles',
         component: InternArticles,
-        canActivate: [
-          roleGuard('ADMIN', 'EDITOR')
-        ]
+        canActivate: [roleGuard('ADMIN', 'EDITOR')],
       },
       {
         path: 'teams',
-        component: InternTeams
+        component: InternTeams,
       },
       {
         path: 'events',
-        component: InternEvents
-      }
-    ]
+        component: InternEvents,
+      },
+    ],
   },
 
   // Administration / CMS
@@ -101,15 +98,12 @@ export const routes: Routes = [
     path: 'admin',
     component: AdminLayoutComponent,
 
-    canActivate: [
-      authGuard,
-      roleGuard('ADMIN', 'EDITOR', 'TEAM_REPORTER')
-    ],
+    canActivate: [authGuard, roleGuard('ADMIN', 'EDITOR', 'TEAM_REPORTER')],
 
     children: [
       {
         path: '',
-        component: AdminDashboard
+        component: AdminDashboard,
       },
       {
         path: 'articles',
@@ -119,53 +113,47 @@ export const routes: Routes = [
           {
             path: '',
             redirectTo: 'list',
-            pathMatch: 'full'
+            pathMatch: 'full',
           },
           {
             path: 'new',
-            component: AdminArticleCreate
+            component: AdminArticleCreate,
           },
           {
             path: 'drafts',
-            component: AdminArticleDrafts
+            component: AdminArticleDrafts,
           },
           {
             path: 'list',
             component: AdminArticleList,
-            canActivate: [
-              roleGuard('ADMIN', 'EDITOR')
-            ]
+            canActivate: [roleGuard('ADMIN', 'EDITOR')],
           },
           {
             path: 'newsletter',
             component: AdminNewsletter,
-            canActivate: [
-              roleGuard('ADMIN', 'EDITOR')
-            ]
-          }
-        ]
+            canActivate: [roleGuard('ADMIN', 'EDITOR')],
+          },
+        ],
       },
       {
         path: 'teams',
         component: AdminTeams,
-        canActivate: [
-          roleGuard('ADMIN', 'EDITOR')
-        ]
+        canActivate: [roleGuard('ADMIN', 'EDITOR')],
       },
       {
         path: 'events',
         component: AdminEvents,
-        canActivate: [
-          roleGuard('ADMIN', 'EDITOR')
-        ]
+        canActivate: [roleGuard('ADMIN', 'EDITOR')],
+        children: [
+          { path: 'new', component: EventForm },
+          { path: ':id/edit', component: EventForm },
+        ],
       },
       {
         path: 'users',
         component: AdminUsers,
-        canActivate: [
-          roleGuard('ADMIN')
-        ]
-      }
-    ]
-  }
+        canActivate: [roleGuard('ADMIN')],
+      },
+    ],
+  },
 ];

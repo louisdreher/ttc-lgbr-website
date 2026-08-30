@@ -1,17 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { AdminHeader } from './admin-header';
+import { AdminHeaderComponent } from './admin-header';
 
 describe('AdminHeader', () => {
-  let component: AdminHeader;
-  let fixture: ComponentFixture<AdminHeader>;
+  let component: AdminHeaderComponent;
+  let fixture: ComponentFixture<AdminHeaderComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AdminHeader],
+      imports: [AdminHeaderComponent],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(AdminHeader);
+    fixture = TestBed.createComponent(AdminHeaderComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

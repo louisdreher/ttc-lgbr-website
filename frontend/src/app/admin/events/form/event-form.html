@@ -1,0 +1,149 @@
+<div class="drawer-backdrop" (click)="close()"></div>
+<aside class="drawer" role="dialog" aria-modal="true" [attr.aria-label]="heading">
+  <header class="page-header">
+    <button class="close-button" type="button" (click)="close()" aria-label="Formular schließen">
+      ×
+    </button>
+    <h1>{{ heading }}</h1>
+  </header>
+
+  @if (loading()) {
+    <p role="status">Formular wird geladen …</p>
+  } @else {
+    @if (isSynced()) {
+      <div class="notice" role="status">
+        <strong>Synchronisiertes Mannschaftsspiel</strong>
+        <p>
+          Termin, Titel, Kategorie, Status und Ort stammen aus dem Spielplan. Redaktionelle Angaben
+          bleiben bearbeitbar.
+        </p>
+      </div>
+    }
+
+    @if (error()) {
+      <p class="error-summary" role="alert">{{ error() }}</p>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field field--wide">
+        <label for="title">Titel</label>
+        <input id="title" type="text" formControlName="title" autocomplete="off" />
+        @if (form.controls.title.touched && form.controls.title.invalid) {
+          <p class="field-error">Bitte gib einen Titel mit höchstens 200 Zeichen ein.</p>
+        }
+      </div>
+
+      <div class="date-panel field--wide" role="group" aria-label="Zeitraum">
+        <div class="date-grid">
+          <div class="field">
+            <label for="starts-at">Beginn</label>
+            <input
+              id="starts-at"
+              [type]="form.controls.is_all_day.value ? 'date' : 'datetime-local'"
+              formControlName="starts_at"
+            />
+          </div>
+          <div class="field">
+            <label for="ends-at">Ende <span>(optional)</span></label>
+            <input
+              id="ends-at"
+              [type]="form.controls.is_all_day.value ? 'date' : 'datetime-local'"
+              formControlName="ends_at"
+            />
+          </div>
+          <div class="field checkbox-field field--wide">
+            <input
+              id="all-day"
+              type="checkbox"
+              formControlName="is_all_day"
+              (change)="toggleAllDay($any($event.target).checked)"
+            /><label for="all-day">Ganztägig (ohne Uhrzeit)</label>
+          </div>
+        </div>
+      </div>
+      @if (form.touched && form.hasError('invalidPeriod')) {
+        <p class="field-error field--wide">Das Ende darf nicht vor dem Beginn liegen.</p>
+      }
+
+      <div class="field">
+        <label for="category">Kategorie</label>
+        <select id="category" formControlName="category_id">
+          @for (category of availableCategories(); track category.id) {
+            <option [ngValue]="category.id">
+              {{ category.name }}{{ category.is_active ? '' : ' (inaktiv)' }}
+            </option>
+          }
+        </select>
+        <button class="secondary-button" type="button" (click)="categoryDialogOpen.set(true)">
+          Neue Kategorie
+        </button>
+      </div>
+      <div class="field">
+        <label for="status">Status</label>
+        <select id="status" formControlName="status">
+          <option value="PLANNED">Geplant</option>
+          <option value="COMPLETED">Abgeschlossen</option>
+          <option value="CANCELLED">Abgesagt</option>
+          <option value="POSTPONED">Verschoben</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="visibility">Sichtbarkeit</label>
+        <select id="visibility" formControlName="visibility">
+          <option value="PUBLIC">Öffentlich</option>
+          <option value="MEMBERS_ONLY">Nur Mitglieder</option>
+          <option value="HIDDEN">Verborgen</option>
+        </select>
+      </div>
+      <div class="field checkbox-field">
+        <input id="report-expected" type="checkbox" formControlName="report_expected" />
+        <label for="report-expected">Bericht wird erwartet</label>
+      </div>
+
+      <div class="field field--wide">
+        <label for="location">Ort <span>(optional)</span></label>
+        <input id="location" type="text" formControlName="location" autocomplete="street-address" />
+      </div>
+      <div class="field field--wide">
+        <label for="description">Beschreibung <span>(optional)</span></label>
+        <textarea id="description" rows="7" formControlName="description"></textarea>
+      </div>
+
+      <div class="actions field--wide">
+        <button class="link-button" type="button" (click)="close()">Abbrechen</button>
+        <button type="submit" [disabled]="saving()">
+          {{ saving() ? 'Wird gespeichert …' : 'Speichern' }}
+        </button>
+      </div>
+    </form>
+
+    @if (categoryDialogOpen()) {
+      <div class="category-dialog" role="dialog" aria-modal="true" aria-labelledby="category-title">
+        <form [formGroup]="categoryForm" (ngSubmit)="createCategory()">
+          <h2 id="category-title" class="field--wide">Neue Kategorie</h2>
+          <div class="field field--wide">
+            <label for="category-name">Name</label
+            ><input id="category-name" formControlName="name" (input)="setCategorySlug()" />
+          </div>
+          <div class="field field--wide">
+            <label for="category-slug">Slug</label
+            ><input id="category-slug" formControlName="slug" />
+          </div>
+          <div class="field checkbox-field field--wide">
+            <input
+              id="category-report"
+              type="checkbox"
+              formControlName="default_report_expected"
+            /><label for="category-report">Bericht standardmäßig erwartet</label>
+          </div>
+          <div class="actions field--wide">
+            <button class="link-button" type="button" (click)="categoryDialogOpen.set(false)">
+              Abbrechen</button
+            ><button type="submit">Anlegen</button>
+          </div>
+        </form>
+      </div>
+    }
+  }
+</aside>

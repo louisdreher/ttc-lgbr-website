@@ -1,1 +1,269 @@
-<p>events works!</p>
+<header class="page-heading">
+  <p class="eyebrow">CMS</p>
+  <h1>Events</h1>
+  <p>Termine verwalten und redaktionelle Angaben pflegen.</p>
+</header>
+
+<section class="action-dashboard" aria-label="Event-Aktionen">
+  <a class="primary-action" routerLink="new">＋ Event erstellen</a>
+  <details #filters class="filters" (document:click)="closeFilter(filters, $event)">
+    <summary>Events filtern</summary>
+    <div class="filter-popover">
+      <fieldset>
+        <legend>Kategorien</legend>
+        <div class="filter-options">
+          @for (category of categories(); track category.id) {
+            @if (category.is_active) {
+              <label
+                ><input
+                  type="checkbox"
+                  [checked]="selectedCategoryIds().has(category.id)"
+                  (change)="toggleCategory(category.id, $any($event.target).checked)"
+                />
+                {{ category.name }}</label
+              >
+            }
+          }
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Sichtbarkeit</legend>
+        <div class="filter-options">
+          <label
+            ><input
+              type="checkbox"
+              [checked]="selectedVisibilities().has('PUBLIC')"
+              (change)="toggleVisibility('PUBLIC', $any($event.target).checked)"
+            />
+            Öffentlich</label
+          >
+          <label
+            ><input
+              type="checkbox"
+              [checked]="selectedVisibilities().has('MEMBERS_ONLY')"
+              (change)="toggleVisibility('MEMBERS_ONLY', $any($event.target).checked)"
+            />
+            Nur Mitglieder</label
+          >
+          <label
+            ><input
+              type="checkbox"
+              [checked]="selectedVisibilities().has('HIDDEN')"
+              (change)="toggleVisibility('HIDDEN', $any($event.target).checked)"
+            />
+            Verborgen</label
+          >
+        </div>
+      </fieldset>
+    </div>
+  </details>
+  @if (selectedEventIds().size > 0) {
+    <div class="bulk-actions" role="group" aria-label="Aktionen für ausgewählte Events">
+      <strong>{{ selectedEventIds().size }} ausgewählt</strong>
+      @if (selectedEventIds().size < visibleEvents().length) {
+        <button type="button" class="quiet-action" (click)="selectAllVisible()">
+          Alle auswählen
+        </button>
+      }
+      <label
+        >Sichtbarkeit
+        <select
+          #bulkVisibility
+          (change)="changeSelectedVisibility($any(bulkVisibility.value)); bulkVisibility.value = ''"
+        >
+          <option value="">Ändern …</option>
+          <option value="PUBLIC">Öffentlich</option>
+          <option value="MEMBERS_ONLY">Nur Mitglieder</option>
+          <option value="HIDDEN">Verborgen</option>
+        </select></label
+      >
+      <button
+        type="button"
+        class="danger-action"
+        [disabled]="selectionContainsSyncedEvent()"
+        (click)="deleteSelected()"
+        [title]="
+          selectionContainsSyncedEvent()
+            ? 'Synchronisierte Events können nicht gelöscht werden'
+            : 'Ausgewählte Events löschen'
+        "
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
+        </svg>
+        Löschen
+      </button>
+      <button type="button" class="quiet-action" (click)="clearSelection()">
+        Auswahl aufheben
+      </button>
+    </div>
+  }
+</section>
+
+@if (loading()) {
+  <p class="state" role="status">Events werden geladen …</p>
+} @else if (error()) {
+  <div class="error-state" role="alert">
+    <p>{{ error() }}</p>
+    <button type="button" (click)="loadEvents()">Erneut versuchen</button>
+  </div>
+} @else if (visibleEvents().length === 0) {
+  <div class="empty-state">
+    <h2>Keine Events</h2>
+    <p>Für diese Auswahl sind keine Termine vorhanden.</p>
+  </div>
+} @else {
+  <div class="table-wrapper">
+    <table>
+      <caption class="visually-hidden">
+        Events, nach Monaten gruppiert
+      </caption>
+      <thead>
+        <tr>
+          <th class="select-column"><span class="visually-hidden">Auswahl</span></th>
+          <th class="date-column">Termin</th>
+          <th class="event-column">Event</th>
+          <th class="visibility-column">Sichtbarkeit</th>
+          <th class="action-column"><span class="visually-hidden">Aktionen</span></th>
+        </tr>
+      </thead>
+      @for (group of monthGroups(); track group.key) {
+        <tbody [attr.aria-labelledby]="'month-' + group.key">
+          <tr class="month-row">
+            <th [id]="'month-' + group.key" colspan="5">{{ group.label }}</th>
+          </tr>
+          @for (event of group.events; track event.id) {
+            <tr
+              class="event-row"
+              [class]="'event-row event-row--' + event.status.toLowerCase()"
+              [class.selected]="selectedEventIds().has(event.id)"
+              (click)="toggleEvent(event.id)"
+            >
+              <td class="select-column">
+                <button
+                  type="button"
+                  class="selection-button"
+                  [class.selected]="selectedEventIds().has(event.id)"
+                  (click)="$event.stopPropagation(); toggleEvent(event.id)"
+                  [attr.aria-label]="
+                    event.title + (selectedEventIds().has(event.id) ? ' abwählen' : ' auswählen')
+                  "
+                  [attr.aria-pressed]="selectedEventIds().has(event.id)"
+                >
+                  <span></span>
+                </button>
+              </td>
+              <td class="date-column">
+                <time [attr.datetime]="event.starts_at"
+                  ><strong>{{
+                    event.starts_at | date: 'dd.MM.yyyy' : (event.is_all_day ? 'UTC' : undefined)
+                  }}</strong>
+                  @if (!event.is_all_day) {
+                    <span>{{ event.starts_at | date: 'HH:mm' }}</span>
+                  }
+                </time>
+                @if (hasDistinctEnd(event)) {
+                  <span class="end-separator">bis</span
+                  ><time class="event-end" [attr.datetime]="event.ends_at"
+                    ><strong>{{
+                      event.ends_at | date: 'dd.MM.yyyy' : (event.is_all_day ? 'UTC' : undefined)
+                    }}</strong>
+                    @if (!event.is_all_day) {
+                      <span>{{ event.ends_at | date: 'HH:mm' }}</span>
+                    }
+                  </time>
+                }
+              </td>
+              <td class="event-column">
+                <strong class="event-title">{{ event.title }}</strong>
+                @if (event.location) {
+                  <div class="event-location">
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M12 21s6-5.6 6-12a6 6 0 1 0-12 0c0 6.4 6 12 6 12Z" />
+                      <circle cx="12" cy="9" r="2" />
+                    </svg>
+                    <span>{{ event.location }}</span>
+                  </div>
+                }
+                <div class="event-details">
+                  <span>{{ categoryNames().get(event.category_id) ?? 'Unbekannt' }}</span
+                  ><span>Erstellt von: {{ sourceLabel(event) }}</span>
+                </div>
+              </td>
+              <td class="visibility-column">
+                <span class="visibility" [title]="visibilityLabel(event.visibility)">
+                  @switch (event.visibility) {
+                    @case ('PUBLIC') {
+                      <svg aria-hidden="true" viewBox="0 0 24 24">
+                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    }
+                    @case ('MEMBERS_ONLY') {
+                      <svg aria-hidden="true" viewBox="0 0 24 24">
+                        <circle cx="9" cy="8" r="3" />
+                        <circle cx="16.5" cy="9" r="2.5" />
+                        <path d="M3 19c.5-4 2.5-6 6-6s5.5 2 6 6M14 14c3.7-.8 6.2 1 7 5" />
+                      </svg>
+                    }
+                    @case ('HIDDEN') {
+                      <svg aria-hidden="true" viewBox="0 0 24 24">
+                        <path
+                          d="M3 3l18 18M10.5 6.2A12 12 0 0 1 12 6c6.5 0 10 6 10 6a15 15 0 0 1-3 3.7M6.2 6.2C3.5 8 2 12 2 12s3.5 6 10 6c1 0 1.9-.1 2.7-.4M9.9 9.9a3 3 0 0 0 4.2 4.2"
+                        />
+                      </svg>
+                    }
+                  }
+                  <span class="visually-hidden">{{ visibilityLabel(event.visibility) }}</span></span
+                >
+              </td>
+              <td class="action-column">
+                <div class="row-actions">
+                  <a
+                    class="icon-button"
+                    [routerLink]="[event.id, 'edit']"
+                    (click)="$event.stopPropagation()"
+                    [attr.aria-label]="event.title + ' bearbeiten'"
+                    title="Bearbeiten"
+                    >✎</a
+                  ><button
+                    type="button"
+                    class="icon-button delete-button"
+                    [disabled]="event.team_match_id !== null"
+                    (click)="$event.stopPropagation(); deleteOne(event)"
+                    [attr.aria-label]="event.title + ' löschen'"
+                    [title]="
+                      event.team_match_id !== null
+                        ? 'Synchronisierte Events können nicht gelöscht werden'
+                        : 'Löschen'
+                    "
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      }
+    </table>
+  </div>
+}
+
+@if (years().length > 1) {
+  <nav class="pagination" aria-label="Event-Jahre">
+    @for (year of years(); track year) {
+      <button
+        type="button"
+        [class.active]="year === selectedYear()"
+        [attr.aria-current]="year === selectedYear() ? 'page' : null"
+        (click)="selectYear(year)"
+      >
+        {{ year }}
+      </button>
+    }
+  </nav>
+}
+<router-outlet />
