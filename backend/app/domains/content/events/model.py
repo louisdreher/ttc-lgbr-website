@@ -2,9 +2,8 @@ from datetime import datetime, timezone
 from enum import StrEnum
 
 import sqlalchemy as sa
-from sqlmodel import Field, SQLModel
-
 from app.domains.content.types import Visibility
+from sqlmodel import Field, SQLModel
 
 
 def utc_now() -> datetime:
@@ -48,6 +47,7 @@ class Event(SQLModel, table=True):
         default=None,
         sa_type=sa.DateTime(timezone=True),
     )
+    is_all_day: bool = Field(default=False, index=True)
     category_id: int = Field(
         foreign_key="event_category.id",
         index=True,
@@ -57,6 +57,12 @@ class Event(SQLModel, table=True):
         foreign_key="team_match.id",
         ondelete="SET NULL",
         unique=True,
+        index=True,
+    )
+    created_by_user_id: int | None = Field(
+        default=None,
+        foreign_key="user.id",
+        ondelete="SET NULL",
         index=True,
     )
     status: EventStatus = Field(

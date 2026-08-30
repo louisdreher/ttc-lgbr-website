@@ -1,11 +1,10 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import ConfigDict, StringConstraints
-from sqlmodel import Field, SQLModel
-
 from app.domains.content.events.model import EventStatus
 from app.domains.content.types import Visibility
+from pydantic import ConfigDict, StringConstraints
+from sqlmodel import Field, SQLModel
 
 Slug = Annotated[
     str,
@@ -54,6 +53,7 @@ class EventCreate(SQLModel):
     title: str = Field(min_length=1, max_length=200)
     starts_at: datetime
     ends_at: datetime | None = None
+    is_all_day: bool = False
     category_id: int
     status: EventStatus = EventStatus.PLANNED
     visibility: Visibility = Visibility.PUBLIC
@@ -68,6 +68,7 @@ class EventUpdate(SQLModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     starts_at: datetime | None = None
     ends_at: datetime | None = None
+    is_all_day: bool | None = None
     category_id: int | None = None
     status: EventStatus | None = None
     visibility: Visibility | None = None
@@ -83,8 +84,11 @@ class EventRead(SQLModel):
     title: str
     starts_at: datetime
     ends_at: datetime | None
+    is_all_day: bool
     category_id: int
     team_match_id: int | None
+    created_by_user_id: int | None
+    created_by_name: str | None = None
     status: EventStatus
     visibility: Visibility
     report_expected: bool
