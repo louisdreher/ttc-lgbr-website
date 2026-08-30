@@ -7,8 +7,12 @@ from app.domains.content.events.schemas import (
     EventCategoryCreate,
     EventCategoryUpdate,
     EventCreate,
+    EventRead,
     EventUpdate,
 )
+from app.domains.content.types import Visibility
+from app.domains.users.model import User
+from sqlalchemy import extract
 from sqlmodel import Session, select
 
 TEAM_MATCH_CATEGORY_SLUG = "mannschaftsspiel"
@@ -18,6 +22,7 @@ SYNCED_EVENT_FIELDS = {
     "title",
     "starts_at",
     "ends_at",
+    "is_all_day",
     "category_id",
     "status",
     "location",
@@ -45,6 +50,10 @@ class EventCategorySlugConflictError(EventServiceError):
 
 
 class SyncedEventFieldError(EventServiceError):
+    pass
+
+
+class SyncedEventDeleteError(EventServiceError):
     pass
 
 
@@ -113,8 +122,50 @@ def update_event_category(
     return category
 
 
-def list_events(session: Session) -> list[Event]:
-    return list(session.exec(select(Event).order_by(Event.starts_at.desc())).all())
+def list_event_years(session: Session) -> list[int]:
+    years = session.exec(
+        select(extract("year", Event.starts_at))
+        .distinct()
+        .order_by(extract("year", Event.starts_at).desc())
+    ).all()
+    return [int(year) for year in years]
+
+
+def list_events(
+    session: Session,
+    *,
+    year: int | None = None,
+    category_ids: list[int] | None = None,
+) -> list[Event]:
+    statement = select(Event)
+    if year is not None:
+        statement = statement.where(extract("year", Event.starts_at) == year)
+    if category_ids is not None:
+        if not category_ids:
+            return []
+        statement = statement.where(Event.category_id.in_(category_ids))
+    return list(session.exec(statement.order_by(Event.starts_at.desc())).all())
+
+
+def serialize_events(session: Session, events: list[Event]) -> list[EventRead]:
+    user_ids = {
+        event.created_by_user_id
+        for event in events
+        if event.created_by_user_id is not None
+    }
+    users = (
+        session.exec(select(User).where(User.id.in_(user_ids))).all()
+        if user_ids
+        else []
+    )
+    names = {user.id: user.name for user in users}
+    return [
+        EventRead.model_validate(
+            event,
+            update={"created_by_name": names.get(event.created_by_user_id)},
+        )
+        for event in events
+    ]
 
 
 def get_event(session: Session, event_id: int) -> Event:
@@ -124,7 +175,9 @@ def get_event(session: Session, event_id: int) -> Event:
     return event
 
 
-def create_event(session: Session, event_data: EventCreate) -> Event:
+def create_event(
+    session: Session, event_data: EventCreate, *, created_by_user_id: int | None = None
+) -> Event:
     category = _get_active_category(session, event_data.category_id)
     _validate_period(event_data.starts_at, event_data.ends_at)
 
@@ -137,11 +190,59 @@ def create_event(session: Session, event_data: EventCreate) -> Event:
             if event_data.report_expected is None
             else event_data.report_expected
         ),
+        created_by_user_id=created_by_user_id,
     )
     session.add(event)
     session.commit()
     session.refresh(event)
     return event
+
+
+def delete_event(session: Session, event_id: int) -> None:
+    event = get_event(session, event_id)
+    _ensure_deletable([event])
+    session.delete(event)
+    session.commit()
+
+
+def delete_events(session: Session, event_ids: list[int]) -> None:
+    events = _get_events_by_ids(session, event_ids)
+    _ensure_deletable(events)
+    for event in events:
+        session.delete(event)
+    session.commit()
+
+
+def update_events_visibility(
+    session: Session, event_ids: list[int], visibility: Visibility
+) -> list[Event]:
+    events = _get_events_by_ids(session, event_ids)
+    now = datetime.now(timezone.utc)
+    for event in events:
+        event.visibility = visibility
+        event.updated_at = now
+        session.add(event)
+    session.commit()
+    for event in events:
+        session.refresh(event)
+    return events
+
+
+def _get_events_by_ids(session: Session, event_ids: list[int]) -> list[Event]:
+    unique_ids = set(event_ids)
+    events = list(session.exec(select(Event).where(Event.id.in_(unique_ids))).all())
+    if len(events) != len(unique_ids):
+        raise EventNotFoundError(
+            "Mindestens ein ausgewähltes Event wurde nicht gefunden."
+        )
+    return events
+
+
+def _ensure_deletable(events: list[Event]) -> None:
+    if any(event.team_match_id is not None for event in events):
+        raise SyncedEventDeleteError(
+            "Synchronisierte Mannschaftsspiele können nicht gelöscht werden."
+        )
 
 
 def update_event(
@@ -235,7 +336,9 @@ def _validate_period(starts_at: datetime, ends_at: datetime | None) -> None:
 
 def _reject_nulls(changes: dict, required_fields: set[str]) -> None:
     null_fields = sorted(
-        field for field in required_fields if field in changes and changes[field] is None
+        field
+        for field in required_fields
+        if field in changes and changes[field] is None
     )
     if null_fields:
         fields = ", ".join(null_fields)
@@ -280,6 +383,7 @@ class TeamMatchEventSync:
                 title=self._build_title(team_match, team),
                 starts_at=team_match.scheduled_at,
                 ends_at=self._get_ends_at(team_match),
+                is_all_day=False,
                 category_id=category_id,
                 team_match_id=team_match.id,
                 status=self._get_status(team_match),
@@ -294,6 +398,7 @@ class TeamMatchEventSync:
             event.title = self._build_title(team_match, team)
             event.starts_at = team_match.scheduled_at
             event.ends_at = self._get_ends_at(team_match)
+            event.is_all_day = False
             event.category_id = category_id
             event.status = self._get_status(team_match)
             event.location = self._build_location(team_match)
@@ -374,10 +479,7 @@ class TeamMatchEventSync:
     def _get_ends_at(team_match: TeamMatch) -> datetime | None:
         """Ignoriert unvollständige historische Endzeiten ohne Spieldatum."""
 
-        if (
-            team_match.ended_at is None
-            or team_match.ended_at < team_match.scheduled_at
-        ):
+        if team_match.ended_at is None or team_match.ended_at < team_match.scheduled_at:
             return None
 
         return team_match.ended_at

@@ -12,10 +12,16 @@ from app.domains.content.events.schemas import (
 from app.domains.content.events.service import (
     EventCategoryInactiveError,
     EventServiceError,
+    SyncedEventDeleteError,
     SyncedEventFieldError,
     create_event,
     create_event_category,
+    delete_event,
+    delete_events,
+    list_event_years,
+    list_events,
     update_event,
+    update_events_visibility,
 )
 from app.domains.content.types import Visibility
 from app.domains.users.model import Role, RoleName, User
@@ -106,6 +112,37 @@ class EventServiceTest(unittest.TestCase):
                     ),
                 )
 
+    def test_events_can_be_filtered_by_year_and_category(self) -> None:
+        with Session(self.engine) as session:
+            first = self._create_category(session)
+            second = create_event_category(
+                session, EventCategoryCreate(name="Turnier", slug="turnier")
+            )
+            create_event(
+                session,
+                EventCreate(
+                    title="Alt",
+                    starts_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                    category_id=first.id,
+                ),
+            )
+            create_event(
+                session,
+                EventCreate(
+                    title="Neu",
+                    starts_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                    category_id=second.id,
+                ),
+            )
+
+            self.assertEqual(list_event_years(session), [2026, 2025])
+            self.assertEqual(
+                [event.title for event in list_events(session, year=2026)], ["Neu"]
+            )
+            self.assertEqual(
+                list_events(session, year=2026, category_ids=[first.id]), []
+            )
+
     def test_synced_event_only_accepts_editorial_updates(self) -> None:
         with Session(self.engine) as session:
             category = self._create_category(session)
@@ -136,6 +173,56 @@ class EventServiceTest(unittest.TestCase):
                     event.id,
                     EventUpdate(title="Manuell überschrieben"),
                 )
+
+    def test_delete_event_rejects_synced_events(self) -> None:
+        with Session(self.engine) as session:
+            category = self._create_category(session)
+            manual = create_event(
+                session,
+                EventCreate(
+                    title="Manuell",
+                    starts_at=self._starts_at(),
+                    category_id=category.id,
+                ),
+            )
+            synced = Event(
+                title="Spiel",
+                starts_at=self._starts_at(),
+                category_id=category.id,
+                team_match_id=42,
+            )
+            session.add(synced)
+            session.commit()
+            session.refresh(synced)
+
+            with self.assertRaises(SyncedEventDeleteError):
+                delete_events(session, [manual.id, synced.id])
+            self.assertIsNotNone(session.get(Event, manual.id))
+
+            delete_event(session, manual.id)
+            self.assertIsNone(session.get(Event, manual.id))
+
+    def test_bulk_visibility_updates_synced_and_manual_events(self) -> None:
+        with Session(self.engine) as session:
+            category = self._create_category(session)
+            first = create_event(
+                session,
+                EventCreate(
+                    title="Eins", starts_at=self._starts_at(), category_id=category.id
+                ),
+            )
+            second = create_event(
+                session,
+                EventCreate(
+                    title="Zwei", starts_at=self._starts_at(), category_id=category.id
+                ),
+            )
+            updated = update_events_visibility(
+                session, [first.id, second.id], Visibility.HIDDEN
+            )
+            self.assertTrue(
+                all(event.visibility == Visibility.HIDDEN for event in updated)
+            )
 
     def test_admin_and_editor_are_allowed_to_manage_events(self) -> None:
         for role_name in (RoleName.ADMIN, RoleName.EDITOR):

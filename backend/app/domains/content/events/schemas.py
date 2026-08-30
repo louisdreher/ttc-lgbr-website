@@ -96,3 +96,12 @@ class EventRead(SQLModel):
     description: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class EventIds(SQLModel):
+    model_config = ConfigDict(extra="forbid")
+    event_ids: list[int] = Field(min_length=1, max_length=500)
+
+
+class EventBulkVisibilityUpdate(EventIds):
+    visibility: Visibility
