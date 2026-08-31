@@ -1,0 +1,246 @@
+<main class="events-page">
+  <header class="page-heading">
+    <p class="eyebrow">TTC 1970 Langen-Brombach</p>
+    <h1>Termine & Veranstaltungen</h1>
+    <p class="subtitle">Alle Termine rund um unseren Verein auf einen Blick.</p>
+  </header>
+
+  <section class="event-toolbar" aria-label="Darstellung und Filter">
+    <div class="view-switch" role="group" aria-label="Darstellung wählen">
+      <button
+        type="button"
+        [class.active]="view() === 'list'"
+        [attr.aria-pressed]="view() === 'list'"
+        (click)="setView('list')"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+        </svg>
+        Liste
+      </button>
+      <button
+        type="button"
+        [class.active]="view() === 'calendar'"
+        [attr.aria-pressed]="view() === 'calendar'"
+        (click)="setView('calendar')"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M4 5h16v15H4zM4 9h16M8 3v4M16 3v4" />
+        </svg>
+        Kalender
+      </button>
+    </div>
+
+    <details #filters class="filters" (document:click)="closeFilter(filters, $event)">
+      <summary>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+        Filter
+      </summary>
+      <div class="filter-panel">
+        <div class="date-filter">
+          <label
+            >Von
+            <input
+              #startsFromInput
+              type="date"
+              [value]="startsFrom()"
+              (change)="changeDateRange(startsFromInput.value, startsUntilInput.value)"
+          /></label>
+          <label
+            >Bis
+            <input
+              #startsUntilInput
+              type="date"
+              [value]="startsUntil()"
+              (change)="changeDateRange(startsFromInput.value, startsUntilInput.value)"
+          /></label>
+        </div>
+        <fieldset>
+          <legend>Kategorien</legend>
+          <div class="category-options">
+            @for (category of categories(); track category.id) {
+              <label>
+                <input
+                  type="checkbox"
+                  [checked]="selectedCategoryIds().has(category.id)"
+                  (change)="toggleCategory(category.id, $any($event.target).checked)"
+                />
+                <span
+                  [class]="'category-dot category-color-' + categoryColorIndex(category.id)"
+                ></span>
+                {{ category.name }}
+              </label>
+            }
+          </div>
+        </fieldset>
+      </div>
+    </details>
+  </section>
+
+  @if (loading()) {
+    <p class="state" role="status">Termine werden geladen …</p>
+  } @else if (error()) {
+    <div class="state error-state" role="alert">
+      <p>{{ error() }}</p>
+      <button type="button" (click)="loadEvents()">Erneut versuchen</button>
+    </div>
+  } @else if (events().length === 0) {
+    <section class="state empty-state">
+      <h2>Keine Termine gefunden</h2>
+      <p>Im gewählten Zeitraum und für diese Kategorien sind keine Termine vorhanden.</p>
+    </section>
+  } @else if (view() === 'list') {
+    <section class="event-list" aria-label="Terminliste">
+      @for (group of monthGroups(); track group.key) {
+        <h2 class="month-heading">{{ group.label }}</h2>
+        @for (event of group.events; track event.id) {
+          <details [class]="'event-entry status-' + event.status.toLowerCase()">
+            <summary>
+              <span class="event-date">
+                <time [attr.datetime]="event.starts_at">
+                  <strong>{{
+                    event.starts_at | date: 'dd.MM.yyyy' : (event.is_all_day ? 'UTC' : undefined)
+                  }}</strong>
+                  @if (!event.is_all_day) {
+                    <span>{{ event.starts_at | date: 'HH:mm' }}</span>
+                  }
+                </time>
+                @if (hasDistinctEnd(event)) {
+                  <span class="end-separator">bis</span>
+                  <time [attr.datetime]="event.ends_at">
+                    <strong>{{
+                      event.ends_at | date: 'dd.MM.yyyy' : (event.is_all_day ? 'UTC' : undefined)
+                    }}</strong>
+                    @if (!event.is_all_day) {
+                      <span>{{ event.ends_at | date: 'HH:mm' }}</span>
+                    }
+                  </time>
+                }
+              </span>
+              <span class="event-summary">
+                <strong class="event-title">{{ event.title }}</strong>
+                @if (event.location) {
+                  <span class="event-location">
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M12 21s6-5.6 6-12a6 6 0 1 0-12 0c0 6.4 6 12 6 12Z" />
+                      <circle cx="12" cy="9" r="2" />
+                    </svg>
+                    {{ event.location }}
+                  </span>
+                }
+                <span
+                  [class]="'category-badge category-color-' + categoryColorIndex(event.category_id)"
+                  >{{ categoryNames().get(event.category_id) ?? 'Unbekannt' }}</span
+                >
+              </span>
+              <span class="expand-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" /></svg>
+              </span>
+            </summary>
+            <div class="event-details">
+              @if (event.status !== 'PLANNED') {
+                <p class="event-status">{{ statusLabel(event.status) }}</p>
+              }
+              @if (event.description) {
+                <p>{{ event.description }}</p>
+              } @else {
+                <p class="muted">Für diesen Termin sind keine weiteren Informationen hinterlegt.</p>
+              }
+            </div>
+          </details>
+        }
+      }
+    </section>
+  } @else {
+    <section class="calendar" aria-label="Kalenderansicht">
+      <header class="calendar-header">
+        <button type="button" (click)="previousMonth()" aria-label="Vorheriger Monat">←</button>
+        <div>
+          <h2>{{ calendarLabel() }}</h2>
+          <button type="button" class="today-button" (click)="showToday()">Heute</button>
+        </div>
+        <button type="button" (click)="nextMonth()" aria-label="Nächster Monat">→</button>
+      </header>
+      <div class="calendar-grid">
+        @for (weekday of ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']; track weekday) {
+          <div class="weekday">{{ weekday }}</div>
+        }
+      </div>
+      <div class="calendar-month">
+        @for (week of calendarWeeks(); track week.key) {
+          <div class="calendar-week">
+            <div class="calendar-days">
+              @for (day of week.days; track day.key) {
+                <div
+                  class="calendar-day"
+                  [class.today]="day.isToday"
+                  [class.outside-month]="!day.isCurrentMonth"
+                >
+                  <time [attr.datetime]="day.key" class="day-number">{{
+                    day.date | date: 'd'
+                  }}</time>
+                </div>
+              }
+            </div>
+            <div class="calendar-events">
+              @for (segment of week.segments; track segment.key) {
+                <button
+                  type="button"
+                  [class]="
+                    'calendar-event category-color-' + categoryColorIndex(segment.event.category_id)
+                  "
+                  [style.grid-column]="segment.startColumn + ' / span ' + segment.span"
+                  [style.grid-row]="segment.row + 1"
+                  [title]="segment.event.title"
+                  (click)="selectCalendarEvent(segment.event)"
+                >
+                  @if (!segment.event.is_all_day && segment.span === 1) {
+                    <time [attr.datetime]="segment.event.starts_at">{{
+                      segment.event.starts_at | date: 'HH:mm'
+                    }}</time>
+                  }
+                  {{ segment.event.title }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (selectedCalendarEvent(); as event) {
+        <article class="calendar-selection">
+          <div>
+            <span
+              [class]="'category-badge category-color-' + categoryColorIndex(event.category_id)"
+              >{{ categoryNames().get(event.category_id) }}</span
+            >
+            <h3>{{ event.title }}</h3>
+          </div>
+          <p>
+            <time [attr.datetime]="event.starts_at">{{
+              event.starts_at
+                | date
+                  : (event.is_all_day ? 'dd.MM.yyyy' : 'dd.MM.yyyy, HH:mm')
+                  : (event.is_all_day ? 'UTC' : undefined)
+            }}</time>
+            @if (hasDistinctEnd(event)) {
+              bis
+              <time [attr.datetime]="event.ends_at">{{
+                event.ends_at
+                  | date
+                    : (event.is_all_day ? 'dd.MM.yyyy' : 'dd.MM.yyyy, HH:mm')
+                    : (event.is_all_day ? 'UTC' : undefined)
+              }}</time>
+            }
+          </p>
+          @if (event.location) {
+            <p>{{ event.location }}</p>
+          }
+          @if (event.description) {
+            <p>{{ event.description }}</p>
+          }
+        </article>
+      }
+    </section>
+  }
+</main>

@@ -60,6 +60,10 @@ export const routes: Routes = [
         component: Contact,
       },
       {
+        path: 'termine',
+        loadComponent: () => import('./pages/events/events').then((module) => module.PublicEvents),
+      },
+      {
         path: 'login',
         component: Login,
       },
