@@ -8,7 +8,10 @@ Das Projekt verfolgt zwei Ziele: Zum einen soll es die redaktionelle und
 administrative Vereinsarbeit vereinfachen und wiederkehrende Abläufe möglichst
 automatisieren. Zum anderen dient es als praxisnahes Lernprojekt für die
 Entwicklung einer vollständigen Webanwendung – vom Frontend über API und
-Datenmodell bis zu Migrationen und externen Integrationen.
+Datenmodell bis zu Migrationen und externen Integrationen. Codex wird dabei als
+Entwicklungswerkzeug für die gemiensame Planung, Architekturreflexion, Implementierung,
+Fehlersuche, Tests und Dokumentation eingesetzt. Fachliche und technische
+Entscheidungen werden dabei bewusst geprüft und nachvollziehbar dokumentiert.
 
 ## Schwerpunkte
 
@@ -35,8 +38,6 @@ die Datenmodelle und Synchronisationslogik für den Spielbetrieb.
 Der vollständige Artikel- und Medienworkflow, KI-gestützte Berichtsentwürfe,
 der Terminimport aus PDF-Dokumenten, automatisierte Hintergrundläufe und
 weitere Verwaltungsfunktionen sind geplant beziehungsweise noch im Aufbau.
-Der jeweilige Umsetzungsstand ist in der technischen Dokumentation ausdrücklich
-gekennzeichnet.
 
 ## Technologien
 
@@ -44,6 +45,7 @@ gekennzeichnet.
 - FastAPI und Python
 - PostgreSQL, SQLModel und Alembic
 - Docker Compose
+- Codex als KI-gestütztes Entwicklungswerkzeug
 
 ## Projektstruktur
 
