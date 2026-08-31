@@ -1,56 +1,63 @@
-# TTC Langen-Brombach Website
+# Neue Website des TTC Langen-Brombach
 
-This repository contains the developing website and internal administration
-tools for TTC Langen-Brombach. It is also a learning project for Angular,
-FastAPI, PostgreSQL, SQLModel, Alembic, Docker, and collaboration with Codex.
+Dieses Repository enthält die neue Vereinswebsite des TTC Langen-Brombach.
+Sie verbindet einen modernen öffentlichen Auftritt mit einem internen Bereich
+und einem eigenen Content-Management-System (CMS).
 
-## Project status
+Das Projekt verfolgt zwei Ziele: Zum einen soll es die redaktionelle und
+administrative Vereinsarbeit vereinfachen und wiederkehrende Abläufe möglichst
+automatisieren. Zum anderen dient es als praxisnahes Lernprojekt für die
+Entwicklung einer vollständigen Webanwendung – vom Frontend über API und
+Datenmodell bis zu Migrationen und externen Integrationen.
 
-The project is under active development. The current foundation includes:
+## Schwerpunkte
 
-- an Angular frontend with public, internal, and administration layouts;
-- a FastAPI backend with authentication, user roles, and initial article APIs;
-- a PostgreSQL data model for members, teams, matches, and league tables;
-- a myTischtennis client and synchronization code;
-- Alembic migrations for an existing development database.
+- öffentliche Vereinsinformationen, Nachrichten, Mannschaften und Termine;
+- geschützte Bereiche für Mitglieder und berechtigte Funktionsträger;
+- ein rollenbasiertes CMS für Termine und zukünftig weitere Inhalte;
+- Übernahme und Synchronisation von Spielplan-, Mannschafts- und
+  Ergebnisdaten aus myTischtennis;
+- Verknüpfung von Terminen, Mannschaftsspielen, Berichten und Medien, um
+  redaktionelle Arbeitsschritte künftig gezielt vorzubereiten und zu
+  automatisieren;
+- geplante KI-Unterstützung, beispielsweise zur Erzeugung redaktionell
+  prüfbarer Entwürfe für Spiel- und Veranstaltungsberichte über die OpenAI API;
+- geplante Übernahme von Terminen aus PDF-Dokumenten, um manuelle
+  Erfassungsarbeit weiter zu reduzieren.
 
-Several screens and APIs are still placeholders. The myTischtennis scheduler
-and article workflow are not yet fully implemented. Known technical issues are
-tracked in [docs/known-issues.md](docs/known-issues.md).
+## Aktueller Stand
 
-## Repository structure
+Die Anwendung befindet sich in aktiver Entwicklung. Bereits vorhanden sind
+unter anderem die grundlegende Seiten- und Bereichsstruktur, Authentifizierung
+und Rollen, ein öffentliches Terminmodul, die Terminverwaltung im CMS sowie
+die Datenmodelle und Synchronisationslogik für den Spielbetrieb.
+
+Der vollständige Artikel- und Medienworkflow, KI-gestützte Berichtsentwürfe,
+der Terminimport aus PDF-Dokumenten, automatisierte Hintergrundläufe und
+weitere Verwaltungsfunktionen sind geplant beziehungsweise noch im Aufbau.
+Der jeweilige Umsetzungsstand ist in der technischen Dokumentation ausdrücklich
+gekennzeichnet.
+
+## Technologien
+
+- Angular und TypeScript
+- FastAPI und Python
+- PostgreSQL, SQLModel und Alembic
+- Docker Compose
+
+## Projektstruktur
 
 ```text
-.
-|-- frontend/       Angular application
-|-- backend/        FastAPI application, SQLModel models, and Alembic
-|-- docs/           Architecture and development documentation
-`-- compose.yaml    Local PostgreSQL service
+frontend/       Angular-Anwendung
+backend/        FastAPI-Anwendung, Domänenlogik und Migrationen
+docs/           Architektur- und Entwicklungsdokumentation
+compose.yaml    lokale PostgreSQL-Infrastruktur
 ```
 
-## Getting started
+## Dokumentation
 
-The detailed development setup is documented in
-[docs/development.md](docs/development.md).
-
-In short, local development consists of:
-
-1. starting PostgreSQL with Docker Compose;
-2. creating and activating the backend Conda environment;
-3. configuring `backend/.env` from `backend/.env.example`;
-4. applying the appropriate database migrations;
-5. starting FastAPI from `backend/`;
-6. installing and starting Angular from `frontend/`.
-
-Do not use the migration instructions on an empty database yet. The existing
-Alembic baseline does not create the complete initial schema. See the known
-issues before changing or recreating the database.
-
-## Documentation
-
-- [Architecture](docs/architecture.md)
-- [Development setup](docs/development.md)
-- [Data model](docs/data-model.md)
-- [Known issues](docs/known-issues.md)
-- [Architecture decisions](docs/decisions/README.md)
-
+- [Architektur](docs/architecture.md)
+- [Datenmodell](docs/data-model.md)
+- [Entwicklungsumgebung und Prüfungen](docs/development.md)
+- [Bekannte Einschränkungen und geplante Arbeiten](docs/known-issues.md)
+- [Architekturentscheidungen](docs/decisions/README.md)

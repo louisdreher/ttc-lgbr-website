@@ -75,10 +75,11 @@ position and won/lost counts for meetings, points, matches, sets, and games.
 ## Content
 
 The content domain groups calendar entries, editorial articles, and media
-around a shared event. The database models, their migration, and the
-administrative API for events and event categories exist. The public calendar,
-article workflows, media storage, and CMS user interface are still planned and
-must not be presented as completed functionality.
+around a shared event. The database models and migrations exist. Event
+management is available through an administrative API and CMS interface; a
+read-only public event API and calendar are also implemented. Article
+workflows and media storage are still planned and must not be presented as
+completed functionality.
 
 ```text
 EventCategory
@@ -119,6 +120,15 @@ the unique `team_match_id` prevents duplicates.
 `report_expected` controls whether a completed event should be offered as a
 report suggestion. Whether an article already exists is derived from the
 article relation instead of being duplicated as another event flag.
+
+Manual events record their creating user when available and may be all-day
+entries. The CMS can filter events by year, category, and visibility and can
+change visibility in bulk. Imported match events cannot be deleted manually;
+their synchronized fields remain owned by the competition integration.
+
+The public event query is deliberately narrower than the administration view:
+it returns only `PUBLIC` entries in a requested date range and excludes both
+inactive categories and the dedicated team-match category.
 
 ### Articles and tags
 

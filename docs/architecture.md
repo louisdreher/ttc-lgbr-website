@@ -5,6 +5,19 @@
 The application is currently organized as a browser-based Angular frontend, a
 FastAPI backend, and a PostgreSQL database.
 
+Its product goal is to combine an attractive public club website with tools
+that reduce recurring editorial and administrative work. Imported competition
+data, club events, articles, and media are therefore modeled as connected
+domains rather than unrelated pages. This foundation is intended to support
+workflows such as automatically maintained calendars and future report
+suggestions without giving up editorial control.
+
+Planned automation includes generating editable draft reports through the
+OpenAI API from structured event and competition data, as well as extracting
+candidate calendar entries from PDF documents. Both workflows must keep a
+human review and approval step before content is published or imported into
+the authoritative event data.
+
 ```text
 Browser
   |
@@ -71,10 +84,17 @@ does not depend on content models. Articles and galleries may exist without an
 event.
 
 The event subdomain exposes an authenticated administrative API for listing,
-creating, and updating events and event categories. `ADMIN` and `EDITOR` may
-use it. Fields synchronized from a linked team match are protected from manual
-changes, while editorial fields remain editable. A public calendar API and the
-Angular event-management interface are still planned.
+creating, updating, and deleting events and for managing event categories.
+`ADMIN` and `EDITOR` may use it. Bulk visibility changes and deletion of manual
+events are supported. Fields synchronized from a linked team match are
+protected from manual changes, while editorial fields remain editable.
+
+The Angular administration area provides event filtering, selection, bulk
+actions, and forms for creating and editing entries. The public event API only
+returns public, non-match events in the requested date range. Its Angular page
+offers list and calendar views as well as date and category filters. Team
+matches are deliberately excluded from this public endpoint; their future
+public presentation remains a separate concern.
 
 The previous `app/domains/articles` model path remains as a compatibility
 import. Its existing routers and schemas still require migration to the new
@@ -104,11 +124,11 @@ SQLModel defines the application tables and SQLAlchemy creates the PostgreSQL
 engine. Alembic is intended to be the only mechanism for evolving the schema;
 runtime table creation is disabled.
 
-The current migration chain contains a complete initial schema followed by the
-content-domain migration. It has been verified by upgrading a new empty
-PostgreSQL database to the current head, downgrading the content revision, and
-upgrading it again. New migrations must continue to be tested against both a
-new empty database and the intended upgrade path.
+The migration chain contains a complete initial schema followed by migrations
+for the content domain and later event and match metadata. It has been verified
+against a new empty PostgreSQL database in the past. New migrations must
+continue to be tested against both a new empty database and the intended
+upgrade path.
 
 ## myTischtennis integration
 
@@ -124,3 +144,17 @@ run manually at present.
 
 A scheduler is planned but has not been implemented or connected to the
 FastAPI lifecycle.
+
+## Planned content automation
+
+The CMS is intended to assist editors rather than publish generated content
+autonomously. A future drafting service may combine structured match or event
+data with editorial guidance and use the OpenAI API to prepare article drafts.
+Generated text must remain traceable, editable, and unpublished until an
+authorized editor reviews it.
+
+A separate planned import workflow will accept PDF documents containing club
+dates or event schedules. It should extract proposed events, show the source
+and any uncertain fields, detect possible duplicates, and require confirmation
+before persisting data. The exact PDF extraction and validation architecture
+has not yet been decided.

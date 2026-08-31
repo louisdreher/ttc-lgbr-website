@@ -48,3 +48,40 @@ Planned.
 The article model, public reads, and preliminary administration routes exist,
 but the complete creation, publication, validation, and frontend workflow has
 not been implemented.
+
+The older article routes still target the compatibility model and have not yet
+been migrated to the event-centered content model. They should therefore not
+be treated as a production-ready CMS API.
+
+## Media storage not implemented
+
+### Status
+
+Planned.
+
+Media and gallery metadata are represented in the data model, but upload,
+storage, image processing, access control, and lifecycle handling still require
+an implementation and an explicit storage decision.
+
+## Public website content is partly provisional
+
+### Status
+
+In progress.
+
+The public layout and routes exist, and the event calendar is connected to the
+backend. Several other public and internal pages still contain provisional
+content or UI scaffolding and should not be presented as finished features.
+
+## AI-assisted drafts and PDF imports not implemented
+
+### Status
+
+Planned.
+
+The intended CMS includes two further automation workflows: creating editable
+drafts for match and event reports through the OpenAI API, and extracting
+candidate events from PDF documents. Neither workflow is currently
+implemented. Both require validation, transparent error handling, duplicate
+detection where applicable, and explicit human approval before publication or
+data import.

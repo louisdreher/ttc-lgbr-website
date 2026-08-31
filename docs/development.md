@@ -136,10 +136,17 @@ npm test
 npm run build
 ```
 
-The backend currently has manually executable myTischtennis scripts but no
-complete automated pytest suite. Scripts that contact myTischtennis or write to
-PostgreSQL are integration utilities, not isolated unit tests. Inspect their
-arguments and effects before running them.
+Backend service tests currently use Python's built-in `unittest` runner and an
+in-memory SQLite database:
+
+```powershell
+python -m unittest discover -s tests
+```
+
+They cover event behavior and synchronization between team matches and events,
+but are not yet a complete backend test suite. Scripts that contact
+myTischtennis or write to PostgreSQL are integration utilities, not isolated
+unit tests. Inspect their arguments and effects before running them.
 
 ## Suggested learning workflow with Codex
 
