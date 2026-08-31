@@ -47,6 +47,14 @@ class EventCategoryRead(SQLModel):
     sort_order: int
 
 
+class PublicEventCategoryRead(SQLModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    slug: str
+
+
 class EventCreate(SQLModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -96,6 +104,20 @@ class EventRead(SQLModel):
     description: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class PublicEventRead(SQLModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    starts_at: datetime
+    ends_at: datetime | None
+    is_all_day: bool
+    category_id: int
+    status: EventStatus
+    location: str | None
+    description: str | None
 
 
 class EventIds(SQLModel):

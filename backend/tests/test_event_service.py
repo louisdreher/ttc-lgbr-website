@@ -20,6 +20,8 @@ from app.domains.content.events.service import (
     delete_events,
     list_event_years,
     list_events,
+    list_public_event_categories,
+    list_public_events,
     update_event,
     update_events_visibility,
 )
@@ -142,6 +144,76 @@ class EventServiceTest(unittest.TestCase):
             self.assertEqual(
                 list_events(session, year=2026, category_ids=[first.id]), []
             )
+
+    def test_public_events_only_include_public_manual_events_in_range(self) -> None:
+        with Session(self.engine) as session:
+            category = self._create_category(session)
+            team_match_category = create_event_category(
+                session,
+                EventCategoryCreate(
+                    name="Mannschaftsspiel", slug="mannschaftsspiel"
+                ),
+            )
+            visible = create_event(
+                session,
+                EventCreate(
+                    title="Öffentlich",
+                    starts_at=datetime(2026, 9, 2, tzinfo=timezone.utc),
+                    category_id=category.id,
+                ),
+            )
+            create_event(
+                session,
+                EventCreate(
+                    title="Verborgen",
+                    starts_at=datetime(2026, 9, 3, tzinfo=timezone.utc),
+                    category_id=category.id,
+                    visibility=Visibility.HIDDEN,
+                ),
+            )
+            session.add(
+                Event(
+                    title="Mannschaftsspiel",
+                    starts_at=datetime(2026, 9, 4, tzinfo=timezone.utc),
+                    category_id=category.id,
+                    team_match_id=42,
+                )
+            )
+            create_event(
+                session,
+                EventCreate(
+                    title="Manuelles Mannschaftsspiel",
+                    starts_at=datetime(2026, 9, 5, tzinfo=timezone.utc),
+                    category_id=team_match_category.id,
+                ),
+            )
+            session.commit()
+
+            events = list_public_events(
+                session,
+                starts_from=datetime(2026, 9, 1, tzinfo=timezone.utc),
+                starts_until=datetime(2026, 9, 30, tzinfo=timezone.utc),
+            )
+
+            self.assertEqual([event.id for event in events], [visible.id])
+
+    def test_public_categories_exclude_inactive_and_team_matches(self) -> None:
+        with Session(self.engine) as session:
+            visible = self._create_category(session)
+            create_event_category(
+                session,
+                EventCategoryCreate(
+                    name="Mannschaftsspiel", slug="mannschaftsspiel"
+                ),
+            )
+            create_event_category(
+                session,
+                EventCategoryCreate(
+                    name="Inaktiv", slug="inaktiv", is_active=False
+                ),
+            )
+
+            self.assertEqual(list_public_event_categories(session), [visible])
 
     def test_synced_event_only_accepts_editorial_updates(self) -> None:
         with Session(self.engine) as session:

@@ -68,6 +68,19 @@ def list_event_categories(session: Session) -> list[EventCategory]:
     )
 
 
+def list_public_event_categories(session: Session) -> list[EventCategory]:
+    return list(
+        session.exec(
+            select(EventCategory)
+            .where(
+                EventCategory.is_active.is_(True),
+                EventCategory.slug != TEAM_MATCH_CATEGORY_SLUG,
+            )
+            .order_by(EventCategory.sort_order, EventCategory.name)
+        ).all()
+    )
+
+
 def create_event_category(
     session: Session,
     category_data: EventCategoryCreate,
@@ -145,6 +158,29 @@ def list_events(
             return []
         statement = statement.where(Event.category_id.in_(category_ids))
     return list(session.exec(statement.order_by(Event.starts_at.desc())).all())
+
+
+def list_public_events(
+    session: Session,
+    *,
+    starts_from: datetime,
+    starts_until: datetime,
+    category_ids: list[int] | None = None,
+) -> list[Event]:
+    statement = select(Event).where(
+        Event.visibility == Visibility.PUBLIC,
+        Event.team_match_id.is_(None),
+        Event.category_id.not_in(
+            select(EventCategory.id).where(
+                EventCategory.slug == TEAM_MATCH_CATEGORY_SLUG
+            )
+        ),
+        Event.starts_at >= starts_from,
+        Event.starts_at <= starts_until,
+    )
+    if category_ids:
+        statement = statement.where(Event.category_id.in_(category_ids))
+    return list(session.exec(statement.order_by(Event.starts_at, Event.id)).all())
 
 
 def serialize_events(session: Session, events: list[Event]) -> list[EventRead]:
