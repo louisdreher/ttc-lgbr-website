@@ -100,6 +100,86 @@ The previous `app/domains/articles` model path remains as a compatibility
 import. Its existing routers and schemas still require migration to the new
 article model and should not yet be treated as a working CMS API.
 
+## Backend architecture direction
+
+The current backend structure grew incrementally and still mixes several
+responsibilities in places. Some FastAPI routers receive SQLModel sessions
+directly, application-style service functions construct SQLModel queries, and
+domain and persistence models are often the same classes. This is the current
+state, not the intended architecture for new components.
+
+New backend functionality and code selected explicitly for refactoring should
+move toward a component-oriented Ports and Adapters architecture. The first
+component planned to use the structure is the article component. Existing
+components remain in their current locations until they are migrated through
+separate, reviewable changes.
+
+The intended top-level responsibilities are:
+
+```text
+app/
+  components/             application core, organized by domain component
+    content/
+      articles/
+        application/      use cases, commands, queries, DTOs, and ports
+        domain/           entities, value objects, domain services, and errors
+  adapters/
+    inbound/              FastAPI, CLI, and other driving adapters
+    outbound/             persistence and external-service adapters
+  platform/               settings, database setup, logging, and wiring support
+```
+
+This is a target structure. During the transition, the existing `app/core`,
+`app/domains`, and `app/integrations` packages continue to be canonical for
+code that has not been deliberately migrated. New code must not import a new
+component through its internal modules merely to bridge the two structures;
+such integration needs an explicit public contract.
+
+The dependency direction is inward:
+
+```text
+inbound adapter --> application --> domain
+                           |
+                           v
+                     output port
+                           ^
+                           |
+outbound adapter -----------
+```
+
+Domain code is independent of FastAPI, Pydantic transport schemas, SQLModel,
+SQLAlchemy, and concrete external services. Application code coordinates use
+cases and depends on domain types and application-owned ports. Inbound
+adapters translate HTTP, CLI, or other external input into application
+commands and queries. Outbound adapters implement application-owned ports and
+translate between application concepts and tools such as SQLModel,
+PostgreSQL, or third-party APIs.
+
+FastAPI's dependency system is part of the inbound adapter and composition
+wiring. `Depends` may create request-scoped sessions, repositories, readers,
+and use cases, but it must not appear in application or domain code. A
+database session passed through dependency injection is still a concrete
+infrastructure dependency; write use cases should instead depend on
+repository or unit-of-work ports when they are migrated.
+
+The backend will not introduce a command or query bus. Controllers call use
+cases and query objects directly. Write operations may use immutable command
+DTOs, domain objects, and repository ports. Read operations may use dedicated
+reader ports and optimized result DTOs without reconstructing complete domain
+objects. HTTP request and response schemas remain separate from
+transport-independent application DTOs where that separation provides a
+clear boundary.
+
+Components should expose explicit public contracts and must not depend on the
+internal implementation of another component. Direct calls are acceptable
+when an immediate result is part of the same use case and the dependency is
+represented by an intentional contract. Events are reserved for genuine
+cross-component reactions; no event dispatcher or shared kernel should be
+introduced without a concrete workflow that requires it.
+
+See [ADR 0003](decisions/0003-component-oriented-backend.md) for the decision,
+tradeoffs, and migration constraints.
+
 ## Authentication
 
 Login combines two token types:

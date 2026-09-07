@@ -1,14 +1,14 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from app.domains.competition.league.model import LeagueGroup
-from app.domains.competition.matches.models import TeamMatch
-from app.domains.competition.season.model import Season, SeasonHalf
-from app.domains.competition.teams.model import Team
-from app.domains.content.events.model import Event, EventCategory, EventStatus
-from app.domains.content.events.service import TeamMatchEventSync
-from sqlmodel import Session, SQLModel, create_engine, select
+from app.core.competition.league.model import LeagueGroup
+from app.core.competition.matches.models import TeamMatch
+from app.core.competition.season.model import Season, SeasonHalf
+from app.core.competition.teams.model import Team
+from app.core.content.events.model import Event, EventCategory, EventStatus
+from app.core.content.events.service import TeamMatchEventSync
 from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine, select
 
 
 class TeamMatchEventSyncTest(unittest.TestCase):

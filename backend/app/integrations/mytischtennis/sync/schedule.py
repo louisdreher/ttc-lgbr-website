@@ -2,22 +2,21 @@ import logging
 from datetime import date, datetime
 from enum import StrEnum
 
-from app.core.database import engine
-from app.core.settings import settings
-from app.domains.competition.league.model import LeagueGroup
-from app.domains.competition.matches.models import (
+from app.adapters.outbound.persistence.database import engine
+from app.bootstrap.settings import settings
+from app.core.competition.league.model import LeagueGroup
+from app.core.competition.matches.models import (
     TeamMatch,
     TeamMatchNotice,
     TeamMatchNoticeCode,
 )
-from app.domains.competition.season.model import Season, SeasonHalf
-from app.domains.competition.teams.model import Team
-from app.domains.content.events.service import TeamMatchEventSync
+from app.core.competition.season.model import Season, SeasonHalf
+from app.core.competition.teams.model import Team
+from app.core.content.events.service import TeamMatchEventSync
 from app.integrations.mytischtennis.api import (
     MyTischtennisClient,
 )
 from sqlmodel import Session, select
-
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +102,7 @@ class ScheduleSync:
         )
 
         logger.info(
-            "Schedule-Sync gestartet: season=%s/%s half=%s "
-            "date_start=%s date_end=%s",
+            "Schedule-Sync gestartet: season=%s/%s half=%s date_start=%s date_end=%s",
             start_year,
             str(end_year)[-2:],
             half.value.upper(),

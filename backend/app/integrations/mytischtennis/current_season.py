@@ -6,11 +6,11 @@ from datetime import date
 import httpx
 from sqlmodel import Session, select
 
-from app.core.database import engine
-from app.domains.competition.league.model import LeagueGroup
-from app.domains.competition.matches.models import TeamMatch
-from app.domains.competition.season.model import Season, SeasonHalf
-from app.domains.competition.teams.model import Team
+from app.adapters.outbound.persistence.database import engine
+from app.core.competition.league.model import LeagueGroup
+from app.core.competition.matches.models import TeamMatch
+from app.core.competition.season.model import Season, SeasonHalf
+from app.core.competition.teams.model import Team
 from app.integrations.mytischtennis.sync.league_table import (
     LeagueTableSync,
 )
@@ -23,7 +23,6 @@ from app.integrations.mytischtennis.sync.registrations import (
 from app.integrations.mytischtennis.sync.schedule import (
     ScheduleSync,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -192,8 +191,7 @@ class CurrentSeasonSync:
         )
 
         logger.info(
-            "LeagueGroups für Ligatabellen-Sync gefunden: "
-            "season_id=%s count=%s",
+            "LeagueGroups für Ligatabellen-Sync gefunden: season_id=%s count=%s",
             season_id,
             len(league_group_ids),
         )
@@ -207,8 +205,7 @@ class CurrentSeasonSync:
             start=1,
         ):
             logger.debug(
-                "Ligatabelle wird synchronisiert: "
-                "league_group_id=%s progress=%s/%s",
+                "Ligatabelle wird synchronisiert: league_group_id=%s progress=%s/%s",
                 league_group_id,
                 index,
                 len(league_group_ids),
@@ -273,8 +270,7 @@ class CurrentSeasonSync:
         )
 
         logger.info(
-            "LeagueGroups für Mannschaftsmeldungs-Sync gefunden: "
-            "season_id=%s count=%s",
+            "LeagueGroups für Mannschaftsmeldungs-Sync gefunden: season_id=%s count=%s",
             season_id,
             len(league_group_ids),
         )
@@ -310,8 +306,7 @@ class CurrentSeasonSync:
                 failed += 1
 
                 logger.exception(
-                    "Mannschaftsmeldungs-Sync fehlgeschlagen: "
-                    "league_group_id=%s",
+                    "Mannschaftsmeldungs-Sync fehlgeschlagen: league_group_id=%s",
                     league_group_id,
                 )
 

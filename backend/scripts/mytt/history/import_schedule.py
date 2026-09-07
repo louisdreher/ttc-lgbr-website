@@ -1,10 +1,11 @@
 import argparse
 import asyncio
 
-from app.domains.competition.season.model import SeasonHalf
+from app.core.competition.season.model import SeasonHalf
 from app.integrations.mytischtennis.sync.schedule import (
     ScheduleSync,
 )
+
 
 async def main() -> None:
     parser = argparse.ArgumentParser(

@@ -1,14 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.auth.router import router as auth_router
-from app.core.logging import configure_logging
-from app.core.settings import settings
-from app.domains.articles.intern_router import router as article_admin_router
-from app.domains.articles.public_router import router as article_router
-from app.domains.content.events.admin_router import router as event_admin_router
-from app.domains.content.events.public_router import router as event_public_router
-from app.domains.users.router import router as user_router
+from app.adapters.inbound.http.articles.admin_router import (
+    router as article_admin_router,
+)
+from app.bootstrap.logging import configure_logging
+from app.bootstrap.settings import settings
+from app.core.auth.router import router as auth_router
+from app.core.content.events.admin_router import router as event_admin_router
+from app.core.content.events.public_router import router as event_public_router
+from app.core.users.router import router as user_router
 
 configure_logging(
     log_level=settings.log_level,
@@ -44,7 +45,6 @@ app.add_middleware(
 
 
 app.include_router(user_router)
-app.include_router(article_router)
 app.include_router(article_admin_router)
 app.include_router(event_admin_router)
 app.include_router(event_public_router)

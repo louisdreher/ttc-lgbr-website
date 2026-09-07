@@ -1,9 +1,9 @@
 import logging
 
-from app.core.database import engine
-from app.domains.competition.league.model import LeagueGroup, LeagueTableEntry
-from app.domains.competition.season.model import Season, SeasonHalf
-from app.domains.competition.teams.model import Team
+from app.adapters.outbound.persistence.database import engine
+from app.core.competition.league.model import LeagueGroup, LeagueTableEntry
+from app.core.competition.season.model import Season, SeasonHalf
+from app.core.competition.teams.model import Team
 from app.integrations.mytischtennis.api import MyTischtennisClient
 from sqlmodel import Session, select
 

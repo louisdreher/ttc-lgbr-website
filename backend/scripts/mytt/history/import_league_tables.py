@@ -3,12 +3,12 @@ import asyncio
 import json
 
 import httpx
-from app.core.database import engine
-from app.domains.competition.league.model import (
+from app.adapters.outbound.persistence.database import engine
+from app.core.competition.league.model import (
     LeagueGroup,
     LeagueTableEntry,
 )
-from app.domains.competition.teams.model import Team
+from app.core.competition.teams.model import Team
 from app.integrations.mytischtennis.sync.league_table import (
     LeagueTableSync,
 )

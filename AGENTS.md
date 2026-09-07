@@ -42,10 +42,50 @@ Adapt to the collaboration mode requested by the user:
 - Update documentation when an architectural decision changes.
 - Mark planned functionality as planned instead of presenting it as complete.
 
+## Backend architecture direction
+
+New backend functionality and code that is deliberately refactored should
+follow a component-oriented Ports and Adapters structure. Existing code may
+still use the previous structure and must not be migrated incidentally as part
+of an unrelated change.
+
+The intended separation is:
+
+- `app/components`: domain-oriented components containing application and
+  domain code;
+- `app/adapters/inbound`: delivery adapters such as FastAPI routers and CLI
+  commands;
+- `app/adapters/outbound`: implementations for persistence and external
+  services;
+- `app/platform`: application-wide technical setup such as settings, database
+  engine creation, and logging.
+
+Dependency rules:
+
+- Domain code must not depend on FastAPI, SQLModel, SQLAlchemy, Pydantic
+  transport schemas, or concrete external services.
+- Application code may depend on its domain model and its own ports, but not
+  on inbound or outbound adapters.
+- Inbound adapters may depend on application use cases. Outbound adapters
+  implement ports defined by the application core.
+- FastAPI `Depends` belongs in inbound adapters or composition and wiring
+  code, not in domain or application code.
+- HTTP request and response schemas belong to the HTTP adapter. Application
+  commands, queries, and result DTOs must remain transport-independent.
+- Controllers call use cases and query objects directly. Command and query
+  buses are not planned.
+- Write use cases should use domain objects and repository ports. Read use
+  cases may use dedicated reader ports that return optimized DTOs.
+- Cross-component communication must use an explicit public contract, port,
+  or event. Do not import another component's internal implementation.
+- Keep shared code minimal. Do not create a general-purpose shared utilities
+  package.
+- Introduce abstractions only for a concrete boundary or variation point, and
+  keep architecture changes small and reviewable.
+
 ## Verification
 
 - Frontend changes: run the relevant Angular tests and build.
 - Backend changes: run the relevant backend tests when such tests exist.
 - Migration changes: verify them against a new empty database.
 - Report which checks were run and which were not.
-

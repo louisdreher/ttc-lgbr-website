@@ -1,15 +1,15 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from app.domains.competition.matches.models import TeamMatch
-from app.domains.content.events.admin_router import event_manager
-from app.domains.content.events.model import Event, EventCategory
-from app.domains.content.events.schemas import (
+from app.core.competition.matches.models import TeamMatch
+from app.core.content.events.admin_router import event_manager
+from app.core.content.events.model import Event, EventCategory
+from app.core.content.events.schemas import (
     EventCategoryCreate,
     EventCreate,
     EventUpdate,
 )
-from app.domains.content.events.service import (
+from app.core.content.events.service import (
     EventCategoryInactiveError,
     EventServiceError,
     SyncedEventDeleteError,
@@ -25,8 +25,8 @@ from app.domains.content.events.service import (
     update_event,
     update_events_visibility,
 )
-from app.domains.content.types import Visibility
-from app.domains.users.model import Role, RoleName, User
+from app.core.content.types import Visibility
+from app.core.users.model import Role, RoleName, User
 from fastapi import HTTPException
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
@@ -150,9 +150,7 @@ class EventServiceTest(unittest.TestCase):
             category = self._create_category(session)
             team_match_category = create_event_category(
                 session,
-                EventCategoryCreate(
-                    name="Mannschaftsspiel", slug="mannschaftsspiel"
-                ),
+                EventCategoryCreate(name="Mannschaftsspiel", slug="mannschaftsspiel"),
             )
             visible = create_event(
                 session,
@@ -202,15 +200,11 @@ class EventServiceTest(unittest.TestCase):
             visible = self._create_category(session)
             create_event_category(
                 session,
-                EventCategoryCreate(
-                    name="Mannschaftsspiel", slug="mannschaftsspiel"
-                ),
+                EventCategoryCreate(name="Mannschaftsspiel", slug="mannschaftsspiel"),
             )
             create_event_category(
                 session,
-                EventCategoryCreate(
-                    name="Inaktiv", slug="inaktiv", is_active=False
-                ),
+                EventCategoryCreate(name="Inaktiv", slug="inaktiv", is_active=False),
             )
 
             self.assertEqual(list_public_event_categories(session), [visible])

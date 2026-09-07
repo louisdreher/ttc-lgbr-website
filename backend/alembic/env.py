@@ -2,7 +2,7 @@ from logging.config import fileConfig
 
 import app.model_registry
 from alembic import context
-from app.core.database import engine
+from app.adapters.outbound.persistence.database import engine
 from sqlmodel import SQLModel
 
 # this is the Alembic Config object, which provides

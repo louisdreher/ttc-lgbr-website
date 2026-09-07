@@ -1,16 +1,15 @@
 import logging
 
-from app.core.database import engine
-from app.core.settings import settings
-from app.domains.competition.league.model import LeagueGroup
-from app.domains.competition.season.model import Season
-from app.domains.competition.teams.model import Team, TeamMembership
-from app.domains.members.model import Member, Player
+from app.adapters.outbound.persistence.database import engine
+from app.bootstrap.settings import settings
+from app.core.competition.league.model import LeagueGroup
+from app.core.competition.season.model import Season
+from app.core.competition.teams.model import Team, TeamMembership
+from app.core.members.model import Member, Player
 from app.integrations.mytischtennis.api import (
     MyTischtennisClient,
 )
 from sqlmodel import Session, select
-
 
 logger = logging.getLogger(__name__)
 
@@ -308,8 +307,7 @@ class RegistrationsSync:
 
         if team is None:
             logger.warning(
-                "Team nicht eindeutig gefunden: "
-                "league_group_id=%s team_name=%s",
+                "Team nicht eindeutig gefunden: league_group_id=%s team_name=%s",
                 league_group.id,
                 team_name,
             )
@@ -327,8 +325,7 @@ class RegistrationsSync:
             team.name = team_name
 
         logger.debug(
-            "Mannschaftsmeldung für Team wird verarbeitet: "
-            "team_id=%s team_number=%s",
+            "Mannschaftsmeldung für Team wird verarbeitet: team_id=%s team_number=%s",
             team.id,
             team.team_number,
         )

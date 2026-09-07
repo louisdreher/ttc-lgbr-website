@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime, timezone
 
-from app.core.database import engine
-from app.domains.competition.matches.models import (
+from app.adapters.outbound.persistence.database import engine
+from app.core.competition.matches.models import (
     GameType,
     Match,
     MatchLineup,
@@ -10,12 +10,11 @@ from app.domains.competition.matches.models import (
     SetResult,
     TeamMatch,
 )
-from app.domains.members.model import Member, Player
+from app.core.members.model import Member, Player
 from app.integrations.mytischtennis.api import (
     MyTischtennisClient,
 )
 from sqlmodel import Session, select
-
 
 logger = logging.getLogger(__name__)
 

@@ -2,8 +2,8 @@ import asyncio
 from datetime import datetime, timezone
 
 import httpx
-from app.core.database import engine
-from app.domains.competition.matches.models import TeamMatch
+from app.adapters.outbound.persistence.database import engine
+from app.core.competition.matches.models import TeamMatch
 from app.integrations.mytischtennis.sync.meeting import MeetingSync
 from sqlmodel import Session, select
 

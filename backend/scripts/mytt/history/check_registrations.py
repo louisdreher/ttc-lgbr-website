@@ -1,4 +1,4 @@
-from app.core.database import engine
+from app.adapters.outbound.persistence.database import engine
 from sqlalchemy import text
 
 
