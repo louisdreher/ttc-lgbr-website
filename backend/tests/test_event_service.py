@@ -1,35 +1,36 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from app.core.competition.matches.models import TeamMatch
-from app.core.content.events.admin_router import event_manager
-from app.core.content.events.model import Event, EventCategory
-from app.core.content.events.schemas import (
-    EventCategoryCreate,
-    EventCreate,
-    EventUpdate,
+from fastapi import HTTPException
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine
+
+from app.adapters.inbound.http.events.admin_router import event_manager
+from app.adapters.outbound.persistence.events.models import Event, EventCategory
+from app.adapters.outbound.persistence.events.reader import SqlEventReader
+from app.adapters.outbound.persistence.events.unit_of_work import SqlEventUnitOfWork
+from app.core.competition.matches.models import (
+    TeamMatch,  # noqa: F401 -- register FK target
 )
-from app.core.content.events.service import (
+from app.core.content.events.application import commands, queries
+from app.core.content.events.application.dto import (
+    CreateEventCategoryCommand,
+    CreateEventCommand,
+    DeleteEventCommand,
+    DeleteEventsCommand,
+    ListEventsQuery,
+    ListPublicEventsQuery,
+    UpdateEventCommand,
+    UpdateEventsVisibilityCommand,
+)
+from app.core.content.events.domain.errors import (
     EventCategoryInactiveError,
     EventServiceError,
     SyncedEventDeleteError,
     SyncedEventFieldError,
-    create_event,
-    create_event_category,
-    delete_event,
-    delete_events,
-    list_event_years,
-    list_events,
-    list_public_event_categories,
-    list_public_events,
-    update_event,
-    update_events_visibility,
 )
 from app.core.content.types import Visibility
 from app.core.users.model import Role, RoleName, User
-from fastapi import HTTPException
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
 
 
 class EventServiceTest(unittest.TestCase):
@@ -54,13 +55,12 @@ class EventServiceTest(unittest.TestCase):
         with Session(self.engine) as session:
             category = self._create_category(session, report_expected=True)
 
-            event = create_event(
-                session,
-                EventCreate(
+            event = commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                CreateEventCommand(
                     title=" Vereinsausflug ",
                     starts_at=self._starts_at(),
                     category_id=category.id,
-                ),
+                )
             )
 
             self.assertEqual(event.title, "Vereinsausflug")
@@ -72,14 +72,13 @@ class EventServiceTest(unittest.TestCase):
         with Session(self.engine) as session:
             category = self._create_category(session, report_expected=True)
 
-            event = create_event(
-                session,
-                EventCreate(
+            event = commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                CreateEventCommand(
                     title="Meldeschluss",
                     starts_at=self._starts_at(),
                     category_id=category.id,
                     report_expected=False,
-                ),
+                )
             )
 
             self.assertFalse(event.report_expected)
@@ -89,13 +88,12 @@ class EventServiceTest(unittest.TestCase):
             category = self._create_category(session, is_active=False)
 
             with self.assertRaises(EventCategoryInactiveError):
-                create_event(
-                    session,
-                    EventCreate(
+                commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                    CreateEventCommand(
                         title="Nicht möglich",
                         starts_at=self._starts_at(),
                         category_id=category.id,
-                    ),
+                    )
                 )
 
     def test_end_before_start_is_rejected(self) -> None:
@@ -104,70 +102,79 @@ class EventServiceTest(unittest.TestCase):
             starts_at = self._starts_at()
 
             with self.assertRaises(EventServiceError):
-                create_event(
-                    session,
-                    EventCreate(
+                commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                    CreateEventCommand(
                         title="Ungültiger Zeitraum",
                         starts_at=starts_at,
                         ends_at=starts_at - timedelta(hours=1),
                         category_id=category.id,
-                    ),
+                    )
                 )
 
     def test_events_can_be_filtered_by_year_and_category(self) -> None:
         with Session(self.engine) as session:
             first = self._create_category(session)
-            second = create_event_category(
-                session, EventCategoryCreate(name="Turnier", slug="turnier")
+            second = commands.CreateEventCategory(SqlEventUnitOfWork(session)).execute(
+                CreateEventCategoryCommand(name="Turnier", slug="turnier")
             )
-            create_event(
-                session,
-                EventCreate(
+            commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                CreateEventCommand(
                     title="Alt",
                     starts_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
                     category_id=first.id,
-                ),
+                )
             )
-            create_event(
-                session,
-                EventCreate(
+            commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                CreateEventCommand(
                     title="Neu",
                     starts_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
                     category_id=second.id,
-                ),
+                )
             )
 
-            self.assertEqual(list_event_years(session), [2026, 2025])
             self.assertEqual(
-                [event.title for event in list_events(session, year=2026)], ["Neu"]
+                queries.ListEventYears(SqlEventReader(session)).execute(), [2026, 2025]
             )
             self.assertEqual(
-                list_events(session, year=2026, category_ids=[first.id]), []
+                [
+                    event.title
+                    for event in queries.ListEvents(SqlEventReader(session)).execute(
+                        ListEventsQuery(year=2026)
+                    )
+                ],
+                ["Neu"],
+            )
+            self.assertEqual(
+                queries.ListEvents(SqlEventReader(session)).execute(
+                    ListEventsQuery(year=2026, category_ids=[first.id])
+                ),
+                [],
             )
 
     def test_public_events_only_include_public_manual_events_in_range(self) -> None:
         with Session(self.engine) as session:
             category = self._create_category(session)
-            team_match_category = create_event_category(
-                session,
-                EventCategoryCreate(name="Mannschaftsspiel", slug="mannschaftsspiel"),
+            team_match_category = commands.CreateEventCategory(
+                SqlEventUnitOfWork(session)
+            ).execute(
+                CreateEventCategoryCommand(
+                    name="Mannschaftsspiel", slug="mannschaftsspiel"
+                )
             )
-            visible = create_event(
-                session,
-                EventCreate(
+            visible = commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                CreateEventCommand(
                     title="Öffentlich",
                     starts_at=datetime(2026, 9, 2, tzinfo=timezone.utc),
                     category_id=category.id,
-                ),
+                )
             )
-            create_event(
-                session,
-                EventCreate(
+            commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                CreateEventCommand(
                     title="Verborgen",
                     starts_at=datetime(2026, 9, 3, tzinfo=timezone.utc),
                     category_id=category.id,
                     visibility=Visibility.HIDDEN,
-                ),
+                )
             )
             session.add(
                 Event(
@@ -177,20 +184,20 @@ class EventServiceTest(unittest.TestCase):
                     team_match_id=42,
                 )
             )
-            create_event(
-                session,
-                EventCreate(
+            commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                CreateEventCommand(
                     title="Manuelles Mannschaftsspiel",
                     starts_at=datetime(2026, 9, 5, tzinfo=timezone.utc),
                     category_id=team_match_category.id,
-                ),
+                )
             )
             session.commit()
 
-            events = list_public_events(
-                session,
-                starts_from=datetime(2026, 9, 1, tzinfo=timezone.utc),
-                starts_until=datetime(2026, 9, 30, tzinfo=timezone.utc),
+            events = queries.ListPublicEvents(SqlEventReader(session)).execute(
+                ListPublicEventsQuery(
+                    starts_from=datetime(2026, 9, 1, tzinfo=timezone.utc),
+                    starts_until=datetime(2026, 9, 30, tzinfo=timezone.utc),
+                )
             )
 
             self.assertEqual([event.id for event in events], [visible.id])
@@ -198,16 +205,21 @@ class EventServiceTest(unittest.TestCase):
     def test_public_categories_exclude_inactive_and_team_matches(self) -> None:
         with Session(self.engine) as session:
             visible = self._create_category(session)
-            create_event_category(
-                session,
-                EventCategoryCreate(name="Mannschaftsspiel", slug="mannschaftsspiel"),
+            commands.CreateEventCategory(SqlEventUnitOfWork(session)).execute(
+                CreateEventCategoryCommand(
+                    name="Mannschaftsspiel", slug="mannschaftsspiel"
+                )
             )
-            create_event_category(
-                session,
-                EventCategoryCreate(name="Inaktiv", slug="inaktiv", is_active=False),
+            commands.CreateEventCategory(SqlEventUnitOfWork(session)).execute(
+                CreateEventCategoryCommand(
+                    name="Inaktiv", slug="inaktiv", is_active=False
+                )
             )
 
-            self.assertEqual(list_public_event_categories(session), [visible])
+            self.assertEqual(
+                queries.ListPublicEventCategories(SqlEventReader(session)).execute(),
+                [visible],
+            )
 
     def test_synced_event_only_accepts_editorial_updates(self) -> None:
         with Session(self.engine) as session:
@@ -222,34 +234,34 @@ class EventServiceTest(unittest.TestCase):
             session.commit()
             session.refresh(event)
 
-            updated = update_event(
-                session,
-                event.id,
-                EventUpdate(
-                    description="Redaktioneller Hinweis",
-                    report_expected=True,
-                ),
+            updated = commands.UpdateEvent(SqlEventUnitOfWork(session)).execute(
+                UpdateEventCommand(
+                    changes={
+                        "description": "Redaktioneller Hinweis",
+                        "report_expected": True,
+                    },
+                    event_id=event.id,
+                )
             )
             self.assertEqual(updated.description, "Redaktioneller Hinweis")
             self.assertTrue(updated.report_expected)
 
             with self.assertRaises(SyncedEventFieldError):
-                update_event(
-                    session,
-                    event.id,
-                    EventUpdate(title="Manuell überschrieben"),
+                commands.UpdateEvent(SqlEventUnitOfWork(session)).execute(
+                    UpdateEventCommand(
+                        changes={"title": "Manuell überschrieben"}, event_id=event.id
+                    )
                 )
 
     def test_delete_event_rejects_synced_events(self) -> None:
         with Session(self.engine) as session:
             category = self._create_category(session)
-            manual = create_event(
-                session,
-                EventCreate(
+            manual = commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                CreateEventCommand(
                     title="Manuell",
                     starts_at=self._starts_at(),
                     category_id=category.id,
-                ),
+                )
             )
             synced = Event(
                 title="Spiel",
@@ -262,29 +274,35 @@ class EventServiceTest(unittest.TestCase):
             session.refresh(synced)
 
             with self.assertRaises(SyncedEventDeleteError):
-                delete_events(session, [manual.id, synced.id])
+                commands.DeleteEvents(SqlEventUnitOfWork(session)).execute(
+                    DeleteEventsCommand(event_ids=[manual.id, synced.id])
+                )
             self.assertIsNotNone(session.get(Event, manual.id))
 
-            delete_event(session, manual.id)
+            commands.DeleteEvent(SqlEventUnitOfWork(session)).execute(
+                DeleteEventCommand(event_id=manual.id)
+            )
             self.assertIsNone(session.get(Event, manual.id))
 
     def test_bulk_visibility_updates_synced_and_manual_events(self) -> None:
         with Session(self.engine) as session:
             category = self._create_category(session)
-            first = create_event(
-                session,
-                EventCreate(
+            first = commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                CreateEventCommand(
                     title="Eins", starts_at=self._starts_at(), category_id=category.id
-                ),
+                )
             )
-            second = create_event(
-                session,
-                EventCreate(
+            second = commands.CreateEvent(SqlEventUnitOfWork(session)).execute(
+                CreateEventCommand(
                     title="Zwei", starts_at=self._starts_at(), category_id=category.id
-                ),
+                )
             )
-            updated = update_events_visibility(
-                session, [first.id, second.id], Visibility.HIDDEN
+            updated = commands.UpdateEventsVisibility(
+                SqlEventUnitOfWork(session)
+            ).execute(
+                UpdateEventsVisibilityCommand(
+                    event_ids=[first.id, second.id], visibility=Visibility.HIDDEN
+                )
             )
             self.assertTrue(
                 all(event.visibility == Visibility.HIDDEN for event in updated)
@@ -309,14 +327,13 @@ class EventServiceTest(unittest.TestCase):
         report_expected: bool = False,
         is_active: bool = True,
     ) -> EventCategory:
-        return create_event_category(
-            session,
-            EventCategoryCreate(
+        return commands.CreateEventCategory(SqlEventUnitOfWork(session)).execute(
+            CreateEventCategoryCommand(
                 name="Veranstaltung",
                 slug="veranstaltung",
                 default_report_expected=report_expected,
                 is_active=is_active,
-            ),
+            )
         )
 
     @staticmethod

@@ -64,14 +64,17 @@ interpreted as a completed feature.
 
 The backend is split into technical infrastructure and domain-oriented code:
 
-- `app/core`: settings and database access;
-- `app/auth`: authentication, refresh sessions, and permission dependencies;
-- `app/domains/users`: users and roles;
-- `app/domains/members`: members and players;
-- `app/domains/content`: events, articles, galleries, and media metadata;
-- `app/domains/competition`: seasons, teams, matches, and league tables;
+- `app/bootstrap`: settings and logging;
+- `app/adapters/outbound/persistence`: database setup and migrated persistence adapters;
+- `app/adapters/inbound`: migrated HTTP adapters and the match-to-event bridge;
+- `app/core/auth`: authentication, refresh sessions, and permission dependencies;
+- `app/core/users`: users and roles;
+- `app/core/members`: members and players;
+- `app/core/content`: events, articles, galleries, and media metadata;
+- `app/core/competition`: seasons, teams, matches, and league tables;
 - `app/integrations/mytischtennis`: external API access and synchronization;
-- `app/jobs`: planned scheduled synchronization.
+
+Scheduled synchronization is planned; there is no active scheduler.
 
 `app.*` is the canonical Python import path. Backend commands therefore need
 to run with `backend/` as the working directory, or otherwise make that package
@@ -96,9 +99,9 @@ offers list and calendar views as well as date and category filters. Team
 matches are deliberately excluded from this public endpoint; their future
 public presentation remains a separate concern.
 
-The previous `app/domains/articles` model path remains as a compatibility
-import. Its existing routers and schemas still require migration to the new
-article model and should not yet be treated as a working CMS API.
+The article component has a create use case and HTTP/persistence adapters.
+Its persistence model remains under `app/core/content/articles/model.py`;
+the full CMS workflow should not yet be treated as complete.
 
 ## Backend architecture direction
 
@@ -109,30 +112,30 @@ domain and persistence models are often the same classes. This is the current
 state, not the intended architecture for new components.
 
 New backend functionality and code selected explicitly for refactoring should
-move toward a component-oriented Ports and Adapters architecture. The first
-component planned to use the structure is the article component. Existing
-components remain in their current locations until they are migrated through
-separate, reviewable changes.
+move toward a component-oriented Ports and Adapters architecture. Events now
+uses this structure for CRUD, categories, queries, bulk actions, and match
+synchronization. Articles has an initial implementation. Other components
+remain in their current locations until deliberately migrated.
 
 The intended top-level responsibilities are:
 
 ```text
 app/
-  components/             application core, organized by domain component
+  core/                   application core, organized by domain component
     content/
-      articles/
+      events/
         application/      use cases, commands, queries, DTOs, and ports
         domain/           entities, value objects, domain services, and errors
   adapters/
     inbound/              FastAPI, CLI, and other driving adapters
     outbound/             persistence and external-service adapters
-  platform/               settings, database setup, logging, and wiring support
+  bootstrap/              settings, logging, and wiring support
 ```
 
-This is a target structure. During the transition, the existing `app/core`,
-`app/domains`, and `app/integrations` packages continue to be canonical for
-code that has not been deliberately migrated. New code must not import a new
-component through its internal modules merely to bridge the two structures;
+This structure is implemented for Events. Database setup is located in
+`app/adapters/outbound/persistence/database.py`. Other packages under `app/core`
+and `app/integrations` still contain legacy framework dependencies. New code
+must not import another component's internals to bridge the two structures;
 such integration needs an explicit public contract.
 
 The dependency direction is inward:
@@ -179,6 +182,16 @@ introduced without a concrete workflow that requires it.
 
 See [ADR 0003](decisions/0003-component-oriented-backend.md) for the decision,
 tradeoffs, and migration constraints.
+
+See [the Events walkthrough](events-architecture.md) for concrete files,
+transaction boundaries, and the remaining integration compromises.
+
+Events use cases are classes with constructor-injected ports and an `execute`
+method. Write inputs use command DTOs; read inputs use query DTOs when needed.
+`app/bootstrap/events.py` composes these classes with SQL adapters. HTTP
+dependencies supply request-scoped sessions to those factories, and routers
+receive ready-to-use use cases. The match import uses the same composition
+module with its existing transaction session.
 
 ## Authentication
 

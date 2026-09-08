@@ -51,14 +51,15 @@ of an unrelated change.
 
 The intended separation is:
 
-- `app/components`: domain-oriented components containing application and
+- `app/core`: domain-oriented components containing application and
   domain code;
 - `app/adapters/inbound`: delivery adapters such as FastAPI routers and CLI
   commands;
 - `app/adapters/outbound`: implementations for persistence and external
   services;
-- `app/platform`: application-wide technical setup such as settings, database
-  engine creation, and logging.
+- `app/bootstrap`: application-wide settings, logging, and composition.
+  Database engine creation lives in
+  `app/adapters/outbound/persistence/database.py`.
 
 Dependency rules:
 

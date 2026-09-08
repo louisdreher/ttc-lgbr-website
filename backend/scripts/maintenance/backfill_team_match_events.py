@@ -2,7 +2,7 @@ import argparse
 import logging
 
 from app.adapters.outbound.persistence.database import engine
-from app.core.content.events.service import TeamMatchEventSync
+from app.adapters.inbound.competition.events import TeamMatchEventSync
 from sqlmodel import Session
 
 logger = logging.getLogger(__name__)

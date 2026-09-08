@@ -12,7 +12,7 @@ from app.core.competition.matches.models import (
 )
 from app.core.competition.season.model import Season, SeasonHalf
 from app.core.competition.teams.model import Team
-from app.core.content.events.service import TeamMatchEventSync
+from app.adapters.inbound.competition.events import TeamMatchEventSync
 from app.integrations.mytischtennis.api import (
     MyTischtennisClient,
 )

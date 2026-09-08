@@ -1,14 +1,19 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine, select
+
+from app.adapters.inbound.competition.events import TeamMatchEventSync
+from app.adapters.outbound.persistence.events.models import (
+    Event,
+    EventCategory,
+    EventStatus,
+)
 from app.core.competition.league.model import LeagueGroup
 from app.core.competition.matches.models import TeamMatch
 from app.core.competition.season.model import Season, SeasonHalf
 from app.core.competition.teams.model import Team
-from app.core.content.events.model import Event, EventCategory, EventStatus
-from app.core.content.events.service import TeamMatchEventSync
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine, select
 
 
 class TeamMatchEventSyncTest(unittest.TestCase):
@@ -30,6 +35,44 @@ class TeamMatchEventSyncTest(unittest.TestCase):
             ],
         )
 
+    def tearDown(self) -> None:
+        self.engine.dispose()
+
+    def test_rollback_removes_match_event_and_automatically_created_category(self):
+        with Session(self.engine) as session:
+            match = self._create_team_match(
+                session, datetime(2026, 9, 1, tzinfo=timezone.utc)
+            )
+            TeamMatchEventSync().sync_one(session, match)
+            session.rollback()
+        with Session(self.engine) as session:
+            self.assertEqual(session.exec(select(TeamMatch)).all(), [])
+            self.assertEqual(session.exec(select(Event)).all(), [])
+            self.assertEqual(session.exec(select(EventCategory)).all(), [])
+
+    def test_backfill_of_committed_matches_preserves_editorial_fields(self):
+        with Session(self.engine) as session:
+            match = self._create_team_match(
+                session, datetime(2026, 9, 1, tzinfo=timezone.utc)
+            )
+            event, _ = TeamMatchEventSync().sync_one(session, match)
+            row = session.get(Event, event.id)
+            row.description = "Beibehalten"
+            row.report_expected = False
+            from app.core.content.types import Visibility
+
+            row.visibility = Visibility.HIDDEN
+            match.status = "abgesagt"
+            session.commit()
+        with Session(self.engine) as session:
+            self.assertEqual(TeamMatchEventSync().backfill(session), (0, 1))
+            session.commit()
+            row = session.exec(select(Event)).one()
+            self.assertEqual(row.status, EventStatus.CANCELLED)
+            self.assertEqual(row.description, "Beibehalten")
+            self.assertFalse(row.report_expected)
+            self.assertEqual(row.visibility, Visibility.HIDDEN)
+
     def test_sync_one_creates_and_updates_one_event(self) -> None:
         scheduled_at = datetime(2026, 9, 1, 18, 30, tzinfo=timezone.utc)
 
@@ -44,7 +87,7 @@ class TeamMatchEventSyncTest(unittest.TestCase):
             self.assertEqual(event.location, "Sporthalle, Hauptstraße 1, Erbach")
             self.assertEqual(event.status, EventStatus.PLANNED)
 
-            event.description = "Redaktioneller Hinweis"
+            session.get(Event, event.id).description = "Redaktioneller Hinweis"
             team_match.scheduled_at = scheduled_at + timedelta(days=1)
             team_match.is_completed = True
 

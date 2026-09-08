@@ -4,6 +4,10 @@
 
 Accepted
 
+Updated on 2026-09-07: the chosen core path is `app/core` and technical setup
+uses `app/bootstrap`, with database setup in the outbound persistence package.
+The Events component has now been migrated under these paths.
+
 ## Context
 
 The backend is already grouped around domain-oriented areas such as content,
@@ -24,18 +28,17 @@ partially implemented frontend features.
 
 - Adopt a component-oriented Ports and Adapters architecture as the target for
   new backend functionality and code deliberately selected for refactoring.
-- Organize application-core code under `app/components`, with domain-oriented
+- Organize application-core code under `app/core`, with domain-oriented
   components containing `application` and `domain` packages.
 - Place delivery mechanisms such as FastAPI and CLI code under
   `app/adapters/inbound` and concrete persistence or external-service
   implementations under `app/adapters/outbound`.
-- Reserve `app/platform` for application-wide technical setup such as
-  settings, database engine creation, logging, and composition support.
-- Treat this structure as an incremental target. Existing `app/domains`,
-  `app/core`, `app/auth`, and `app/integrations` code remains valid until a
-  separate change deliberately migrates it.
-- Use the article component as the first component developed with the new
-  structure. Do not migrate other components as a side effect of that work.
+- Reserve `app/bootstrap` for settings, logging, and composition support.
+  Database engine creation lives in `app/adapters/outbound/persistence`.
+- Treat this structure as an incremental target. Unmigrated code under
+  `app/core` and `app/integrations` remains valid until deliberately migrated.
+- Articles has an initial implementation; Events has been migrated explicitly.
+  Do not migrate other components as a side effect of that work.
 - Keep domain code independent of FastAPI, Pydantic transport schemas,
   SQLModel, SQLAlchemy, and concrete external services.
 - Let application code depend on its domain model and application-owned ports.
@@ -84,5 +87,8 @@ partially implemented frontend features.
 - A bus, event dispatcher, unit of work, shared kernel, or generic abstraction
   is not justified merely by this decision. Each requires a concrete need and
   a separate, reviewable design choice.
-- Architecture rules should eventually be supported by import or dependency
-  tests, but selecting such tooling is outside this decision.
+- Events uses a small unit-of-work port for atomic write use cases and bulk
+  operations. Match synchronization uses repository ports inside the existing
+  import transaction so that both match and event roll back together.
+- An AST-based test enforces the Events core's dependency boundaries. No
+  repository-wide dependency framework has been introduced.

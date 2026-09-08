@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Annotated
 
-from app.core.content.events.model import EventStatus
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+
+from app.core.content.events.domain.event import EventStatus
 from app.core.content.types import Visibility
-from pydantic import ConfigDict, StringConstraints
-from sqlmodel import Field, SQLModel
 
 Slug = Annotated[
     str,
@@ -16,7 +16,7 @@ Slug = Annotated[
 ]
 
 
-class EventCategoryCreate(SQLModel):
+class EventCategoryCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=100)
@@ -26,7 +26,7 @@ class EventCategoryCreate(SQLModel):
     sort_order: int = 0
 
 
-class EventCategoryUpdate(SQLModel):
+class EventCategoryUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
@@ -36,7 +36,7 @@ class EventCategoryUpdate(SQLModel):
     sort_order: int | None = None
 
 
-class EventCategoryRead(SQLModel):
+class EventCategoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -47,7 +47,7 @@ class EventCategoryRead(SQLModel):
     sort_order: int
 
 
-class PublicEventCategoryRead(SQLModel):
+class PublicEventCategoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -55,7 +55,7 @@ class PublicEventCategoryRead(SQLModel):
     slug: str
 
 
-class EventCreate(SQLModel):
+class EventCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     title: str = Field(min_length=1, max_length=200)
@@ -70,7 +70,7 @@ class EventCreate(SQLModel):
     description: str | None = None
 
 
-class EventUpdate(SQLModel):
+class EventUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     title: str | None = Field(default=None, min_length=1, max_length=200)
@@ -85,7 +85,7 @@ class EventUpdate(SQLModel):
     description: str | None = None
 
 
-class EventRead(SQLModel):
+class EventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -106,7 +106,7 @@ class EventRead(SQLModel):
     updated_at: datetime
 
 
-class PublicEventRead(SQLModel):
+class PublicEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -120,7 +120,7 @@ class PublicEventRead(SQLModel):
     description: str | None
 
 
-class EventIds(SQLModel):
+class EventIds(BaseModel):
     model_config = ConfigDict(extra="forbid")
     event_ids: list[int] = Field(min_length=1, max_length=500)
 

@@ -7,8 +7,8 @@ from app.adapters.inbound.http.articles.admin_router import (
 from app.bootstrap.logging import configure_logging
 from app.bootstrap.settings import settings
 from app.core.auth.router import router as auth_router
-from app.core.content.events.admin_router import router as event_admin_router
-from app.core.content.events.public_router import router as event_public_router
+from app.adapters.inbound.http.events.admin_router import router as event_admin_router
+from app.adapters.inbound.http.events.public_router import router as event_public_router
 from app.core.users.router import router as user_router
 
 configure_logging(

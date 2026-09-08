@@ -1,20 +1,14 @@
 from datetime import datetime, timezone
-from enum import StrEnum
 
 import sqlalchemy as sa
-from app.core.content.types import Visibility
 from sqlmodel import Field, SQLModel
+
+from app.core.content.events.domain.event import EventStatus
+from app.core.content.types import Visibility
 
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
-
-
-class EventStatus(StrEnum):
-    PLANNED = "PLANNED"
-    COMPLETED = "COMPLETED"
-    CANCELLED = "CANCELLED"
-    POSTPONED = "POSTPONED"
 
 
 class EventCategory(SQLModel, table=True):

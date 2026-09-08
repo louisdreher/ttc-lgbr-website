@@ -16,7 +16,7 @@ from app.core.competition.teams.model import (
     TeamMembership,
 )
 from app.core.content.articles.model import Article, ArticleTag, Tag
-from app.core.content.events.model import Event, EventCategory
+from app.adapters.outbound.persistence.events.models import Event, EventCategory
 from app.core.content.media.model import Gallery, GalleryMedia, MediaAsset
 from app.core.members.model import Member, Player, PlayerRating
 from app.core.users.model import User, create_default_roles
