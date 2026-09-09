@@ -3,6 +3,10 @@
 Alle Befehle werden aus dem Verzeichnis `backend/` ausgeführt. Sie greifen auf
 die konfigurierte Datenbank und die echte myTischtennis-API zu.
 
+Die Skripte sind CLI-Einstiege für die Competition-Usecases. Aufbau und
+Transaktionsgrenzen stehen in [der Architekturdokumentation](../../../../docs/mytischtennis-architecture.md).
+Bei fehlgeschlagenen Batch-Einträgen liefert der Prozess Exitcode 1.
+
 Die Importe sollten in folgender Reihenfolge ausgeführt werden:
 
 1. `scripts/mytt/history/import_schedule.py`  

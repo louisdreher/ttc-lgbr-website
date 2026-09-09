@@ -6,7 +6,8 @@ from datetime import date
 from pathlib import Path
 
 import httpx
-from app.integrations.mytischtennis.api import MyTischtennisClient
+
+from app.bootstrap.competition import build_mytt_client
 
 REQUEST_DELAY = 1.0
 
@@ -53,7 +54,7 @@ async def run_test(
 
         return None
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- diagnostic command reports each failed probe
         print(f"  FEHLER: {type(exc).__name__}: {exc}")
 
         return None
@@ -101,7 +102,8 @@ async def main() -> None:
     parser.add_argument("--team-name")
     args = parser.parse_args()
 
-    api = MyTischtennisClient()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    api = build_mytt_client()
 
     # -----------------------------------------------------------------------
     # 01 - Vereins-Spielplan

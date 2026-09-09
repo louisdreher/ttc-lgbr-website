@@ -1,7 +1,12 @@
-# import nötig für db erstellung
-from app.core.auth.model import RefreshSession
-from app.core.competition.league.model import LeagueGroup, LeagueTableEntry
-from app.core.competition.matches.models import (
+"""Import table definitions so Alembic and tests see complete SQLModel metadata."""
+# ruff: noqa: F401 -- these imports intentionally register tables through module loading
+from app.adapters.outbound.persistence.articles.models import Article, ArticleTag, Tag
+from app.adapters.outbound.persistence.auth.models import RefreshSession
+from app.adapters.outbound.persistence.competition.leagues import (
+    LeagueGroup,
+    LeagueTableEntry,
+)
+from app.adapters.outbound.persistence.competition.matches import (
     Match,
     MatchLineup,
     MatchParticipant,
@@ -9,14 +14,21 @@ from app.core.competition.matches.models import (
     TeamMatch,
     TeamMatchNotice,
 )
-from app.core.competition.season.model import Season, SeasonHalf
-from app.core.competition.teams.model import (
+from app.adapters.outbound.persistence.competition.seasons import Season, SeasonHalf
+from app.adapters.outbound.persistence.competition.teams import (
     Team,
     TeamAssignment,
     TeamMembership,
 )
-from app.core.content.articles.model import Article, ArticleTag, Tag
 from app.adapters.outbound.persistence.events.models import Event, EventCategory
-from app.core.content.media.model import Gallery, GalleryMedia, MediaAsset
-from app.core.members.model import Member, Player, PlayerRating
-from app.core.users.model import User, create_default_roles
+from app.adapters.outbound.persistence.media.models import (
+    Gallery,
+    GalleryMedia,
+    MediaAsset,
+)
+from app.adapters.outbound.persistence.members.models import (
+    Member,
+    Player,
+    PlayerRating,
+)
+from app.adapters.outbound.persistence.users.models import User

@@ -95,8 +95,8 @@ fertigen `CreateEvent`-Usecase. Bei mehreren Dependencies desselben Requests
 verwendet FastAPI dieselbe gecachte Session; die Factories erzeugen keine
 globalen Session- oder Usecase-Singletons.
 
-Auch der Competition-Eingangsadapter verwendet eine Bootstrap-Factory. Er
-übergibt dabei die Session seiner bereits laufenden Importtransaktion.
+Bootstrap verbindet den Competition-Import über `CompetitionMatchEvents` mit
+dem Events-Usecase und übergibt dieselbe Session für beide Schreibvorgänge.
 Application und Domain importieren weder Bootstrap noch konkrete SQL-Adapter.
 
 ## Domain-Modell und Tabellenmodell
@@ -137,8 +137,10 @@ Ein Sammellöschen prüft zunächst alle Events. Ein Fehler bei einer späteren
 Speicherung rollt auch bereits geflushte Änderungen zurück. Die HTTP-Dependency
 besitzt die Session und schließt sie am Ende des Requests.
 
-Der bestehende Import ruft den Eingangsadapter `TeamMatchEventSync` auf.
-Dieser baut aus den bisherigen Competition-Modellen ein `SyncMatchEventCommand`.
+Der Competition-Import ruft seinen ausgehenden `MatchEvents`-Port auf.
+`CompetitionMatchEvents` baut aus den gespeicherten Competition-Modellen ein
+`SyncMatchEventCommand`. Der separate Backfill verwendet den Application-Usecase
+`BackfillMatchEvents.execute(command)` und denselben ausgehenden Adapter.
 Der öffentliche Vertrag `events.public` stellt dieses Command und die Klasse
 `SyncMatchEvent` bereit. Der Adapter ruft deren `execute(command)` auf.
 Im Application-Core gibt es keine Imports von `TeamMatch`, `Team` oder SQLModel.
@@ -152,16 +154,15 @@ ignoriert. Auch das Backfill-Skript benutzt diesen Adapter.
 
 ## Bewusste Übergangsstellen
 
-- Competition ist noch nicht migriert. Sein Eingangsadapter greift deshalb
-  auf die bisherigen Competition-ORM-Modelle zu. Nach einer späteren Migration
-  kann Competition direkt den öffentlichen DTO-Vertrag beliefern.
-- Die Reader-Projektion liest den Erstellernamen aus der bestehenden User-Tabelle.
-  Dieser Zugriff bleibt im Persistence-Adapter; User-Objekte gelangen nicht in
-  den Events-Core. Eine komponentenübergreifende User-Leseschnittstelle ist
-  noch nicht vorhanden.
+- Competition-Imports verwenden inzwischen eigene Usecases und Ports.
+  Die ORM-Modelle liegen unter `adapters/outbound/persistence/competition`;
+  ausschließlich Adapter und Composition greifen darauf zu. Der Core enthält
+  die fachlichen Importtypen und Regeln.
+- Die Reader-Projektion bezieht Erstellernamen über `users.public.UserReader`.
+  Bootstrap injiziert den `SqlUserReader`; Events importiert keine User-ORM-Modelle.
 - `Visibility` bleibt der bereits vorhandene kleine, frameworkfreie Content-Typ.
-- Authentifizierung und Rollenmodelle bleiben im bestehenden Auth-/User-Code.
-  Deren Migration gehört nicht zu diesem Umbau.
+- Authentifizierung und Rollenprüfung liegen inzwischen im HTTP-Auth-Adapter.
+  Der öffentliche Users-Vertrag liefert Rollen und Benutzer-DTOs ohne Passwortdaten.
 
 ## Verhalten und Prüfung
 
@@ -172,7 +173,7 @@ eine Zeitzone enthält. Zuvor konnten diese zu technischen Fehlern führen.
 Backend-Tests aus dem Verzeichnis `backend` ausführen:
 
 ```text
-python -m unittest discover -s tests
+python -m pytest
 ```
 
 Die Tests decken Domain-Regeln, einen Usecase mit In-Memory-Ports,

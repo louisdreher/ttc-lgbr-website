@@ -91,7 +91,8 @@ default and writes size-rotated files below `backend/output/logs`:
 
 - `application.log` contains application messages;
 - `mytischtennis.log` additionally collects messages from
-  `app.integrations.mytischtennis` and its child loggers.
+  `app.adapters.outbound.mytischtennis`, `app.core.competition.application`
+  and their child loggers.
 
 The following `.env` settings control logging:
 
@@ -136,15 +137,28 @@ npm test
 npm run build
 ```
 
-Backend service tests currently use Python's built-in `unittest` runner and an
-in-memory SQLite database:
+Backend tests use `pytest` as the common runner. It discovers both the existing
+`unittest.TestCase` tests and the pytest functions in nested directories.
+`test_backend_architecture.py` checks every core module for forbidden
+infrastructure imports, including relative imports.
+Activate `ttc-backend` and run from `backend/`:
 
 ```powershell
-python -m unittest discover -s tests
+python -m pytest
 ```
 
-They cover event behavior and synchronization between team matches and events,
-but are not yet a complete backend test suite. Scripts that contact
+`pytest` is included in `backend/environment.yml`. For an existing environment,
+install the added test dependency with `python -m pip install pytest`.
+`pytest.ini` sets the test directory and Python import root. `tests/conftest.py`
+sets test-only database/signing settings before imports; tests use in-memory
+SQLite databases and mocked external clients, not the local PostgreSQL data.
+Do not use `unittest discover` as the full-suite command: it misses pytest functions.
+
+The suite covers Events, article draft creation, Users/Auth (roles, cookies,
+token rotation, revocation, rollback, and core dependency boundaries), and
+competition imports (including historical batches and CLI entry points), but
+is not yet a complete backend test suite.
+Scripts that contact
 myTischtennis or write to PostgreSQL are integration utilities, not isolated
 unit tests. Inspect their arguments and effects before running them.
 

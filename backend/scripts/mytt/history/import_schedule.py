@@ -1,28 +1,12 @@
-import argparse
+"""Compatibility entry point; import logic lives in Competition use cases."""
+
 import asyncio
 
-from app.core.competition.season.model import SeasonHalf
-from app.integrations.mytischtennis.sync.schedule import (
-    ScheduleSync,
-)
+from app.adapters.inbound.cli.competition import main as run_import
 
 
-async def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Importiert den myTT-Spielplan einer historischen Halbserie."
-    )
-    parser.add_argument("start_year", type=int)
-    parser.add_argument("end_year", type=int)
-    parser.add_argument("half", type=SeasonHalf, choices=list(SeasonHalf))
-    args = parser.parse_args()
-
-    sync = ScheduleSync()
-
-    await sync.sync(
-        start_year=args.start_year,
-        end_year=args.end_year,
-        half=args.half,
-    )
+async def main():
+    await run_import("schedule")
 
 
 if __name__ == "__main__":

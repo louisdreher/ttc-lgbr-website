@@ -1,9 +1,10 @@
 import pytest
+
 from app.core.content.articles.application.create_article import (
-    ArticleSlugAlreadyExistsError,
     CreateArticle,
-    CreateArticleCommand,
 )
+from app.core.content.articles.application.dto import CreateArticleCommand
+from app.core.content.articles.application.errors import ArticleSlugAlreadyExistsError
 from app.core.content.articles.domain.article import (
     Article,
     ArticleStatus,
@@ -51,9 +52,9 @@ def create_command(
 
 def test_create_article_creates_normalized_draft() -> None:
     repository = FakeArticleRepository()
-    use_case = CreateArticle(repository)
+    use_case = CreateArticle(FakeArticleUnitOfWork(repository))
 
-    result = use_case.create(
+    result = use_case.execute(
         create_command(
             title="  Vereinsmeisterschaft  ",
             slug="  Vereinsmeisterschaft-2026  ",
@@ -62,6 +63,7 @@ def test_create_article_creates_normalized_draft() -> None:
         )
     )
 
+    assert use_case.uow.committed
     assert result.id == 1
     assert result.title == "Vereinsmeisterschaft"
     assert result.slug == "vereinsmeisterschaft-2026"
@@ -79,9 +81,25 @@ def test_create_article_creates_normalized_draft() -> None:
 def test_create_article_rejects_existing_normalized_slug() -> None:
     repository = FakeArticleRepository()
     repository.existing_slugs.add("vereinsmeisterschaft-2026")
-    use_case = CreateArticle(repository)
+    use_case = CreateArticle(FakeArticleUnitOfWork(repository))
 
     with pytest.raises(ArticleSlugAlreadyExistsError):
-        use_case.create(create_command(slug="  Vereinsmeisterschaft-2026  "))
+        use_case.execute(create_command(slug="  Vereinsmeisterschaft-2026  "))
 
+    assert not use_case.uow.committed
     assert repository.saved_articles == []
+
+
+class FakeArticleUnitOfWork:
+    def __init__(self, repository):
+        self.articles = repository
+        self.committed = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def commit(self):
+        self.committed = True

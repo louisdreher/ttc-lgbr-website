@@ -6,12 +6,13 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.adapters.inbound.http.events.admin_router import event_manager
+from app.adapters.outbound.persistence.competition.matches import (
+    TeamMatch,  # noqa: F401 -- register FK target
+)
 from app.adapters.outbound.persistence.events.models import Event, EventCategory
 from app.adapters.outbound.persistence.events.reader import SqlEventReader
 from app.adapters.outbound.persistence.events.unit_of_work import SqlEventUnitOfWork
-from app.core.competition.matches.models import (
-    TeamMatch,  # noqa: F401 -- register FK target
-)
+from app.adapters.outbound.persistence.users.reader import SqlUserReader
 from app.core.content.events.application import commands, queries
 from app.core.content.events.application.dto import (
     CreateEventCategoryCommand,
@@ -30,7 +31,7 @@ from app.core.content.events.domain.errors import (
     SyncedEventFieldError,
 )
 from app.core.content.types import Visibility
-from app.core.users.model import Role, RoleName, User
+from app.core.users.public import RoleName, UserDetails
 
 
 class EventServiceTest(unittest.TestCase):
@@ -133,19 +134,19 @@ class EventServiceTest(unittest.TestCase):
             )
 
             self.assertEqual(
-                queries.ListEventYears(SqlEventReader(session)).execute(), [2026, 2025]
+                queries.ListEventYears(SqlEventReader(session, SqlUserReader(session))).execute(), [2026, 2025]
             )
             self.assertEqual(
                 [
                     event.title
-                    for event in queries.ListEvents(SqlEventReader(session)).execute(
+                    for event in queries.ListEvents(SqlEventReader(session, SqlUserReader(session))).execute(
                         ListEventsQuery(year=2026)
                     )
                 ],
                 ["Neu"],
             )
             self.assertEqual(
-                queries.ListEvents(SqlEventReader(session)).execute(
+                queries.ListEvents(SqlEventReader(session, SqlUserReader(session))).execute(
                     ListEventsQuery(year=2026, category_ids=[first.id])
                 ),
                 [],
@@ -193,7 +194,7 @@ class EventServiceTest(unittest.TestCase):
             )
             session.commit()
 
-            events = queries.ListPublicEvents(SqlEventReader(session)).execute(
+            events = queries.ListPublicEvents(SqlEventReader(session, SqlUserReader(session))).execute(
                 ListPublicEventsQuery(
                     starts_from=datetime(2026, 9, 1, tzinfo=timezone.utc),
                     starts_until=datetime(2026, 9, 30, tzinfo=timezone.utc),
@@ -217,7 +218,7 @@ class EventServiceTest(unittest.TestCase):
             )
 
             self.assertEqual(
-                queries.ListPublicEventCategories(SqlEventReader(session)).execute(),
+                queries.ListPublicEventCategories(SqlEventReader(session, SqlUserReader(session))).execute(),
                 [visible],
             )
 
@@ -341,13 +342,13 @@ class EventServiceTest(unittest.TestCase):
         return datetime(2026, 9, 1, 18, 30, tzinfo=timezone.utc)
 
     @staticmethod
-    def _user_with_role(role_name: RoleName) -> User:
-        return User(
+    def _user_with_role(role_name: RoleName) -> UserDetails:
+        return UserDetails(
             id=1,
             email="editor@example.org",
             name="Editor",
-            password_hash="unused-in-test",
-            roles=[Role(id=1, name=role_name.value)],
+            is_active=True,
+            roles=[role_name.value],
         )
 
 

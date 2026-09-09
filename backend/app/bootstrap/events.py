@@ -8,6 +8,7 @@ from app.adapters.outbound.persistence.events.repository import (
     SqlEventRepository,
 )
 from app.adapters.outbound.persistence.events.unit_of_work import SqlEventUnitOfWork
+from app.adapters.outbound.persistence.users.reader import SqlUserReader
 from app.core.content.events.application import commands, queries
 from app.core.content.events.public import SyncMatchEvent
 
@@ -41,33 +42,33 @@ def build_update_events_visibility(session: Session) -> commands.UpdateEventsVis
 
 
 def build_list_event_categories(session: Session) -> queries.ListEventCategories:
-    return queries.ListEventCategories(SqlEventReader(session))
+    return queries.ListEventCategories(SqlEventReader(session, SqlUserReader(session)))
 
 
 def build_list_public_event_categories(
     session: Session,
 ) -> queries.ListPublicEventCategories:
-    return queries.ListPublicEventCategories(SqlEventReader(session))
+    return queries.ListPublicEventCategories(SqlEventReader(session, SqlUserReader(session)))
 
 
 def build_list_event_years(session: Session) -> queries.ListEventYears:
-    return queries.ListEventYears(SqlEventReader(session))
+    return queries.ListEventYears(SqlEventReader(session, SqlUserReader(session)))
 
 
 def build_list_events(session: Session) -> queries.ListEvents:
-    return queries.ListEvents(SqlEventReader(session))
+    return queries.ListEvents(SqlEventReader(session, SqlUserReader(session)))
 
 
 def build_get_event(session: Session) -> queries.GetEvent:
-    return queries.GetEvent(SqlEventReader(session))
+    return queries.GetEvent(SqlEventReader(session, SqlUserReader(session)))
 
 
 def build_get_events(session: Session) -> queries.GetEvents:
-    return queries.GetEvents(SqlEventReader(session))
+    return queries.GetEvents(SqlEventReader(session, SqlUserReader(session)))
 
 
 def build_list_public_events(session: Session) -> queries.ListPublicEvents:
-    return queries.ListPublicEvents(SqlEventReader(session))
+    return queries.ListPublicEvents(SqlEventReader(session, SqlUserReader(session)))
 
 
 def build_sync_match_event(session: Session) -> SyncMatchEvent:

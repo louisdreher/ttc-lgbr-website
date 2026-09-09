@@ -1,19 +1,22 @@
-from app.adapters.inbound.http.articles.dependencies import get_create_article
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from app.adapters.inbound.http.articles.dependencies import provide_create_article
 from app.adapters.inbound.http.articles.schemas import (
     CreateArticleRequest,
     CreatedArticleResponse,
 )
-from app.core.auth.permissions import require_any_role
+from app.adapters.inbound.http.auth.permissions import require_any_role
 from app.core.content.articles.application.create_article import (
     CreateArticle,
-    CreateArticleCommand,
 )
+from app.core.content.articles.application.dto import CreateArticleCommand
 from app.core.content.articles.application.errors import (
     ArticleSlugAlreadyExistsError,
 )
 from app.core.content.articles.domain.errors import ArticleDomainError
-from app.core.users.model import RoleName, User
-from fastapi import APIRouter, Depends, HTTPException, status
+from app.core.users.public import RoleName, UserDetails
 
 router = APIRouter(
     prefix="/api/admin/articles",
@@ -29,8 +32,8 @@ article_editor = require_any_role(RoleName.ADMIN, RoleName.EDITOR)
 )
 def create_article_endpoint(
     request: CreateArticleRequest,
-    current_user: User = Depends(article_editor),
-    use_case: CreateArticle = Depends(get_create_article),
+    current_user: Annotated[UserDetails, Depends(article_editor)],
+    use_case: Annotated[CreateArticle, Depends(provide_create_article)],
 ) -> CreatedArticleResponse:
     if current_user.id is None:
         raise HTTPException(
@@ -50,7 +53,7 @@ def create_article_endpoint(
     )
 
     try:
-        result = use_case.create(command)
+        result = use_case.execute(command)
     except ArticleSlugAlreadyExistsError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

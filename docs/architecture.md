@@ -64,15 +64,16 @@ interpreted as a completed feature.
 
 The backend is split into technical infrastructure and domain-oriented code:
 
-- `app/bootstrap`: settings and logging;
+- `app/bootstrap`: settings, logging, and use-case composition;
 - `app/adapters/outbound/persistence`: database setup and migrated persistence adapters;
 - `app/adapters/inbound`: migrated HTTP adapters and the match-to-event bridge;
-- `app/core/auth`: authentication, refresh sessions, and permission dependencies;
+- `app/core/auth`: framework-free authentication use cases and refresh sessions;
 - `app/core/users`: users and roles;
-- `app/core/members`: members and players;
+- `app/adapters/outbound/persistence/members`: member/player storage and imported-player adapter;
 - `app/core/content`: events, articles, galleries, and media metadata;
 - `app/core/competition`: seasons, teams, matches, and league tables;
-- `app/integrations/mytischtennis`: external API access and synchronization;
+- `app/adapters/outbound/mytischtennis`: external API access and response mapping;
+- `app/core/competition/application`: current and historical import use cases;
 
 Scheduled synchronization is planned; there is no active scheduler.
 
@@ -99,23 +100,30 @@ offers list and calendar views as well as date and category filters. Team
 matches are deliberately excluded from this public endpoint; their future
 public presentation remains a separate concern.
 
-The article component has a create use case and HTTP/persistence adapters.
-Its persistence model remains under `app/core/content/articles/model.py`;
-the full CMS workflow should not yet be treated as complete.
+The article draft-creation workflow uses a framework-free domain, a
+`CreateArticle.execute(command)` use case, repository/unit-of-work ports,
+HTTP and SQL adapters, and `app/bootstrap/articles.py` composition.
+Persistence models live under `app/adapters/outbound/persistence/articles`.
+Editing, publication, public reads, and the frontend CMS workflow remain planned.
+See [the article architecture walkthrough](articles-architecture.md).
 
 ## Backend architecture direction
 
-The current backend structure grew incrementally and still mixes several
-responsibilities in places. Some FastAPI routers receive SQLModel sessions
-directly, application-style service functions construct SQLModel queries, and
-domain and persistence models are often the same classes. This is the current
-state, not the intended architecture for new components.
+The existing backend workflows now use component-oriented Ports and Adapters.
+All SQLModel tables reside in outbound persistence adapters. The core is free
+of framework and infrastructure imports; a project-wide test enforces this
+boundary. Members and Media currently contain persistence structures rather
+than standalone management workflows. Their future use cases remain planned.
 
 New backend functionality and code selected explicitly for refactoring should
 move toward a component-oriented Ports and Adapters architecture. Events now
 uses this structure for CRUD, categories, queries, bulk actions, and match
-synchronization. Articles has an initial implementation. Other components
-remain in their current locations until deliberately migrated.
+synchronization. Articles follows the same architecture for its existing
+draft-creation workflow. Users and Auth now follow this structure as well,
+including password/JWT adapters and HTTP permission dependencies outside the core.
+See [the Users/Auth walkthrough](users-auth-architecture.md). Competition imports
+also use application classes and ports. Members and Media persistence models
+have been moved without introducing unused application layers.
 
 The intended top-level responsibilities are:
 
@@ -132,11 +140,11 @@ app/
   bootstrap/              settings, logging, and wiring support
 ```
 
-This structure is implemented for Events. Database setup is located in
-`app/adapters/outbound/persistence/database.py`. Other packages under `app/core`
-and `app/integrations` still contain legacy framework dependencies. New code
-must not import another component's internals to bridge the two structures;
-such integration needs an explicit public contract.
+This structure is implemented for Events, article draft creation, Users, and Auth. Database setup is located in
+`app/adapters/outbound/persistence/database.py`. Competition tables live in
+`persistence/competition`, member tables in `persistence/members`, and media
+and gallery tables in `persistence/media`. New cross-component interactions
+must use explicit public contracts, ports, or events.
 
 The dependency direction is inward:
 
@@ -211,6 +219,20 @@ Frontend guards control navigation but are not a security boundary.
 The initial creation of roles and the first administrator is not yet solved.
 See [known-issues.md](known-issues.md).
 
+## Completion of the persistence separation
+
+Competition, Members, and Media table definitions now live exclusively in
+`app/adapters/outbound/persistence`. `SeasonHalf`, `GameType`, and
+`TeamMatchNoticeCode` are canonical framework-free Competition domain enums.
+Model registration, import adapters, maintenance scripts, and tests use the
+new locations. Table names, foreign keys, indexes, and migrations are unchanged.
+
+The match-to-event backfill also uses an application class, an injected unit
+of work, and the existing outgoing Events contract. HTTP dependencies may
+still supply SQL sessions as composition code; controllers and the core do
+not issue SQL queries. Members administration and media upload/gallery use
+cases remain planned; no unused application classes were added for them.
+
 ## Database and migrations
 
 SQLModel defines the application tables and SQLAlchemy creates the PostgreSQL
@@ -225,15 +247,20 @@ upgrade path.
 
 ## myTischtennis integration
 
-The integration has two layers:
+Competition import use cases depend on the outgoing `CompetitionSource` port.
+`MyTischtennisSource` implements it and maps validated responses from
+`MyTischtennisClient` into framework-free snapshots. SQL repositories and a
+unit of work handle persistence separately. Bootstrap composes these adapters.
 
-- `MyTischtennisClient` performs asynchronous HTTP requests;
-- synchronization classes parse responses and persist schedules,
-  registrations, meeting details, and league tables.
-
-`CurrentSeasonSync` coordinates synchronization for the current half-season.
-Separate scripts support historical imports. These imports are designed to be
-run manually at present.
+`SyncCurrent` coordinates the current half-season; `SyncHistory` handles
+historical batches. Existing scripts invoke these class-based use cases through
+a CLI adapter. Competition and Members ORM tables reside in their outbound
+persistence packages. Competition enums are shared framework-free domain types.
+Competition also has internal `Season`, `Team`, `TeamMatch`, `Match`, and
+`LeagueGroup` entities with their child models. Import use cases load and save
+these through `CompetitionRepository`; the external snapshots remain input DTOs.
+See [the Competition domain walkthrough](competition-domain.md).
+See [the myTischtennis walkthrough](mytischtennis-architecture.md).
 
 A scheduler is planned but has not been implemented or connected to the
 FastAPI lifecycle.

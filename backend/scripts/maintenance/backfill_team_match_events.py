@@ -1,9 +1,8 @@
 import argparse
 import logging
 
-from app.adapters.outbound.persistence.database import engine
-from app.adapters.inbound.competition.events import TeamMatchEventSync
-from sqlmodel import Session
+from app.bootstrap.competition import build_backfill_match_events
+from app.core.competition.application.dto import BackfillMatchEventsCommand
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +22,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    sync = TeamMatchEventSync()
-
-    with Session(engine) as session:
-        created, updated = sync.backfill(
-            session,
-            completed_only=args.completed_only,
-        )
-        session.commit()
+    created, updated = build_backfill_match_events().execute(
+        BackfillMatchEventsCommand(completed_only=args.completed_only)
+    )
 
     logger.info(
         "TeamMatch-Event-Backfill abgeschlossen: created=%s updated=%s",

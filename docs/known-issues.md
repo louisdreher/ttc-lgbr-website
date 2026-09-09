@@ -43,15 +43,12 @@ FastAPI application lifecycle and should not yet be relied upon.
 
 ### Status
 
-Planned.
+In progress; draft creation implemented, remaining workflow planned.
 
-The article model, public reads, and preliminary administration routes exist,
-but the complete creation, publication, validation, and frontend workflow has
-not been implemented.
-
-The older article routes still target the compatibility model and have not yet
-been migrated to the event-centered content model. They should therefore not
-be treated as a production-ready CMS API.
+Article draft creation is implemented at `POST /api/admin/articles` and uses
+Ports and Adapters with domain validation and transaction handling.
+Editing, publication, public reads, and the frontend workflow remain planned.
+The existing draft-creation endpoint is not a complete CMS API.
 
 ## Media storage not implemented
 

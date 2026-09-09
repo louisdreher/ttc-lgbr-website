@@ -1,23 +1,12 @@
-import argparse
+"""Compatibility entry point; import logic lives in Competition use cases."""
+
 import asyncio
 
-from app.integrations.mytischtennis.sync.meeting import (
-    MeetingSync,
-)
+from app.adapters.inbound.cli.competition import main as run_import
 
 
-async def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Synchronisiert eine einzelne myTischtennis-Begegnung."
-    )
-    parser.add_argument("meeting_id", type=int, help="myTT-Begegnungs-ID")
-    args = parser.parse_args()
-
-    sync = MeetingSync()
-
-    await sync.sync_by_meeting_id(
-        meeting_id=args.meeting_id,
-    )
+async def main():
+    await run_import("meeting")
 
 
 if __name__ == "__main__":

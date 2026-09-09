@@ -14,3 +14,4 @@ dependencies:
       - pyjwt
       - alembic
       - httpx
+      - pytest

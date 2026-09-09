@@ -1,9 +1,10 @@
+from pydantic import BaseModel, Field
+
 from app.core.content.articles.domain.article import (
     ArticleStatus,
     ArticleType,
     Visibility,
 )
-from pydantic import BaseModel, Field
 
 
 class CreateArticleRequest(BaseModel):

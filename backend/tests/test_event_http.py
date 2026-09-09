@@ -15,11 +15,12 @@ from app.adapters.outbound.persistence.database import get_session
 from app.adapters.outbound.persistence.events.models import Event, EventCategory
 from app.adapters.outbound.persistence.events.repository import SqlEventRepository
 from app.adapters.outbound.persistence.events.unit_of_work import SqlEventUnitOfWork
+from app.adapters.outbound.persistence.users.models import User
 from app.core.content.events.application.commands import UpdateEventsVisibility
 from app.core.content.events.application.dto import UpdateEventsVisibilityCommand
 from app.core.content.events.application.errors import EventNotFoundError
 from app.core.content.types import Visibility
-from app.core.users.model import User
+from app.core.users.public import UserDetails
 
 
 class EventHttpTest(unittest.TestCase):
@@ -51,8 +52,8 @@ class EventHttpTest(unittest.TestCase):
                 yield session
 
         self.app.dependency_overrides[get_session] = session_override
-        self.app.dependency_overrides[event_manager] = lambda: User(
-            id=1, email="editor@example.org", name="Editor", password_hash="test-only"
+        self.app.dependency_overrides[event_manager] = lambda: UserDetails(
+            id=1, email="editor@example.org", name="Editor", is_active=True, roles=["EDITOR"]
         )
         self.client = TestClient(self.app)
 

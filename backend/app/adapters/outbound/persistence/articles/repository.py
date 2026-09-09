@@ -1,3 +1,14 @@
+from sqlmodel import Session, select
+
+from app.adapters.outbound.persistence.articles.models import (
+    Article as ArticleRecord,
+)
+from app.adapters.outbound.persistence.articles.models import (
+    ArticleStatus as PersistenceArticleStatus,
+)
+from app.adapters.outbound.persistence.articles.models import (
+    ArticleType as PersistenceArticleType,
+)
 from app.core.content.articles.domain.article import (
     Article,
 )
@@ -10,17 +21,7 @@ from app.core.content.articles.domain.article import (
 from app.core.content.articles.domain.article import (
     Visibility as DomainVisibility,
 )
-from app.core.content.articles.model import (
-    Article as ArticleRecord,
-)
-from app.core.content.articles.model import (
-    ArticleStatus as PersistenceArticleStatus,
-)
-from app.core.content.articles.model import (
-    ArticleType as PersistenceArticleType,
-)
 from app.core.content.types import Visibility as PersistenceVisibility
-from sqlmodel import Session, select
 
 
 class SQLModelArticleRepository:
@@ -35,8 +36,7 @@ class SQLModelArticleRepository:
         record = self._to_record(article)
 
         self.session.add(record)
-        self.session.commit()
-        self.session.refresh(record)
+        self.session.flush()
 
         return self._to_domain(record)
 

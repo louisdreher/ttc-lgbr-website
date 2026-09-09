@@ -1,5 +1,8 @@
 from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from app.adapters.inbound.http.auth.permissions import require_any_role
 from app.adapters.inbound.http.events.dependencies import (
     provide_create_event,
     provide_create_event_category,
@@ -24,7 +27,6 @@ from app.adapters.inbound.http.events.schemas import (
     EventRead,
     EventUpdate,
 )
-from app.core.auth.permissions import require_any_role
 from app.core.content.events.application.commands import (
     CreateEvent,
     CreateEventCategory,
@@ -63,8 +65,7 @@ from app.core.content.events.domain.errors import (
     SyncedEventDeleteError,
     SyncedEventFieldError,
 )
-from app.core.users.model import RoleName, User
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from app.core.users.public import RoleName, UserDetails
 
 router = APIRouter(prefix="/api/admin", tags=["Admin - Events"])
 event_manager = require_any_role(RoleName.ADMIN, RoleName.EDITOR)
@@ -76,7 +77,7 @@ def get_event_categories_endpoint(
     list_event_categories_use_case: Annotated[
         ListEventCategories, Depends(provide_list_event_categories)
     ],
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     return list_event_categories_use_case.execute()
 
@@ -92,7 +93,7 @@ def create_event_category_endpoint(
         CreateEventCategory, Depends(provide_create_event_category)
     ],
     category_data: EventCategoryCreate,
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     try:
         return create_event_category_use_case.execute(
@@ -115,7 +116,7 @@ def update_event_category_endpoint(
     ],
     category_id: int,
     category_data: EventCategoryUpdate,
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     try:
         return update_event_category_use_case.execute(
@@ -141,7 +142,7 @@ def get_events_endpoint(
     list_events_use_case: Annotated[ListEvents, Depends(provide_list_events)],
     year: Annotated[int | None, Query(ge=1900, le=2200)] = None,
     category_id: Annotated[list[int] | None, Query()] = None,
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     return list_events_use_case.execute(
         ListEventsQuery(year=year, category_ids=category_id)
@@ -154,7 +155,7 @@ def get_event_years_endpoint(
     list_event_years_use_case: Annotated[
         ListEventYears, Depends(provide_list_event_years)
     ],
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     return list_event_years_use_case.execute()
 
@@ -164,7 +165,7 @@ def get_event_endpoint(
     *,
     get_event_use_case: Annotated[GetEvent, Depends(provide_get_event)],
     event_id: int,
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     try:
         return get_event_use_case.execute(GetEventQuery(event_id=event_id))
@@ -182,7 +183,7 @@ def create_event_endpoint(
     create_event_use_case: Annotated[CreateEvent, Depends(provide_create_event)],
     get_event_use_case: Annotated[GetEvent, Depends(provide_get_event)],
     event_data: EventCreate,
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     try:
         event = create_event_use_case.execute(
@@ -206,7 +207,7 @@ def update_events_visibility_endpoint(
     ],
     get_events_use_case: Annotated[GetEvents, Depends(provide_get_events)],
     data: EventBulkVisibilityUpdate,
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     try:
         events = update_events_visibility_use_case.execute(
@@ -226,7 +227,7 @@ def delete_events_endpoint(
     *,
     delete_events_use_case: Annotated[DeleteEvents, Depends(provide_delete_events)],
     data: EventIds,
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     try:
         delete_events_use_case.execute(DeleteEventsCommand(event_ids=data.event_ids))
@@ -241,7 +242,7 @@ def delete_event_endpoint(
     *,
     delete_event_use_case: Annotated[DeleteEvent, Depends(provide_delete_event)],
     event_id: int,
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     try:
         delete_event_use_case.execute(DeleteEventCommand(event_id=event_id))
@@ -258,7 +259,7 @@ def update_event_endpoint(
     get_event_use_case: Annotated[GetEvent, Depends(provide_get_event)],
     event_id: int,
     event_data: EventUpdate,
-    current_user: Annotated[User, Depends(event_manager)],
+    current_user: Annotated[UserDetails, Depends(event_manager)],
 ):
     try:
         event = update_event_use_case.execute(

@@ -1,13 +1,12 @@
 import argparse
 import asyncio
 import json
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Awaitable, Callable
 
 import httpx
 
-from app.integrations.mytischtennis.api import MyTischtennisClient
-
+from app.bootstrap.competition import build_mytt_client
 
 REQUEST_DELAY = 1.0
 
@@ -27,6 +26,7 @@ OUTPUT_DIR.mkdir(
 # TEST-HILFSFUNKTION
 # ---------------------------------------------------------------------------
 
+
 async def run_test(
     name: str,
     request: Callable[[], Awaitable[dict]],
@@ -40,13 +40,9 @@ async def run_test(
         data = await request()
 
     except httpx.HTTPStatusError as exc:
-        print(
-            f"HTTP-FEHLER: {exc.response.status_code}"
-        )
+        print(f"HTTP-FEHLER: {exc.response.status_code}")
 
-        print(
-            f"URL: {exc.request.url}"
-        )
+        print(f"URL: {exc.request.url}")
 
         error_file = OUTPUT_DIR / f"{name}_http_error.txt"
 
@@ -55,19 +51,14 @@ async def run_test(
             encoding="utf-8",
         )
 
-        print(
-            f"Response gespeichert: {error_file}"
-        )
+        print(f"Response gespeichert: {error_file}")
 
         return None
 
-    except Exception as exc:
-        print(
-            f"FEHLER: {type(exc).__name__}: {exc}"
-        )
+    except Exception as exc:  # noqa: BLE001 -- diagnostic command reports each failed probe
+        print(f"FEHLER: {type(exc).__name__}: {exc}")
 
         return None
-
 
     # -----------------------------------------------------------------------
     # Response speichern
@@ -85,45 +76,29 @@ async def run_test(
         encoding="utf-8",
     )
 
-    print(
-        f"Response gespeichert: {output_file}"
-    )
-
+    print(f"Response gespeichert: {output_file}")
 
     # -----------------------------------------------------------------------
     # myTT kann Fehler im JSON zurückgeben,
     # obwohl HTTP 200 geliefert wurde.
     # -----------------------------------------------------------------------
 
-    api_error = (
-        data.get("error")
-        if isinstance(data, dict)
-        else None
-    )
+    api_error = data.get("error") if isinstance(data, dict) else None
 
     if api_error:
         print("MYTT-API-FEHLER")
 
-        print(
-            f"Code:    {api_error.get('code')}"
-        )
+        print(f"Code:    {api_error.get('code')}")
 
-        print(
-            f"Message: {api_error.get('message')}"
-        )
+        print(f"Message: {api_error.get('message')}")
 
     else:
         print("ERFOLGREICH")
 
         if isinstance(data, dict):
-            print(
-                f"Keys: {list(data.keys())}"
-            )
+            print(f"Keys: {list(data.keys())}")
 
-
-    await asyncio.sleep(
-        REQUEST_DELAY
-    )
+    await asyncio.sleep(REQUEST_DELAY)
 
     return data
 
@@ -131,6 +106,7 @@ async def run_test(
 # ---------------------------------------------------------------------------
 # MAIN
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     parser = argparse.ArgumentParser(
@@ -141,8 +117,8 @@ async def main() -> None:
     parser.add_argument("group_id", type=int, help="myTT-Gruppen-ID")
     args = parser.parse_args()
 
-    api = MyTischtennisClient()
-
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    api = build_mytt_client()
 
     # -----------------------------------------------------------------------
     # Vorrunde
@@ -157,7 +133,6 @@ async def main() -> None:
             round_filter="vr",
         ),
     )
-
 
     # -----------------------------------------------------------------------
     # Rückrunde

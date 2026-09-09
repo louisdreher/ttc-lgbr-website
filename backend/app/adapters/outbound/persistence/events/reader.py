@@ -10,12 +10,13 @@ from app.adapters.outbound.persistence.events.repository import category_from_ro
 from app.core.content.events.application.dto import EventDetails
 from app.core.content.events.domain.category import TEAM_MATCH_CATEGORY_SLUG
 from app.core.content.types import Visibility
-from app.core.users.model import User
+from app.core.users.public import UserReader
 
 
 class SqlEventReader:
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, users: UserReader):
         self.session = session
+        self.users = users
 
     def categories(self, *, public: bool = False):
         query = select(EventCategory)
@@ -43,14 +44,7 @@ class SqlEventReader:
         user_ids = {
             row.created_by_user_id for row in rows if row.created_by_user_id is not None
         }
-        users = (
-            self.session.exec(
-                select(User.id, User.name).where(User.id.in_(user_ids))
-            ).all()
-            if user_ids
-            else []
-        )
-        names = dict(users)
+        names = self.users.get_names(user_ids)
         return [
             EventDetails(
                 **row.model_dump(), created_by_name=names.get(row.created_by_user_id)

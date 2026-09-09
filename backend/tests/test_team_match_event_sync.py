@@ -4,19 +4,22 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from app.adapters.inbound.competition.events import TeamMatchEventSync
+from app.adapters.outbound.competition.events import CompetitionMatchEvents
+from app.adapters.outbound.persistence.competition.leagues import LeagueGroup
+from app.adapters.outbound.persistence.competition.matches import TeamMatch
+from app.adapters.outbound.persistence.competition.seasons import Season, SeasonHalf
+from app.adapters.outbound.persistence.competition.teams import Team
 from app.adapters.outbound.persistence.events.models import (
     Event,
     EventCategory,
     EventStatus,
 )
-from app.core.competition.league.model import LeagueGroup
-from app.core.competition.matches.models import TeamMatch
-from app.core.competition.season.model import Season, SeasonHalf
-from app.core.competition.teams.model import Team
+from app.bootstrap.competition import build_backfill_match_events
+from app.bootstrap.events import build_sync_match_event
+from app.core.competition.application.dto import BackfillMatchEventsCommand
 
 
-class TeamMatchEventSyncTest(unittest.TestCase):
+class CompetitionMatchEventsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.engine = create_engine(
             "sqlite://",
@@ -43,7 +46,9 @@ class TeamMatchEventSyncTest(unittest.TestCase):
             match = self._create_team_match(
                 session, datetime(2026, 9, 1, tzinfo=timezone.utc)
             )
-            TeamMatchEventSync().sync_one(session, match)
+            CompetitionMatchEvents(
+                session, build_sync_match_event(session)
+            ).synchronize(match.id)
             session.rollback()
         with Session(self.engine) as session:
             self.assertEqual(session.exec(select(TeamMatch)).all(), [])
@@ -55,7 +60,10 @@ class TeamMatchEventSyncTest(unittest.TestCase):
             match = self._create_team_match(
                 session, datetime(2026, 9, 1, tzinfo=timezone.utc)
             )
-            event, _ = TeamMatchEventSync().sync_one(session, match)
+            CompetitionMatchEvents(
+                session, build_sync_match_event(session)
+            ).synchronize(match.id)
+            event = session.exec(select(Event)).one()
             row = session.get(Event, event.id)
             row.description = "Beibehalten"
             row.report_expected = False
@@ -64,9 +72,13 @@ class TeamMatchEventSyncTest(unittest.TestCase):
             row.visibility = Visibility.HIDDEN
             match.status = "abgesagt"
             session.commit()
+        self.assertEqual(
+            build_backfill_match_events(lambda: Session(self.engine)).execute(
+                BackfillMatchEventsCommand()
+            ),
+            (0, 1),
+        )
         with Session(self.engine) as session:
-            self.assertEqual(TeamMatchEventSync().backfill(session), (0, 1))
-            session.commit()
             row = session.exec(select(Event)).one()
             self.assertEqual(row.status, EventStatus.CANCELLED)
             self.assertEqual(row.description, "Beibehalten")
@@ -78,9 +90,10 @@ class TeamMatchEventSyncTest(unittest.TestCase):
 
         with Session(self.engine) as session:
             team_match = self._create_team_match(session, scheduled_at)
-            sync = TeamMatchEventSync()
+            sync = CompetitionMatchEvents(session, build_sync_match_event(session))
 
-            event, created = sync.sync_one(session, team_match)
+            created = sync.synchronize(team_match.id)
+            event = session.exec(select(Event)).one()
 
             self.assertTrue(created)
             self.assertEqual(event.title, "TTC Langen-Brombach – Gastverein")
@@ -91,7 +104,8 @@ class TeamMatchEventSyncTest(unittest.TestCase):
             team_match.scheduled_at = scheduled_at + timedelta(days=1)
             team_match.is_completed = True
 
-            updated_event, created = sync.sync_one(session, team_match)
+            created = sync.synchronize(team_match.id)
+            updated_event = session.exec(select(Event)).one()
 
             self.assertFalse(created)
             self.assertEqual(updated_event.id, event.id)
@@ -112,15 +126,16 @@ class TeamMatchEventSyncTest(unittest.TestCase):
                 meeting_id=2,
             )
 
-            created, updated = TeamMatchEventSync().backfill(
-                session,
-                completed_only=True,
-            )
-
+            completed_id = completed.id
+            session.commit()
+        created, updated = build_backfill_match_events(
+            lambda: Session(self.engine)
+        ).execute(BackfillMatchEventsCommand(True))
+        with Session(self.engine) as session:
             self.assertEqual((created, updated), (1, 0))
             events = session.exec(select(Event)).all()
             self.assertEqual(len(events), 1)
-            self.assertEqual(events[0].team_match_id, completed.id)
+            self.assertEqual(events[0].team_match_id, completed_id)
 
     def test_sync_ignores_historical_end_time_before_start(self) -> None:
         scheduled_at = datetime(2006, 1, 20, 17, 0, tzinfo=timezone.utc)
@@ -129,7 +144,10 @@ class TeamMatchEventSyncTest(unittest.TestCase):
             team_match = self._create_team_match(session, scheduled_at)
             team_match.ended_at = datetime(1970, 1, 1, 17, 0, tzinfo=timezone.utc)
 
-            event, _ = TeamMatchEventSync().sync_one(session, team_match)
+            CompetitionMatchEvents(
+                session, build_sync_match_event(session)
+            ).synchronize(team_match.id)
+            event = session.exec(select(Event)).one()
 
             self.assertIsNone(event.ends_at)
 

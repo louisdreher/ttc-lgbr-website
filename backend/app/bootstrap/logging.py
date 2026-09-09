@@ -2,7 +2,6 @@ import logging
 from logging.config import dictConfig
 from pathlib import Path
 
-
 DEFAULT_LOG_LEVEL = "INFO"
 BACKEND_DIRECTORY = Path(__file__).resolve().parents[2]
 
@@ -85,7 +84,12 @@ def configure_logging(
             },
             "handlers": handlers,
             "loggers": {
-                "app.integrations.mytischtennis": {
+                "app.adapters.outbound.mytischtennis": {
+                    "handlers": mytischtennis_handlers,
+                    "level": mytischtennis_level,
+                    "propagate": True,
+                },
+                "app.core.competition.application": {
                     "handlers": mytischtennis_handlers,
                     "level": mytischtennis_level,
                     "propagate": True,
