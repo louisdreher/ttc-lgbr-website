@@ -10,9 +10,9 @@ ausschließlich beim Persistenzmodell.
 
 | Domain-Datei unter `app/core/competition/domain` | Entities |
 | --- | --- |
-| `seasons.py` | `Season` |
+| `seasons.py` | `Season`, `SeasonKey`, `SeasonHalf` |
 | `teams.py` | `Team`, `TeamMembership`, `TeamAssignment` |
-| `matches.py` | `TeamMatch`, `Match`, `MatchLineup`, `MatchParticipant`, `SetResult`, `TeamMatchNotice` |
+| `matches.py` | `TeamMatch`, `Match`, `MatchLineup`, `MatchParticipant`, `SetResult`, `TeamMatchNotice`, `GameType`, `TeamMatchNoticeCode` |
 | `leagues.py` | `LeagueGroup`, `LeagueTableEntry` |
 
 Die zugehörigen SQLModel-Dateien liegen unter
@@ -34,12 +34,12 @@ Parent-ID. Die vorhandenen Fremdschlüssel und Tabellen bleiben unverändert.
 
 - `TeamMatch.reschedule(...)` bewahrt den ersten ursprünglichen Termin.
   Ein ausdrücklich übergebener ursprünglicher Termin hat Vorrang.
-- `TeamMatch.update_schedule(...)` übernimmt Spielplan-Metadaten und Hinweise,
-  erhält aber importierte Spiele, Aufstellung und Importmarkierung.
-- `TeamMatch.import_details(...)` übernimmt nur abgeschlossene Begegnungen,
-  bildet Heim-/Auswärtsergebnisse ab und erstellt Aufstellung, Spiele,
-  Teilnehmer und Sätze. Ungespielte Spiele können Aufstellungsinformationen
-  liefern, werden aber nicht als gespielte Matches übernommen.
+- `TeamMatch.record_result(...)` übernimmt abgeschlossene Ergebnisse als
+  Domainobjekte (`Match`, `MatchLineup`) und vereinsbezogene Punktestände.
+  Die Methode kennt weder Import-DTOs noch die Datenquelle.
+- Die Sync-Application übersetzt Spielplan- und Ergebnisdaten in `sync/mapping.py`.
+  Sie ordnet Heim-/Auswärtswerte zu, baut Teilnehmer und Sätze auf und berücksichtigt
+  Aufstellungsinformationen ungespielter Spiele. Spielplanänderungen bewahren Details.
 - `Team.replace_registration(...)` ersetzt die Mannschaftsmeldung und erhält
   die separate Aufstellung (`assignments`).
 - `LeagueGroup.replace_table(...)` übernimmt Tabellen-Entities und verhindert
@@ -66,10 +66,50 @@ laden oder anlegen, fachliche Änderungen ausführen, Entities speichern und
 die Transaktion committen. Spieleridentitäten werden über den bestehenden
 Members-Port aufgelöst und als IDs an die Domain übergeben.
 
-`domain/imports.py` bleibt das Übergabeformat der Datenquelle. Es enthält keine
+`application/imports.py` definiert die DTOs der Quell- und Reader-Ports. Es enthält keine
 ORM-Klassen. Der bisherige SQL-Importadapter wurde durch `repository.py`
 ersetzt; Importentscheidungen befinden sich nun in Application und Domain.
 
 Tests prüfen die Regeln ohne SQL sowie vollständige Entity-Roundtrips,
 Wiederholungsimporte, Erhalt vorhandener Detaildaten und Rollbacks. Read-Usecases
 dürfen weiterhin optimierte DTO-Projektionen statt vollständiger Entities nutzen.
+
+
+## Interne Mannschaftsaufstellung
+
+`AssignPlayerToTeamCommand(team_id, player_id, status=None, position=None)` wird
+über `build_assign_player_to_team().execute(command)` ausgeführt. HTTP ist geplant.
+
+Ohne Position werden ausschließlich Meldungen derselben Saison/Halbserie und
+Kategorie der Zielmannschaft verwendet (Herren, J15, J19 jeweils getrennt).
+Die Reihenfolge ergibt sich aus `Team.team_number` und dem numerischen
+`TeamMembership.rank` (in der Datenbank z. B. "2", nicht "1.2"). Alle internen
+Positionen werden lückenlos ab 1 vergeben. Fehlende Kategorie, fehlende/ungültige
+oder widersprüchliche Ränge verhindern die automatische Zuordnung.
+
+Eine explizite Position erlaubt manuelles Einfügen oder Verschieben, auch ohne
+Kategorie und Meldungsrang. Erlaubt sind 1 bis zur resultierenden Spielerzahl;
+die übrigen Spieler werden verschoben. Vorhandene Positionen bestimmen ihre
+Reihenfolge, bei Gleichstand die Spieler-ID; Einträge ohne Position folgen hinten.
+Eine spätere automatische Zuordnung berechnet die gesamte Aufstellung neu und
+ersetzt damit die manuelle Reihenfolge. Importierte Meldungsänderungen allein
+sortieren die interne Aufstellung noch nicht neu.
+
+`AssignmentStatus.SUBSTITUTE` speichert "Ersatzspieler", `None` eine reguläre
+Zuordnung. Erneutes Zuordnen aktualisiert bzw. löscht den Status. Dieser beeinflusst
+die Reihenfolge nicht. Externe Meldungen bleiben unverändert. Die vorhandenen
+Datenbankspalten reichen aus; es ist keine Migration nötig. Der PlayerLookup
+verwendet eine eigene Lesesession, die Unit of Work speichert die Aufstellung atomar.
+
+
+Die Competition-Usecases liegen in `application/usecases/`. Allgemeine schreibende
+Usecases stehen in `commands.py`, lesende in `queries.py`. Der Unterordner `sync/`
+enthält `commands.py` für einzelne Synchronisierungen, `batches.py` für Sammelimporte
+und `backfill.py` für den nachträglichen Event-Abgleich. DTOs, Ports und Fehler
+bleiben direkt in `application/`; der `RegistrationReportReader` steht in `ports.py`.
+
+Die Domain importiert keine Application-DTOs. `original_schedule` bleibt als
+Terminregel in `domain/matches.py`; der Abgleich importierter Mannschaftsmeldungen
+liegt in `application/usecases/sync/mapping.py`. Vorhandene externe ID-Felder und
+die Importmarkierung bleiben aus Kompatibilitätsgründen erhalten. Ihre Auslagerung
+ist nicht Teil dieser Trennung; Datenbankschema und gespeicherte Werte ändern sich nicht.

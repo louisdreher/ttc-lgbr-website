@@ -12,12 +12,8 @@ from app.adapters.outbound.persistence.competition.seasons import (
     SeasonHalf as StoredSeasonHalf,
 )
 from app.adapters.outbound.persistence.competition.teams import Team
-from app.core.competition.domain.imports import (
-    GroupReference,
-    MeetingReference,
-    SeasonHalf,
-    SeasonKey,
-)
+from app.core.competition.application.imports import GroupReference, MeetingReference
+from app.core.competition.domain.seasons import SeasonHalf, SeasonKey
 
 
 class SqlCompetitionReader:

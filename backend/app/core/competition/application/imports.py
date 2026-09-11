@@ -1,38 +1,9 @@
-"""Provider-independent snapshots and rules for competition imports."""
+"""Input and output DTOs for the competition source and reader ports."""
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
-from enum import StrEnum
+from datetime import datetime
 
-
-class SeasonHalf(StrEnum):
-    VR = "vr"
-    RR = "rr"
-
-
-@dataclass(frozen=True)
-class SeasonKey:
-    start_year: int
-    end_year: int
-    half: SeasonHalf
-
-    def __post_init__(self):
-        if self.end_year != self.start_year + 1:
-            raise ValueError("end_year muss start_year + 1 sein.")
-        if self.half not in (SeasonHalf.VR, SeasonHalf.RR):
-            raise ValueError("Unbekannte Halbserie")
-
-    @property
-    def period(self) -> tuple[date, date]:
-        if self.half == SeasonHalf.VR:
-            return date(self.start_year, 7, 1), date(self.start_year, 12, 31)
-        return date(self.end_year, 1, 1), date(self.end_year, 6, 30)
-
-    @classmethod
-    def current(cls, today: date) -> "SeasonKey":
-        if today.month <= 6:
-            return cls(today.year - 1, today.year, SeasonHalf.RR)
-        return cls(today.year, today.year + 1, SeasonHalf.VR)
+from app.core.competition.domain.seasons import SeasonKey
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -72,24 +43,6 @@ class ScheduledMatch:
 class ScheduleSnapshot:
     matches: tuple[ScheduledMatch, ...]
     received_count: int
-
-
-def original_schedule(
-    previous: datetime,
-    current: datetime,
-    known_original: datetime | None,
-    supplied_original: datetime | None,
-) -> datetime | None:
-    if supplied_original is not None:
-        return supplied_original
-
-    # Offset-free imported dates are compared as UTC, as in the existing import.
-    def comparable(value):
-        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
-
-    if known_original is None and comparable(previous) != comparable(current):
-        return previous
-    return known_original
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -177,31 +130,3 @@ class Standing:
     sets_lost: int
     games_won: int
     games_lost: int
-
-
-@dataclass(frozen=True)
-class RegistrationTeam:
-    id: int
-    name: str
-    number: int | None
-
-
-def find_registration_team(
-    teams: list[RegistrationTeam], registration: Registration
-) -> int | None:
-    if len(teams) == 1:
-        return teams[0].id
-    if registration.team_number is not None:
-        matches = [team for team in teams if team.number == registration.team_number]
-        if len(matches) == 1:
-            return matches[0].id
-
-    def normalized(name):
-        return " ".join(name.split()).casefold()
-
-    matches = [
-        team
-        for team in teams
-        if normalized(team.name) == normalized(registration.team_name)
-    ]
-    return matches[0].id if len(matches) == 1 else None

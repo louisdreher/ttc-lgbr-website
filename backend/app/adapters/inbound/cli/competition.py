@@ -11,7 +11,7 @@ from app.core.competition.application.dto import (
     SyncHistoryCommand,
     SyncScheduleCommand,
 )
-from app.core.competition.domain.imports import SeasonHalf, SeasonKey
+from app.core.competition.domain.seasons import SeasonHalf, SeasonKey
 
 
 async def main(kind: str, argv=None):

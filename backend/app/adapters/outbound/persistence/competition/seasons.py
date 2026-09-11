@@ -1,7 +1,7 @@
 from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
-from app.core.competition.domain.imports import SeasonHalf
+from app.core.competition.domain.seasons import SeasonHalf
 
 
 class Season(SQLModel, table=True):

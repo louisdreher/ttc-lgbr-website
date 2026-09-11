@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
-from app.core.competition.domain.types import GameType, TeamMatchNoticeCode
+from app.core.competition.domain.matches import GameType, TeamMatchNoticeCode
 
 
 class TeamMatch(SQLModel, table=True):

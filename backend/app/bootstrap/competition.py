@@ -21,22 +21,24 @@ from app.adapters.outbound.persistence.database import engine
 from app.adapters.outbound.persistence.members.imported_players import (
     SqlImportedPlayers,
 )
+from app.adapters.outbound.persistence.members.player_lookup import SqlPlayerLookup
 from app.bootstrap.events import build_sync_match_event
 from app.bootstrap.settings import settings
-from app.core.competition.application.backfill import BackfillMatchEvents
-from app.core.competition.application.batches import (
+from app.core.competition.application.usecases.commands import AssignPlayerToTeam
+from app.core.competition.application.usecases.queries import GetRegistrationReport
+from app.core.competition.application.usecases.sync.backfill import BackfillMatchEvents
+from app.core.competition.application.usecases.sync.batches import (
     ImportBatch,
     SyncCurrent,
     SyncHistory,
 )
-from app.core.competition.application.commands import (
+from app.core.competition.application.usecases.sync.commands import (
     SyncExternalMeeting,
     SyncMeeting,
     SyncRegistrations,
     SyncSchedule,
     SyncStandings,
 )
-from app.core.competition.application.queries import GetRegistrationReport
 
 
 def build_backfill_match_events(session_factory=None):
@@ -118,3 +120,16 @@ def build_competition(
         ),
         SyncHistory(meeting, registrations, standings, reader, batch, clock),
     )
+
+
+def build_assign_player_to_team(session_factory=None) -> AssignPlayerToTeam:
+    session_factory = session_factory or (lambda: Session(engine))
+    uow = SqlCompetitionUnitOfWork(
+        session_factory,
+        SqlCompetitionRepository,
+        lambda session: CompetitionMatchEvents(
+            session, build_sync_match_event(session)
+        ),
+        SqlImportedPlayers,
+    )
+    return AssignPlayerToTeam(uow, SqlPlayerLookup(session_factory))

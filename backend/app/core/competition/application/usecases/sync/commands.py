@@ -8,7 +8,17 @@ from app.core.competition.application.dto import (
     SyncMeetingCommand,
     SyncScheduleCommand,
 )
-from app.core.competition.domain.imports import RegistrationTeam, find_registration_team
+from app.core.competition.application.ports import (
+    CompetitionReader,
+    CompetitionSource,
+    CompetitionUnitOfWork,
+)
+from app.core.competition.application.usecases.sync.mapping import (
+    RegistrationTeam,
+    apply_meeting,
+    apply_schedule,
+    find_registration_team,
+)
 from app.core.competition.domain.leagues import LeagueGroup, LeagueTableEntry
 from app.core.competition.domain.matches import TeamMatch
 from app.core.competition.domain.seasons import Season
@@ -19,13 +29,6 @@ def persisted_id(entity) -> int:
     if entity.id is None:
         raise RuntimeError("Gespeicherte Entity besitzt keine ID.")
     return entity.id
-
-
-from app.core.competition.application.ports import (
-    CompetitionReader,
-    CompetitionSource,
-    CompetitionUnitOfWork,
-)
 
 
 class SyncSchedule:
@@ -71,9 +74,15 @@ class SyncSchedule:
                 team_id = persisted_id(team)
                 match = repository.find_team_match(data.external_id)
                 if match is None:
-                    match = TeamMatch.from_schedule(team_id, data)
-                else:
-                    match.update_schedule(team_id, data)
+                    match = TeamMatch(
+                        team_id=team_id,
+                        mytt_meeting_id=data.external_id,
+                        opponent_name=data.opponent_name,
+                        is_home=data.is_home,
+                        scheduled_at=data.scheduled_at,
+                        status=data.status or "unknown",
+                    )
+                apply_schedule(match, team_id, data)
                 repository.save_team_match(match)
                 self.uow.events.synchronize(persisted_id(match))
             self.uow.commit()
@@ -106,7 +115,7 @@ class SyncMeeting:
                 for player in game.own_players(entity.is_home):
                     if (not player.absent or game.played) and player not in player_ids:
                         player_ids[player] = self.uow.players.resolve(player)
-            entity.import_details(details, player_ids, self.clock())
+            apply_meeting(entity, details, player_ids, self.clock())
             self.uow.repository.save_team_match(entity)
             self.uow.commit()
         return True

@@ -34,7 +34,6 @@ from app.adapters.outbound.persistence.competition.repository import (
 from app.adapters.outbound.persistence.competition.teams import TeamMembership
 from app.adapters.outbound.persistence.events.models import Event
 from app.bootstrap.competition import build_competition
-from app.core.competition.application.batches import ImportBatch
 from app.core.competition.application.dto import (
     SyncCurrentCommand,
     SyncGroupCommand,
@@ -43,7 +42,8 @@ from app.core.competition.application.dto import (
     SyncScheduleCommand,
 )
 from app.core.competition.application.ports import SourceError
-from app.core.competition.domain.imports import SeasonHalf, SeasonKey
+from app.core.competition.application.usecases.sync.batches import ImportBatch
+from app.core.competition.domain.seasons import SeasonHalf, SeasonKey
 
 SEASON = SeasonKey(2026, 2027, SeasonHalf.VR)
 
@@ -533,9 +533,9 @@ def test_schedule_usecase_accepts_memory_ports():
     from types import SimpleNamespace
     from unittest.mock import Mock
 
-    from app.core.competition.application.commands import SyncSchedule
+    from app.core.competition.application.imports import ScheduleSnapshot
     from app.core.competition.application.ports import CompetitionRepository
-    from app.core.competition.domain.imports import ScheduleSnapshot
+    from app.core.competition.application.usecases.sync.commands import SyncSchedule
     from app.core.competition.domain.matches import TeamMatch as DomainTeamMatch
 
     calls = []
@@ -599,7 +599,7 @@ def test_registration_report_uses_reader_projection(imports):
     from app.adapters.outbound.persistence.competition.diagnostics import (
         SqlRegistrationReportReader,
     )
-    from app.core.competition.application.queries import GetRegistrationReport
+    from app.core.competition.application.usecases.queries import GetRegistrationReport
 
     engine, _, usecases, _ = imports
     _, group_id = seed(imports)

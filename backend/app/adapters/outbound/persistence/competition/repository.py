@@ -15,7 +15,7 @@ from app.core.competition.domain import leagues as domain_leagues
 from app.core.competition.domain import matches as domain_matches
 from app.core.competition.domain import seasons as domain_seasons
 from app.core.competition.domain import teams as domain_teams
-from app.core.competition.domain.imports import SeasonKey
+from app.core.competition.domain.seasons import SeasonKey
 
 
 def _entity(entity_type, row):
@@ -160,6 +160,23 @@ class SqlCompetitionRepository:
         self._save(teams.Team, team)
         self._children(teams.TeamMembership, "team_id", team.id, team.memberships)
         self._children(teams.TeamAssignment, "team_id", team.id, team.assignments)
+
+    def registration_for_category(
+        self, season_id: int, category: str
+    ) -> list[domain_teams.RegistrationPosition]:
+        rows = self.session.exec(
+            select(teams.TeamMembership, teams.Team.team_number)
+            .join(teams.Team, teams.TeamMembership.team_id == teams.Team.id)
+            .where(teams.Team.season_id == season_id, teams.Team.category == category)
+        ).all()
+        return [
+            domain_teams.RegistrationPosition(member.player_id, number, member.rank)
+            for member, number in rows
+        ]
+
+    def get_team(self, team_id: int) -> domain_teams.Team | None:
+        row = self.session.get(teams.Team, team_id)
+        return self._team(row) if row is not None else None
 
     def find_team_match(self, external_id: int) -> domain_matches.TeamMatch | None:
         row = self.session.exec(

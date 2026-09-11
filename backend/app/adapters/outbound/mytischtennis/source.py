@@ -6,8 +6,7 @@ from datetime import datetime
 
 import httpx
 
-from app.core.competition.application.ports import SourceError
-from app.core.competition.domain.imports import (
+from app.core.competition.application.imports import (
     GroupReference,
     ImportedGame,
     ImportedPlayer,
@@ -16,9 +15,10 @@ from app.core.competition.domain.imports import (
     Registration,
     ScheduledMatch,
     ScheduleSnapshot,
-    SeasonKey,
     Standing,
 )
+from app.core.competition.application.ports import SourceError
+from app.core.competition.domain.seasons import SeasonKey
 
 logger = logging.getLogger(__name__)
 ABSENT_PLAYER_ID = "NU74837"

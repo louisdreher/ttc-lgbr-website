@@ -1,15 +1,42 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+from enum import StrEnum
 
-from app.core.competition.domain.imports import (
-    ImportedPlayer,
-    MeetingDetails,
-    ScheduledMatch,
-    original_schedule,
-)
-from app.core.competition.domain.types import GameType, TeamMatchNoticeCode
+
+class GameType(StrEnum):
+    SINGLE = "single"
+    DOUBLE = "double"
+
+
+class TeamMatchNoticeCode(StrEnum):
+    H = "H"
+    T = "T"
+    U = "U"
+    V = "V"
+    W = "W"
+    W2 = "W2"
+    Z = "Z"
+    NA = "NA"
+
+
+def original_schedule(
+    previous: datetime,
+    current: datetime,
+    known_original: datetime | None,
+    supplied_original: datetime | None,
+) -> datetime | None:
+    if supplied_original is not None:
+        return supplied_original
+
+    # Offset-free imported dates are compared as UTC, as in the existing import.
+    def comparable(value):
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
+    if known_original is None and comparable(previous) != comparable(current):
+        return previous
+    return known_original
 
 
 @dataclass(kw_only=True)
@@ -47,115 +74,39 @@ class TeamMatch:
         )
         self.scheduled_at = scheduled_at
 
-    @classmethod
-    def from_schedule(cls, team_id: int, data: ScheduledMatch) -> TeamMatch:
-        match = cls(
-            team_id=team_id,
-            mytt_meeting_id=data.external_id,
-            opponent_name=data.opponent_name,
-            is_home=data.is_home,
-            scheduled_at=data.scheduled_at,
-            status=data.status or "unknown",
-        )
-        match.update_schedule(team_id, data)
-        return match
-
-    def update_schedule(self, team_id: int, data: ScheduledMatch) -> None:
-        self.reschedule(
-            data.scheduled_at, original_scheduled_at=data.original_scheduled_at
-        )
-        self.team_id = team_id
-        self.opponent_name, self.is_home = data.opponent_name, data.is_home
-        self.ended_at, self.is_completed = data.ended_at, data.is_completed
-        self.venue_name, self.venue_street, self.venue_city = (
-            data.venue_name,
-            data.venue_street,
-            data.venue_city,
-        )
-        self.score_ttc, self.score_opponent = data.score_ttc, data.score_opponent
-        if data.status is not None:
-            self.status = data.status
-        self.notices = [
-            TeamMatchNotice(
-                team_match_id=self.id, code=TeamMatchNoticeCode(code), info=info
-            )
-            for code, info in data.notices.items()
-        ]
-        # Schedule metadata does not replace imported details or the import marker.
-
-    def import_details(
+    def record_result(
         self,
-        details: MeetingDetails,
-        player_ids: dict[ImportedPlayer, int],
-        imported_at: datetime,
+        *,
+        completed: bool,
+        matches: list[Match],
+        lineup: list[MatchLineup],
+        started_at: datetime | None = None,
+        ended_at: datetime | None = None,
+        play_mode: str | None = None,
+        venue_name: str | None = None,
+        venue_street: str | None = None,
+        venue_city: str | None = None,
+        score_ttc: int | None = None,
+        score_opponent: int | None = None,
     ) -> None:
-        if not details.completed:
+        if not completed:
             raise ValueError(
                 "Nur abgeschlossene Begegnungen können Detaildaten übernehmen."
             )
-        lineup = {}
-        matches = []
-        for sequence, game in enumerate(details.games, 1):
-            for player in game.own_players(self.is_home):
-                if player.absent:
-                    continue
-                player_id = player_ids[player]
-                entry = lineup.setdefault(
-                    player_id, MatchLineup(team_match_id=self.id, player_id=player_id)
-                )
-                if player.rank is not None:
-                    if game.kind == GameType.SINGLE:
-                        entry.position = player.rank
-                    else:
-                        entry.doubles_pair = player.rank
-            if not game.played:
-                continue
-            match = Match(
-                team_match_id=self.id,
-                sequence=sequence,
-                game_type=GameType(game.kind),
-                mytt_match_uuid=game.external_id,
-                match_name=game.name,
-            )
-            participants = dict.fromkeys(
-                player_ids[p] for p in game.own_players(self.is_home)
-            )
-            match.participants = [
-                MatchParticipant(
-                    player_id=player_id, opponent_name=game.opponent_name(self.is_home)
-                )
-                for player_id in participants
-            ]
-            match.sets = [
-                SetResult(
-                    set_number=number,
-                    points_ttc=home if self.is_home else away,
-                    points_opponent=away if self.is_home else home,
-                )
-                for number, home, away in game.sets
-            ]
-            matches.append(match)
-        # Build the replacement completely before mutating the aggregate.
-        self.matches, self.lineup = matches, list(lineup.values())
+        self.matches, self.lineup = matches, lineup
         self.is_completed = True
-        for name in (
-            "started_at",
-            "ended_at",
-            "play_mode",
-            "venue_name",
-            "venue_street",
-            "venue_city",
+        for name, value in (
+            ("started_at", started_at),
+            ("ended_at", ended_at),
+            ("play_mode", play_mode),
+            ("venue_name", venue_name),
+            ("venue_street", venue_street),
+            ("venue_city", venue_city),
         ):
-            value = getattr(details, name)
             if value:
                 setattr(self, name, value)
-        if details.score_home is not None and details.score_away is not None:
-            self.score_ttc, self.score_opponent = (
-                (details.score_home, details.score_away)
-                if self.is_home
-                else (details.score_away, details.score_home)
-            )
-        self.details_imported_at = imported_at
+        if score_ttc is not None and score_opponent is not None:
+            self.score_ttc, self.score_opponent = score_ttc, score_opponent
 
 
 @dataclass(kw_only=True)

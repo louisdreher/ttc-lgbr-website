@@ -1,6 +1,15 @@
 from dataclasses import dataclass, field
 
-from app.core.competition.domain.imports import SeasonKey
+from app.core.competition.domain.seasons import SeasonKey
+from app.core.competition.domain.teams import AssignmentStatus
+
+
+@dataclass(frozen=True)
+class AssignPlayerToTeamCommand:
+    team_id: int
+    player_id: int
+    status: AssignmentStatus | None = None
+    position: int | None = None
 
 
 @dataclass(frozen=True)

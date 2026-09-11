@@ -1,8 +1,4 @@
-from typing import Protocol
-
-
-class RegistrationReportReader(Protocol):
-    def read(self) -> tuple[list[dict], list[dict]]: ...
+from app.core.competition.application.ports import RegistrationReportReader
 
 
 class GetRegistrationReport:

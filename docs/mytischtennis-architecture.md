@@ -45,9 +45,10 @@ Der Client kennt keine Datenbank; die Persistenzadapter führen keine API-Abfrag
 - `SyncHistory` wählt historische Begegnungen, Tabellen oder Mannschaftsmeldungen.
   Historische Spielpläne verwenden direkt `SyncSchedule`.
 
-`domain/imports.py` enthält normale Python-Dataclasses für Spielplan,
-Begegnungsdetails, Spieler, Meldungen und Tabellenstände sowie Regeln zur
-Halbserie, zum ursprünglichen Spieltermin und zur Mannschaftszuordnung.
+`application/imports.py` enthält normale Python-Dataclasses für Spielplan,
+Begegnungsdetails, Spieler, Meldungen und Tabellenstände. Halbserien und
+Terminregeln liegen in der Domain; Mannschaftszuordnung und Übersetzung in
+Domainobjekte stehen in `application/usecases/sync/mapping.py`.
 Die Datenquelle liefert diese Typen. Externe JSON-Feldnamen und HTTP-Fehler
 werden im myTischtennis-Adapter übersetzt und verlassen diesen nicht.
 
