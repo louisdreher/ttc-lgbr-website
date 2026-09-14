@@ -123,3 +123,18 @@ ist nicht Teil dieser Trennung; Datenbankschema und gespeicherte Werte ändern s
 Die Verdrahtung ist getrennt: `bootstrap/competition.py` baut allgemeine Usecases
 auf; `bootstrap/competition_sync.py` baut Sync-Usecases, myTT-Client, Backfill
 und Meldungsbericht auf. Die Factory-Funktionsnamen bleiben unverändert.
+
+
+`GetSchedule.execute(GetScheduleQuery(date_from, date_to, team_ids=None, category=None))`
+liefert Begegnungen als `ScheduledMatchSummary`, sortiert nach Termin und ID.
+Beide Tage sind einschließlich in Europe/Berlin; die SQL-Abfrage verwendet UTC-Grenzen
+vom Tagesanfang bis ausschließlich zum folgenden Tagesanfang (auch bei Zeitumstellung).
+Ein umgekehrter Zeitraum wird abgelehnt. Ohne Teams (`None` oder leeres Tupel) werden
+alle Teams berücksichtigt, sonst nur die angegebenen IDs. Eine Mannschaft-ID gehört
+zu einer Saison/Halbserie; die Abfrage benötigt keinen separaten Saisonfilter.
+Kategorie und Teams werden als gemeinsame Einschränkungen behandelt. Ohne Treffer
+wird eine leere Liste geliefert. Bootstrap bietet `build_get_schedule()`.
+HTTP ist noch nicht implementiert; die Abfrage löst keinen Sync aus.
+
+Lesende Usecases (`ListTeams`, `GetSchedule`) liegen in `application/queries.py`.
+`AssignPlayerToTeam` bleibt in `application/commands.py`.

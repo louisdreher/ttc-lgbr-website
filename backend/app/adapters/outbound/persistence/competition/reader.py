@@ -1,5 +1,8 @@
 from collections.abc import Callable
-from datetime import datetime
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+from sqlmodel import Session, select
 
 from app.adapters.outbound.persistence.competition.leagues import (
     LeagueGroup,
@@ -11,13 +14,17 @@ from app.adapters.outbound.persistence.competition.seasons import (
     SeasonHalf as StoredSeasonHalf,
 )
 from app.adapters.outbound.persistence.competition.teams import Team
-from app.core.competition.application.dto import ListTeamsQuery, TeamSummary
+from app.core.competition.application.dto import (
+    GetScheduleQuery,
+    ListTeamsQuery,
+    ScheduledMatchSummary,
+    TeamSummary,
+)
 from app.core.competition.application.sync.imports import (
     GroupReference,
     MeetingReference,
 )
 from app.core.competition.domain.seasons import SeasonHalf, SeasonKey
-from sqlmodel import Session, select
 
 
 class SqlCompetitionReader:
@@ -150,4 +157,42 @@ class SqlCompetitionReader:
                     category=row.category,
                 )
                 for row in rows
+            ]
+
+    def get_schedule(self, query: GetScheduleQuery) -> list[ScheduledMatchSummary]:
+        statement = (
+            select(
+                TeamMatch.id,
+                TeamMatch.team_id,
+                Team.name.label("team_name"),
+                TeamMatch.opponent_name,
+                TeamMatch.is_home,
+                TeamMatch.scheduled_at,
+                TeamMatch.status,
+                TeamMatch.is_completed,
+                TeamMatch.score_ttc,
+                TeamMatch.score_opponent,
+            )
+            .join(Team, Team.id == TeamMatch.team_id)
+            .where(
+                TeamMatch.scheduled_at
+                >= datetime.combine(
+                    query.date_from, time.min, ZoneInfo("Europe/Berlin")
+                ).astimezone(timezone.utc)
+            )
+            .order_by(TeamMatch.scheduled_at, TeamMatch.id)
+        )
+        if query.date_to < date.max:
+            end = datetime.combine(
+                query.date_to + timedelta(days=1), time.min, ZoneInfo("Europe/Berlin")
+            ).astimezone(timezone.utc)
+            statement = statement.where(TeamMatch.scheduled_at < end)
+        if query.team_ids:
+            statement = statement.where(TeamMatch.team_id.in_(query.team_ids))
+        if query.category is not None:
+            statement = statement.where(Team.category == query.category)
+        with self.session_factory() as session:
+            return [
+                ScheduledMatchSummary(**row._mapping)
+                for row in session.exec(statement).all()
             ]

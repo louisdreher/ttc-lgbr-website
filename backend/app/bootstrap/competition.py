@@ -1,3 +1,5 @@
+from sqlmodel import Session
+
 from app.adapters.outbound.competition.events import CompetitionMatchEvents
 from app.adapters.outbound.persistence.competition.reader import SqlCompetitionReader
 from app.adapters.outbound.persistence.competition.repository import (
@@ -12,8 +14,10 @@ from app.adapters.outbound.persistence.members.imported_players import (
 )
 from app.adapters.outbound.persistence.members.player_lookup import SqlPlayerLookup
 from app.bootstrap.events import build_sync_match_event
-from app.core.competition.application.commands import AssignPlayerToTeam, ListTeams
-from sqlmodel import Session
+from app.core.competition.application.commands import (
+    AssignPlayerToTeam,
+)
+from app.core.competition.application.queries import GetSchedule, ListTeams
 
 
 def build_assign_player_to_team(session_factory=None) -> AssignPlayerToTeam:
@@ -33,3 +37,8 @@ def build_list_teams(session_factory=None) -> ListTeams:
     session_factory = session_factory or (lambda: Session(engine))
 
     return ListTeams(reader=SqlCompetitionReader(session_factory))
+
+
+def build_get_schedule(session_factory=None) -> GetSchedule:
+    session_factory = session_factory or (lambda: Session(engine))
+    return GetSchedule(SqlCompetitionReader(session_factory))
