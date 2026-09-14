@@ -14,9 +14,9 @@ from app.adapters.outbound.persistence.events.models import (
     EventCategory,
     EventStatus,
 )
-from app.bootstrap.competition import build_backfill_match_events
+from app.bootstrap.competition_sync import build_backfill_match_events
 from app.bootstrap.events import build_sync_match_event
-from app.core.competition.application.dto import BackfillMatchEventsCommand
+from app.core.competition.application.sync.dto import BackfillMatchEventsCommand
 
 
 class CompetitionMatchEventsTest(unittest.TestCase):

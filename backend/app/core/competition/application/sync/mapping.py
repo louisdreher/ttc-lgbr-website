@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.core.competition.application.imports import (
+from app.core.competition.application.sync.imports import (
     ImportedPlayer,
     MeetingDetails,
     Registration,

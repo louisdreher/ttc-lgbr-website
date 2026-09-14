@@ -1,4 +1,4 @@
-from app.bootstrap.competition import build_registration_report
+from app.bootstrap.competition_sync import build_registration_report
 
 
 def main():

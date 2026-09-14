@@ -2,10 +2,10 @@
 
 import argparse
 
-from app.bootstrap.competition import build_competition
+from app.bootstrap.competition_sync import build_competition
 from app.bootstrap.logging import configure_logging
 from app.bootstrap.settings import settings
-from app.core.competition.application.dto import (
+from app.core.competition.application.sync.dto import (
     SyncCurrentCommand,
     SyncExternalMeetingCommand,
     SyncHistoryCommand,

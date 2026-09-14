@@ -1,6 +1,5 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from app.core.competition.domain.seasons import SeasonKey
 from app.core.competition.domain.teams import AssignmentStatus
 
 
@@ -13,48 +12,14 @@ class AssignPlayerToTeamCommand:
 
 
 @dataclass(frozen=True)
-class BackfillMatchEventsCommand:
-    completed_only: bool = False
+class ListTeamsQuery:
+    season_id: int
+    category: str | None = None
 
 
 @dataclass(frozen=True)
-class SyncScheduleCommand:
-    season: SeasonKey
-
-
-@dataclass(frozen=True)
-class SyncMeetingCommand:
-    team_match_id: int
-    force: bool = False
-
-
-@dataclass(frozen=True)
-class SyncExternalMeetingCommand:
-    external_id: int
-    force: bool = False
-
-
-@dataclass(frozen=True)
-class SyncGroupCommand:
-    league_group_id: int
-    skip_existing: bool = False
-
-
-@dataclass(frozen=True)
-class SyncCurrentCommand:
-    kind: str
-
-
-@dataclass(frozen=True)
-class SyncHistoryCommand:
-    kind: str
-    start_year: int | None = None
-    end_year: int | None = None
-    skip_existing: bool = True
-
-
-@dataclass
-class ImportSummary:
-    imported: int = 0
-    skipped: int = 0
-    failed: list[int] = field(default_factory=list)
+class TeamSummary:
+    id: int
+    name: str
+    team_number: int | None
+    category: str | None

@@ -1,9 +1,17 @@
-from app.core.competition.application.dto import AssignPlayerToTeamCommand
+from app.core.competition.application.dto import (
+    AssignPlayerToTeamCommand,
+    ListTeamsQuery,
+    TeamSummary,
+)
 from app.core.competition.application.errors import (
     PlayerNotFoundError,
     TeamNotFoundError,
 )
-from app.core.competition.application.ports import CompetitionUnitOfWork, PlayerLookup
+from app.core.competition.application.ports import (
+    CompetitionReader,
+    CompetitionUnitOfWork,
+    PlayerLookup,
+)
 
 
 class AssignPlayerToTeam:
@@ -39,3 +47,9 @@ class AssignPlayerToTeam:
             self.uow.commit()
 
 
+class ListTeams:
+    def __init__(self, reader: CompetitionReader):
+        self.reader = reader
+
+    def execute(self, query: ListTeamsQuery) -> list[TeamSummary]:
+        return self.reader.list_teams(query)

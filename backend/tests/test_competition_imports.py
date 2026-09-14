@@ -33,16 +33,16 @@ from app.adapters.outbound.persistence.competition.repository import (
 )
 from app.adapters.outbound.persistence.competition.teams import TeamMembership
 from app.adapters.outbound.persistence.events.models import Event
-from app.bootstrap.competition import build_competition
-from app.core.competition.application.dto import (
+from app.bootstrap.competition_sync import build_competition
+from app.core.competition.application.sync.batches import ImportBatch
+from app.core.competition.application.sync.dto import (
     SyncCurrentCommand,
     SyncGroupCommand,
     SyncHistoryCommand,
     SyncMeetingCommand,
     SyncScheduleCommand,
 )
-from app.core.competition.application.ports import SourceError
-from app.core.competition.application.usecases.sync.batches import ImportBatch
+from app.core.competition.application.sync.errors import SourceError
 from app.core.competition.domain.seasons import SeasonHalf, SeasonKey
 
 SEASON = SeasonKey(2026, 2027, SeasonHalf.VR)
@@ -533,9 +533,9 @@ def test_schedule_usecase_accepts_memory_ports():
     from types import SimpleNamespace
     from unittest.mock import Mock
 
-    from app.core.competition.application.imports import ScheduleSnapshot
-    from app.core.competition.application.ports import CompetitionRepository
-    from app.core.competition.application.usecases.sync.commands import SyncSchedule
+    from app.core.competition.application.sync.commands import SyncSchedule
+    from app.core.competition.application.sync.imports import ScheduleSnapshot
+    from app.core.competition.application.sync.ports import CompetitionRepository
     from app.core.competition.domain.matches import TeamMatch as DomainTeamMatch
 
     calls = []
@@ -599,7 +599,7 @@ def test_registration_report_uses_reader_projection(imports):
     from app.adapters.outbound.persistence.competition.diagnostics import (
         SqlRegistrationReportReader,
     )
-    from app.core.competition.application.usecases.queries import GetRegistrationReport
+    from app.core.competition.application.sync.queries import GetRegistrationReport
 
     engine, _, usecases, _ = imports
     _, group_id = seed(imports)
@@ -644,7 +644,7 @@ def test_cli_batch_failure_has_nonzero_exit_code(monkeypatch):
     from types import SimpleNamespace
 
     from app.adapters.inbound.cli import competition
-    from app.core.competition.application.dto import ImportSummary
+    from app.core.competition.application.sync.dto import ImportSummary
 
     operation = SimpleNamespace(
         execute=AsyncMock(return_value=ImportSummary(failed=[1]))
@@ -659,8 +659,8 @@ def test_cli_batch_failure_has_nonzero_exit_code(monkeypatch):
 
 
 def test_backfill_failure_rolls_back_created_event(imports, monkeypatch):
-    from app.bootstrap.competition import build_backfill_match_events
-    from app.core.competition.application.dto import BackfillMatchEventsCommand
+    from app.bootstrap.competition_sync import build_backfill_match_events
+    from app.core.competition.application.sync.dto import BackfillMatchEventsCommand
 
     engine, _, _, _ = imports
     seed(imports)

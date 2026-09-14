@@ -1,6 +1,5 @@
+from collections.abc import Callable
 from datetime import datetime
-
-from sqlmodel import select
 
 from app.adapters.outbound.persistence.competition.leagues import (
     LeagueGroup,
@@ -12,12 +11,17 @@ from app.adapters.outbound.persistence.competition.seasons import (
     SeasonHalf as StoredSeasonHalf,
 )
 from app.adapters.outbound.persistence.competition.teams import Team
-from app.core.competition.application.imports import GroupReference, MeetingReference
+from app.core.competition.application.dto import ListTeamsQuery, TeamSummary
+from app.core.competition.application.sync.imports import (
+    GroupReference,
+    MeetingReference,
+)
 from app.core.competition.domain.seasons import SeasonHalf, SeasonKey
+from sqlmodel import Session, select
 
 
 class SqlCompetitionReader:
-    def __init__(self, session_factory):
+    def __init__(self, session_factory: Callable[[], Session]):
         self.session_factory = session_factory
 
     def meeting(self, match_id: int) -> MeetingReference:
@@ -124,3 +128,26 @@ class SqlCompetitionReader:
                 ).first()
                 is not None
             )
+
+    def list_teams(self, query: ListTeamsQuery) -> list[TeamSummary]:
+        statement = select(Team.id, Team.name, Team.team_number, Team.category).where(
+            Team.season_id == query.season_id
+        )
+
+        if query.category is not None:
+            statement = statement.where(Team.category == query.category)
+
+        statement = statement.order_by(Team.category, Team.team_number, Team.id)
+
+        with self.session_factory() as session:
+            rows = session.exec(statement).all()
+
+            return [
+                TeamSummary(
+                    id=row.id,
+                    name=row.name,
+                    team_number=row.team_number,
+                    category=row.category,
+                )
+                for row in rows
+            ]

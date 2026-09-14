@@ -2,7 +2,13 @@ import logging
 from collections.abc import Awaitable, Callable
 from datetime import date, datetime
 
-from app.core.competition.application.dto import (
+from app.core.competition.application.sync.commands import (
+    SyncMeeting,
+    SyncRegistrations,
+    SyncSchedule,
+    SyncStandings,
+)
+from app.core.competition.application.sync.dto import (
     ImportSummary,
     SyncCurrentCommand,
     SyncGroupCommand,
@@ -10,13 +16,8 @@ from app.core.competition.application.dto import (
     SyncMeetingCommand,
     SyncScheduleCommand,
 )
-from app.core.competition.application.ports import CompetitionReader, SourceError
-from app.core.competition.application.usecases.sync.commands import (
-    SyncMeeting,
-    SyncRegistrations,
-    SyncSchedule,
-    SyncStandings,
-)
+from app.core.competition.application.sync.errors import SourceError
+from app.core.competition.application.sync.ports import CompetitionReader
 from app.core.competition.domain.seasons import SeasonHalf, SeasonKey
 
 logger = logging.getLogger(__name__)

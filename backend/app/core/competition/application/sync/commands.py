@@ -2,22 +2,22 @@ from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
 
-from app.core.competition.application.dto import (
+from app.core.competition.application.sync.dto import (
     SyncExternalMeetingCommand,
     SyncGroupCommand,
     SyncMeetingCommand,
     SyncScheduleCommand,
 )
-from app.core.competition.application.ports import (
-    CompetitionReader,
-    CompetitionSource,
-    CompetitionUnitOfWork,
-)
-from app.core.competition.application.usecases.sync.mapping import (
+from app.core.competition.application.sync.mapping import (
     RegistrationTeam,
     apply_meeting,
     apply_schedule,
     find_registration_team,
+)
+from app.core.competition.application.sync.ports import (
+    CompetitionReader,
+    CompetitionSource,
+    SyncUnitOfWork,
 )
 from app.core.competition.domain.leagues import LeagueGroup, LeagueTableEntry
 from app.core.competition.domain.matches import TeamMatch
@@ -32,7 +32,7 @@ def persisted_id(entity) -> int:
 
 
 class SyncSchedule:
-    def __init__(self, source: CompetitionSource, uow: CompetitionUnitOfWork):
+    def __init__(self, source: CompetitionSource, uow: SyncUnitOfWork):
         self.source, self.uow = source, uow
 
     async def execute(self, command: SyncScheduleCommand) -> bool:
@@ -94,7 +94,7 @@ class SyncMeeting:
         self,
         source: CompetitionSource,
         reader: CompetitionReader,
-        uow: CompetitionUnitOfWork,
+        uow: SyncUnitOfWork,
         clock: Callable[[], datetime],
     ):
         self.source, self.reader, self.uow, self.clock = source, reader, uow, clock
@@ -136,7 +136,7 @@ class SyncRegistrations:
         self,
         source: CompetitionSource,
         reader: CompetitionReader,
-        uow: CompetitionUnitOfWork,
+        uow: SyncUnitOfWork,
     ):
         self.source, self.reader, self.uow = source, reader, uow
 
@@ -191,7 +191,7 @@ class SyncStandings:
         self,
         source: CompetitionSource,
         reader: CompetitionReader,
-        uow: CompetitionUnitOfWork,
+        uow: SyncUnitOfWork,
     ):
         self.source, self.reader, self.uow = source, reader, uow
 

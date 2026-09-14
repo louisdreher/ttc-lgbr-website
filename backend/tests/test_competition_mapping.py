@@ -3,12 +3,12 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.core.competition.application.imports import (
+from app.core.competition.application.sync.imports import (
     ImportedGame,
     ImportedPlayer,
     MeetingDetails,
 )
-from app.core.competition.application.usecases.sync.mapping import apply_meeting
+from app.core.competition.application.sync.mapping import apply_meeting
 from app.core.competition.domain.matches import TeamMatch
 
 

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from app.bootstrap.competition import build_mytt_client
+from app.bootstrap.competition_sync import build_mytt_client
 
 REQUEST_DELAY = 1.0
 

@@ -25,7 +25,7 @@ core/competition/application/           execute(command), Ablauf und Transaktion
             unit_of_work.py            Session, Commit und Rollback
 ```
 
-`app/bootstrap/competition.py` setzt die konkreten Implementierungen zusammen.
+`app/bootstrap/competition_sync.py` setzt die konkreten Implementierungen zusammen.
 Settings, Datenbank-Engine, HTTP-Client und Uhr gelangen dadurch nicht in den Core.
 Der Client kennt keine Datenbank; die Persistenzadapter führen keine API-Abfragen aus.
 
@@ -45,10 +45,10 @@ Der Client kennt keine Datenbank; die Persistenzadapter führen keine API-Abfrag
 - `SyncHistory` wählt historische Begegnungen, Tabellen oder Mannschaftsmeldungen.
   Historische Spielpläne verwenden direkt `SyncSchedule`.
 
-`application/imports.py` enthält normale Python-Dataclasses für Spielplan,
+`application/sync/imports.py` enthält normale Python-Dataclasses für Spielplan,
 Begegnungsdetails, Spieler, Meldungen und Tabellenstände. Halbserien und
 Terminregeln liegen in der Domain; Mannschaftszuordnung und Übersetzung in
-Domainobjekte stehen in `application/usecases/sync/mapping.py`.
+Domainobjekte stehen in `application/sync/mapping.py`.
 Die Datenquelle liefert diese Typen. Externe JSON-Feldnamen und HTTP-Fehler
 werden im myTischtennis-Adapter übersetzt und verlassen diesen nicht.
 

@@ -1,8 +1,8 @@
 import argparse
 import logging
 
-from app.bootstrap.competition import build_backfill_match_events
-from app.core.competition.application.dto import BackfillMatchEventsCommand
+from app.bootstrap.competition_sync import build_backfill_match_events
+from app.core.competition.application.sync.dto import BackfillMatchEventsCommand
 
 logger = logging.getLogger(__name__)
 

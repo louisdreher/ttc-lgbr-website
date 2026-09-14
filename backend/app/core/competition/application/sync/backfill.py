@@ -1,9 +1,9 @@
-from app.core.competition.application.dto import BackfillMatchEventsCommand
-from app.core.competition.application.ports import CompetitionUnitOfWork
+from app.core.competition.application.sync.dto import BackfillMatchEventsCommand
+from app.core.competition.application.sync.ports import SyncUnitOfWork
 
 
 class BackfillMatchEvents:
-    def __init__(self, uow: CompetitionUnitOfWork):
+    def __init__(self, uow: SyncUnitOfWork):
         self.uow = uow
 
     def execute(self, command: BackfillMatchEventsCommand) -> tuple[int, int]:

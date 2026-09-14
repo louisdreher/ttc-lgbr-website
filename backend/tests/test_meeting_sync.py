@@ -12,8 +12,8 @@ from app.adapters.outbound.persistence.competition.matches import TeamMatch
 from app.adapters.outbound.persistence.competition.repository import (
     SqlCompetitionRepository,
 )
-from app.bootstrap.competition import build_competition
-from app.core.competition.application.dto import SyncMeetingCommand
+from app.bootstrap.competition_sync import build_competition
+from app.core.competition.application.sync.dto import SyncMeetingCommand
 
 
 @pytest.fixture

@@ -66,7 +66,7 @@ laden oder anlegen, fachliche Änderungen ausführen, Entities speichern und
 die Transaktion committen. Spieleridentitäten werden über den bestehenden
 Members-Port aufgelöst und als IDs an die Domain übergeben.
 
-`application/imports.py` definiert die DTOs der Quell- und Reader-Ports. Es enthält keine
+`application/sync/imports.py` definiert die DTOs der Quell- und Reader-Ports. Es enthält keine
 ORM-Klassen. Der bisherige SQL-Importadapter wurde durch `repository.py`
 ersetzt; Importentscheidungen befinden sich nun in Application und Domain.
 
@@ -102,14 +102,24 @@ Datenbankspalten reichen aus; es ist keine Migration nötig. Der PlayerLookup
 verwendet eine eigene Lesesession, die Unit of Work speichert die Aufstellung atomar.
 
 
-Die Competition-Usecases liegen in `application/usecases/`. Allgemeine schreibende
-Usecases stehen in `commands.py`, lesende in `queries.py`. Der Unterordner `sync/`
-enthält `commands.py` für einzelne Synchronisierungen, `batches.py` für Sammelimporte
-und `backfill.py` für den nachträglichen Event-Abgleich. DTOs, Ports und Fehler
-bleiben direkt in `application/`; der `RegistrationReportReader` steht in `ports.py`.
+Allgemeine Usecases und Verträge liegen direkt in `application/`:
+`commands.py`, `dto.py`, `ports.py`, `errors.py`. Die vollständige Sync-Anwendung
+liegt unter `application/sync/`: `commands.py`, `batches.py`, `backfill.py`,
+`queries.py`, `mapping.py`, `dto.py`, `imports.py`, `ports.py`, `errors.py`.
+Der Meldungsbericht gehört zur Sync-Diagnose. Beide Bereiche definieren eigene Repository- und Unit-of-Work-Ports.
+Der allgemeine Repository-Port enthält `get_team`, `registration_for_category`
+und `save_team`; der Sync-Port enthält die Zugriffe für Synchronisierungen.
+`SyncUnitOfWork` verwendet den Sync-Repository-Port sowie Importspieler und Event-Abgleich.
+Beide Verträge werden weiterhin von denselben SQL-Adaptern erfüllt.
+Die allgemeine Application importiert keine Sync-Typen.
 
 Die Domain importiert keine Application-DTOs. `original_schedule` bleibt als
 Terminregel in `domain/matches.py`; der Abgleich importierter Mannschaftsmeldungen
-liegt in `application/usecases/sync/mapping.py`. Vorhandene externe ID-Felder und
+liegt in `application/sync/mapping.py`. Vorhandene externe ID-Felder und
 die Importmarkierung bleiben aus Kompatibilitätsgründen erhalten. Ihre Auslagerung
 ist nicht Teil dieser Trennung; Datenbankschema und gespeicherte Werte ändern sich nicht.
+
+
+Die Verdrahtung ist getrennt: `bootstrap/competition.py` baut allgemeine Usecases
+auf; `bootstrap/competition_sync.py` baut Sync-Usecases, myTT-Client, Backfill
+und Meldungsbericht auf. Die Factory-Funktionsnamen bleiben unverändert.

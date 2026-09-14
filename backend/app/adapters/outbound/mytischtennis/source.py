@@ -6,7 +6,8 @@ from datetime import datetime
 
 import httpx
 
-from app.core.competition.application.imports import (
+from app.core.competition.application.sync.errors import SourceError
+from app.core.competition.application.sync.imports import (
     GroupReference,
     ImportedGame,
     ImportedPlayer,
@@ -17,7 +18,6 @@ from app.core.competition.application.imports import (
     ScheduleSnapshot,
     Standing,
 )
-from app.core.competition.application.ports import SourceError
 from app.core.competition.domain.seasons import SeasonKey
 
 logger = logging.getLogger(__name__)

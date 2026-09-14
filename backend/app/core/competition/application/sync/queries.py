@@ -1,4 +1,4 @@
-from app.core.competition.application.ports import RegistrationReportReader
+from app.core.competition.application.sync.ports import RegistrationReportReader
 
 
 class GetRegistrationReport:
