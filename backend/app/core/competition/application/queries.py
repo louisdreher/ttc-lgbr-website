@@ -1,7 +1,9 @@
 from app.core.competition.application.dto import (
     GetScheduleQuery,
+    GetTeamStandingsQuery,
     ListTeamsQuery,
     ScheduledMatchSummary,
+    StandingSummary,
     TeamSummary,
 )
 from app.core.competition.application.ports import CompetitionReader
@@ -23,3 +25,11 @@ class GetSchedule:
         if query.date_from > query.date_to:
             raise ValueError("Das Startdatum darf nicht nach dem Enddatum liegen.")
         return self.reader.get_schedule(query)
+
+
+class GetTeamStandings:
+    def __init__(self, reader: CompetitionReader):
+        self.reader = reader
+
+    def execute(self, query: GetTeamStandingsQuery) -> list[StandingSummary]:
+        return self.reader.get_team_standings(query)

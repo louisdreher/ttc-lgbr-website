@@ -2,8 +2,10 @@ from typing import Protocol, Self
 
 from app.core.competition.application.dto import (
     GetScheduleQuery,
+    GetTeamStandingsQuery,
     ListTeamsQuery,
     ScheduledMatchSummary,
+    StandingSummary,
     TeamSummary,
 )
 from app.core.competition.domain.teams import RegistrationPosition, Team
@@ -18,9 +20,11 @@ class CompetitionRepository(Protocol):
 
 
 class CompetitionReader(Protocol):
-    def get_schedule(
-        self, query: GetScheduleQuery
-    ) -> list[ScheduledMatchSummary]: ...
+    def get_team_standings(
+        self, query: GetTeamStandingsQuery
+    ) -> list[StandingSummary]: ...
+
+    def get_schedule(self, query: GetScheduleQuery) -> list[ScheduledMatchSummary]: ...
 
     def list_teams(self, query: ListTeamsQuery) -> list[TeamSummary]: ...
 

@@ -17,7 +17,11 @@ from app.bootstrap.events import build_sync_match_event
 from app.core.competition.application.commands import (
     AssignPlayerToTeam,
 )
-from app.core.competition.application.queries import GetSchedule, ListTeams
+from app.core.competition.application.queries import (
+    GetSchedule,
+    GetTeamStandings,
+    ListTeams,
+)
 
 
 def build_assign_player_to_team(session_factory=None) -> AssignPlayerToTeam:
@@ -42,3 +46,8 @@ def build_list_teams(session_factory=None) -> ListTeams:
 def build_get_schedule(session_factory=None) -> GetSchedule:
     session_factory = session_factory or (lambda: Session(engine))
     return GetSchedule(SqlCompetitionReader(session_factory))
+
+
+def build_get_team_standings(session_factory=None) -> GetTeamStandings:
+    session_factory = session_factory or (lambda: Session(engine))
+    return GetTeamStandings(SqlCompetitionReader(session_factory))

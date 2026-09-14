@@ -46,3 +46,27 @@ class ScheduledMatchSummary:
     is_completed: bool
     score_ttc: int | None
     score_opponent: int | None
+
+
+@dataclass(frozen=True)
+class GetTeamStandingsQuery:
+    team_id: int
+
+
+@dataclass(frozen=True)
+class StandingSummary:
+    team_name: str
+    position: int
+    is_selected_team: bool
+    meetings_count: int
+    meetings_won: int
+    meetings_tie: int
+    meetings_lost: int
+    points_won: int
+    points_lost: int
+    matches_won: int
+    matches_lost: int
+    sets_won: int
+    sets_lost: int
+    games_won: int
+    games_lost: int

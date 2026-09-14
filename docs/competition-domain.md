@@ -138,3 +138,12 @@ HTTP ist noch nicht implementiert; die Abfrage löst keinen Sync aus.
 
 Lesende Usecases (`ListTeams`, `GetSchedule`) liegen in `application/queries.py`.
 `AssignPlayerToTeam` bleibt in `application/commands.py`.
+
+
+`GetTeamStandings.execute(GetTeamStandingsQuery(team_id))` liefert die gespeicherte
+Tabelle der Ligagruppe dieser Mannschaft als Liste von `StandingSummary`.
+Sortiert wird nach Platzierung und Tabellenzeilen-ID. `is_selected_team` markiert
+die gewählte Mannschaft. Das DTO enthält Begegnungs-, Punkte-, Spiel-, Satz- und
+Ballstatistiken. Unbekannte Mannschaften oder fehlende Tabellen liefern `[]`.
+Bootstrap bietet `build_get_team_standings()`. Die Abfrage ist rein lesend,
+ohne myTT-Sync; HTTP ist noch nicht implementiert.

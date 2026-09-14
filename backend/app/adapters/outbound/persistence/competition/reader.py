@@ -16,8 +16,10 @@ from app.adapters.outbound.persistence.competition.seasons import (
 from app.adapters.outbound.persistence.competition.teams import Team
 from app.core.competition.application.dto import (
     GetScheduleQuery,
+    GetTeamStandingsQuery,
     ListTeamsQuery,
     ScheduledMatchSummary,
+    StandingSummary,
     TeamSummary,
 )
 from app.core.competition.application.sync.imports import (
@@ -195,4 +197,34 @@ class SqlCompetitionReader:
             return [
                 ScheduledMatchSummary(**row._mapping)
                 for row in session.exec(statement).all()
+            ]
+
+    def get_team_standings(self, query: GetTeamStandingsQuery) -> list[StandingSummary]:
+        statement = (
+            select(
+                LeagueTableEntry.team_name,
+                LeagueTableEntry.position,
+                (LeagueTableEntry.mytt_team_id == Team.mytt_team_id).label(
+                    "is_selected_team"
+                ),
+                LeagueTableEntry.meetings_count,
+                LeagueTableEntry.meetings_won,
+                LeagueTableEntry.meetings_tie,
+                LeagueTableEntry.meetings_lost,
+                LeagueTableEntry.points_won,
+                LeagueTableEntry.points_lost,
+                LeagueTableEntry.matches_won,
+                LeagueTableEntry.matches_lost,
+                LeagueTableEntry.sets_won,
+                LeagueTableEntry.sets_lost,
+                LeagueTableEntry.games_won,
+                LeagueTableEntry.games_lost,
+            )
+            .join(Team, Team.league_group_id == LeagueTableEntry.league_group_id)
+            .where(Team.id == query.team_id)
+            .order_by(LeagueTableEntry.position, LeagueTableEntry.id)
+        )
+        with self.session_factory() as session:
+            return [
+                StandingSummary(**row._mapping) for row in session.exec(statement).all()
             ]
