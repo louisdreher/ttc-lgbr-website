@@ -8,20 +8,34 @@ from app.adapters.outbound.persistence.competition.leagues import (
     LeagueGroup,
     LeagueTableEntry,
 )
-from app.adapters.outbound.persistence.competition.matches import TeamMatch
+from app.adapters.outbound.persistence.competition.matches import (
+    Match,
+    MatchLineup,
+    MatchParticipant,
+    SetResult,
+    TeamMatch,
+    TeamMatchNotice,
+)
 from app.adapters.outbound.persistence.competition.seasons import Season
 from app.adapters.outbound.persistence.competition.seasons import (
     SeasonHalf as StoredSeasonHalf,
 )
 from app.adapters.outbound.persistence.competition.teams import Team
 from app.core.competition.application.dto import (
+    GetMatchDetailsQuery,
     GetScheduleQuery,
     GetTeamStandingsQuery,
     ListTeamsQuery,
+    MatchDetails,
+    MatchGame,
+    MatchLineupEntry,
+    MatchNotice,
+    MatchSet,
     ScheduledMatchSummary,
     StandingSummary,
     TeamSummary,
 )
+from app.core.competition.application.ports import MatchPlayerReader
 from app.core.competition.application.sync.imports import (
     GroupReference,
     MeetingReference,
@@ -30,8 +44,13 @@ from app.core.competition.domain.seasons import SeasonHalf, SeasonKey
 
 
 class SqlCompetitionReader:
-    def __init__(self, session_factory: Callable[[], Session]):
+    def __init__(
+        self,
+        session_factory: Callable[[], Session],
+        players: MatchPlayerReader | None = None,
+    ):
         self.session_factory = session_factory
+        self.players = players
 
     def meeting(self, match_id: int) -> MeetingReference:
         with self.session_factory() as session:
@@ -228,3 +247,110 @@ class SqlCompetitionReader:
             return [
                 StandingSummary(**row._mapping) for row in session.exec(statement).all()
             ]
+
+    def get_match_details(self, query: GetMatchDetailsQuery) -> MatchDetails | None:
+        with self.session_factory() as session:
+            row = session.exec(
+                select(TeamMatch, Team.name)
+                .join(Team, Team.id == TeamMatch.team_id)
+                .where(TeamMatch.id == query.team_match_id)
+            ).first()
+            if row is None:
+                return None
+            meeting, team_name = row
+            result = MatchDetails(
+                id=meeting.id,
+                team_id=meeting.team_id,
+                team_name=team_name,
+                opponent_name=meeting.opponent_name,
+                is_home=meeting.is_home,
+                scheduled_at=meeting.scheduled_at,
+                original_scheduled_at=meeting.original_scheduled_at,
+                started_at=meeting.started_at,
+                ended_at=meeting.ended_at,
+                status=meeting.status,
+                is_completed=meeting.is_completed,
+                score_ttc=meeting.score_ttc,
+                score_opponent=meeting.score_opponent,
+                play_mode=meeting.play_mode,
+                venue_name=meeting.venue_name,
+                venue_street=meeting.venue_street,
+                venue_city=meeting.venue_city,
+                details_available=meeting.details_imported_at is not None,
+                notices=[
+                    MatchNotice(str(item.code), item.info)
+                    for item in session.exec(
+                        select(TeamMatchNotice)
+                        .where(TeamMatchNotice.team_match_id == meeting.id)
+                        .order_by(TeamMatchNotice.code)
+                    ).all()
+                ],
+            )
+            if not result.details_available:
+                return result
+            lineup = session.exec(
+                select(MatchLineup)
+                .where(MatchLineup.team_match_id == meeting.id)
+                .order_by(
+                    MatchLineup.position.asc().nulls_last(), MatchLineup.player_id
+                )
+            ).all()
+            games = session.exec(
+                select(Match)
+                .where(Match.team_match_id == meeting.id)
+                .order_by(Match.sequence, Match.id)
+            ).all()
+            participants = session.exec(
+                select(MatchParticipant)
+                .join(Match, Match.id == MatchParticipant.match_id)
+                .where(Match.team_match_id == meeting.id)
+                .order_by(MatchParticipant.match_id, MatchParticipant.player_id)
+            ).all()
+            sets = session.exec(
+                select(SetResult)
+                .join(Match, Match.id == SetResult.match_id)
+                .where(Match.team_match_id == meeting.id)
+                .order_by(SetResult.match_id, SetResult.set_number)
+            ).all()
+            player_ids = {item.player_id for item in lineup} | {
+                item.player_id for item in participants
+            }
+            if self.players is None:
+                raise RuntimeError(
+                    "Spieler-Reader für Begegnungsdetails wurde nicht verdrahtet."
+                )
+            players = self.players.read_players(player_ids)
+            result.lineup.extend(
+                MatchLineupEntry(
+                    players[item.player_id], item.position, item.doubles_pair
+                )
+                for item in lineup
+            )
+            participants_by_game = {}
+            sets_by_game = {}
+            for item in participants:
+                participants_by_game.setdefault(item.match_id, []).append(item)
+            for item in sets:
+                sets_by_game.setdefault(item.match_id, []).append(
+                    MatchSet(item.set_number, item.points_ttc, item.points_opponent)
+                )
+            for game in games:
+                entries = participants_by_game.get(game.id, [])
+                result.games.append(
+                    MatchGame(
+                        id=game.id,
+                        sequence=game.sequence,
+                        game_type=str(game.game_type),
+                        name=game.match_name,
+                        players=[players[item.player_id] for item in entries],
+                        opponent_names=list(
+                            dict.fromkeys(
+                                item.opponent_name
+                                for item in entries
+                                if item.opponent_name
+                            )
+                        ),
+                        sets=sets_by_game.get(game.id, []),
+                    )
+                )
+            return result

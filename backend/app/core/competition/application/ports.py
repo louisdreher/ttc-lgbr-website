@@ -1,9 +1,12 @@
 from typing import Protocol, Self
 
 from app.core.competition.application.dto import (
+    GetMatchDetailsQuery,
     GetScheduleQuery,
     GetTeamStandingsQuery,
     ListTeamsQuery,
+    MatchDetails,
+    MatchPlayer,
     ScheduledMatchSummary,
     StandingSummary,
     TeamSummary,
@@ -20,6 +23,8 @@ class CompetitionRepository(Protocol):
 
 
 class CompetitionReader(Protocol):
+    def get_match_details(self, query: GetMatchDetailsQuery) -> MatchDetails | None: ...
+
     def get_team_standings(
         self, query: GetTeamStandingsQuery
     ) -> list[StandingSummary]: ...
@@ -39,3 +44,7 @@ class CompetitionUnitOfWork(Protocol):
     def __enter__(self) -> Self: ...
     def __exit__(self, exc_type, exc_value, traceback) -> None: ...
     def commit(self) -> None: ...
+
+
+class MatchPlayerReader(Protocol):
+    def read_players(self, player_ids: set[int]) -> dict[int, MatchPlayer]: ...

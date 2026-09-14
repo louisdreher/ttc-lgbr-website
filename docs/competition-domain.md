@@ -147,3 +147,16 @@ die gewählte Mannschaft. Das DTO enthält Begegnungs-, Punkte-, Spiel-, Satz- u
 Ballstatistiken. Unbekannte Mannschaften oder fehlende Tabellen liefern `[]`.
 Bootstrap bietet `build_get_team_standings()`. Die Abfrage ist rein lesend,
 ohne myTT-Sync; HTTP ist noch nicht implementiert.
+
+
+`GetMatchDetails.execute(GetMatchDetailsQuery(team_match_id))` liefert verschachtelte
+Begegnungsdetails: Grunddaten, Spielort, Hinweise, tatsächliche Aufstellung sowie
+Einzel/Doppel mit Spielern, Gegnernamen und geordneten Satzergebnissen. Punkte
+bleiben vereinsbezogen (`points_ttc`/`points_opponent`), auch bei Auswärtsspielen.
+Gegnernamen werden als gespeicherte Texte übernommen; bei Doppeln kann ein Text
+beide Namen enthalten. Interne `TeamAssignment`-Planungen werden nicht verwendet.
+Unbekannte IDs führen zu `MatchNotFoundError`. Ohne Importmarkierung bleiben
+Detail-Listen leer und `details_available=False`. Der Mitgliederadapter liefert
+über `MatchPlayerReader` nur Spieler-ID und Namen, keine privaten Kontaktdaten.
+Abfragen erfolgen gebündelt, maximal sieben SELECTs statt Abfragen pro Einzelspiel.
+Bootstrap: `build_get_match_details()`. Kein Live-Sync, kein HTTP-Endpunkt.
