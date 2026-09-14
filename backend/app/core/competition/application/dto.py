@@ -138,3 +138,26 @@ class MatchDetails:
     notices: list[MatchNotice] = field(default_factory=list)
     lineup: list[MatchLineupEntry] = field(default_factory=list)
     games: list[MatchGame] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class GetTeamLineupQuery:
+    team_id: int
+
+
+@dataclass(frozen=True)
+class TeamLineupEntry:
+    player_id: int
+    first_name: str
+    last_name: str
+    position: int | None
+    status: str | None
+
+
+@dataclass(frozen=True)
+class TeamLineup:
+    team_id: int
+    team_name: str
+    season_id: int
+    category: str | None
+    players: list[TeamLineupEntry] = field(default_factory=list)

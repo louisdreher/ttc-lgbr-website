@@ -1,14 +1,19 @@
 from app.core.competition.application.dto import (
     GetMatchDetailsQuery,
     GetScheduleQuery,
+    GetTeamLineupQuery,
     GetTeamStandingsQuery,
     ListTeamsQuery,
     MatchDetails,
     ScheduledMatchSummary,
     StandingSummary,
+    TeamLineup,
     TeamSummary,
 )
-from app.core.competition.application.errors import MatchNotFoundError
+from app.core.competition.application.errors import (
+    MatchNotFoundError,
+    TeamNotFoundError,
+)
 from app.core.competition.application.ports import CompetitionReader
 
 
@@ -46,4 +51,15 @@ class GetMatchDetails:
         result = self.reader.get_match_details(query)
         if result is None:
             raise MatchNotFoundError(query.team_match_id)
+        return result
+
+
+class GetTeamLineup:
+    def __init__(self, reader: CompetitionReader):
+        self.reader = reader
+
+    def execute(self, query: GetTeamLineupQuery) -> TeamLineup:
+        result = self.reader.get_team_lineup(query)
+        if result is None:
+            raise TeamNotFoundError(query.team_id)
         return result

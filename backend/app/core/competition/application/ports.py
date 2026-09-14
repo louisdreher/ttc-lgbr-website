@@ -3,12 +3,14 @@ from typing import Protocol, Self
 from app.core.competition.application.dto import (
     GetMatchDetailsQuery,
     GetScheduleQuery,
+    GetTeamLineupQuery,
     GetTeamStandingsQuery,
     ListTeamsQuery,
     MatchDetails,
     MatchPlayer,
     ScheduledMatchSummary,
     StandingSummary,
+    TeamLineup,
     TeamSummary,
 )
 from app.core.competition.domain.teams import RegistrationPosition, Team
@@ -23,6 +25,8 @@ class CompetitionRepository(Protocol):
 
 
 class CompetitionReader(Protocol):
+    def get_team_lineup(self, query: GetTeamLineupQuery) -> TeamLineup | None: ...
+
     def get_match_details(self, query: GetMatchDetailsQuery) -> MatchDetails | None: ...
 
     def get_team_standings(

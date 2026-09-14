@@ -201,3 +201,55 @@ def test_automatic_assignment_replaces_manual_order(database):
     usecase.execute(AssignPlayerToTeamCommand(1, 1, position=2))
     usecase.execute(AssignPlayerToTeamCommand(1, 2))
     assert lineup(database) == [(2, 1, None), (1, 2, None), (3, 3, None)]
+
+
+def test_read_internal_lineup_in_position_order(database):
+    from app.adapters.outbound.persistence.competition.teams import TeamAssignment
+    from app.bootstrap.competition import build_get_team_lineup
+    from app.core.competition.application.dto import GetTeamLineupQuery
+
+    with Session(database) as session:
+        session.add_all(
+            [
+                TeamAssignment(
+                    team_id=1, player_id=1, position=2, status="Ersatzspieler"
+                ),
+                TeamAssignment(team_id=1, player_id=2, position=1),
+                TeamAssignment(team_id=1, player_id=3, position=None),
+                TeamAssignment(team_id=2, player_id=4, position=1),
+            ]
+        )
+        session.commit()
+    usecase = build_get_team_lineup(lambda: Session(database))
+    result = usecase.execute(GetTeamLineupQuery(1))
+    assert (result.team_id, result.team_name, result.season_id, result.category) == (
+        1,
+        "Team 1",
+        1,
+        "H",
+    )
+    assert [player.player_id for player in result.players] == [2, 1, 3]
+    assert [player.position for player in result.players] == [1, 2, None]
+    assert result.players[1].status == "Ersatzspieler"
+    assert result.players[0].status is None
+    assert result.players[0].first_name == "2"
+    assert result.players[0].last_name == "Test"
+
+
+def test_team_with_memberships_but_without_assignments_has_empty_lineup(database):
+    from app.bootstrap.competition import build_get_team_lineup
+    from app.core.competition.application.dto import GetTeamLineupQuery
+
+    usecase = build_get_team_lineup(lambda: Session(database))
+    result = usecase.execute(GetTeamLineupQuery(1))
+    assert result.team_id == 1
+    assert result.players == []
+
+
+def test_read_unknown_team_lineup_raises(database):
+    from app.bootstrap.competition import build_get_team_lineup
+    from app.core.competition.application.dto import GetTeamLineupQuery
+
+    usecase = build_get_team_lineup(lambda: Session(database))
+    with pytest.raises(TeamNotFoundError):
+        usecase.execute(GetTeamLineupQuery(999))

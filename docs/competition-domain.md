@@ -160,3 +160,13 @@ Detail-Listen leer und `details_available=False`. Der Mitgliederadapter liefert
 über `MatchPlayerReader` nur Spieler-ID und Namen, keine privaten Kontaktdaten.
 Abfragen erfolgen gebündelt, maximal sieben SELECTs statt Abfragen pro Einzelspiel.
 Bootstrap: `build_get_match_details()`. Kein Live-Sync, kein HTTP-Endpunkt.
+
+
+`GetTeamLineup.execute(GetTeamLineupQuery(team_id))` liest ausschließlich die interne
+Aufstellung aus `TeamAssignment`, nicht die externe Meldung oder eine Spielaufstellung.
+`TeamLineup` enthält Mannschaftsname, Saison-ID, Kategorie und Spieler mit Namen,
+Position und optionalem Status. Sortierung: Position aufsteigend, fehlende Positionen
+zuletzt, bei Gleichstand Spieler-ID. Es wird nicht neu sortiert oder gespeichert.
+Ohne Zuordnungen bleibt `players` leer; unbekannte Teams führen zu `TeamNotFoundError`.
+Bootstrap: `build_get_team_lineup()`. Spielernamen kommen gebündelt über den bereits
+vorhandenen Spieler-Reader. Kein HTTP-Endpunkt, keine Datenbankänderung.

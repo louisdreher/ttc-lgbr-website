@@ -20,10 +20,11 @@ from app.adapters.outbound.persistence.competition.seasons import Season
 from app.adapters.outbound.persistence.competition.seasons import (
     SeasonHalf as StoredSeasonHalf,
 )
-from app.adapters.outbound.persistence.competition.teams import Team
+from app.adapters.outbound.persistence.competition.teams import Team, TeamAssignment
 from app.core.competition.application.dto import (
     GetMatchDetailsQuery,
     GetScheduleQuery,
+    GetTeamLineupQuery,
     GetTeamStandingsQuery,
     ListTeamsQuery,
     MatchDetails,
@@ -33,6 +34,8 @@ from app.core.competition.application.dto import (
     MatchSet,
     ScheduledMatchSummary,
     StandingSummary,
+    TeamLineup,
+    TeamLineupEntry,
     TeamSummary,
 )
 from app.core.competition.application.ports import MatchPlayerReader
@@ -353,4 +356,38 @@ class SqlCompetitionReader:
                         sets=sets_by_game.get(game.id, []),
                     )
                 )
+            return result
+
+    def get_team_lineup(self, query: GetTeamLineupQuery) -> TeamLineup | None:
+        with self.session_factory() as session:
+            team = session.get(Team, query.team_id)
+            if team is None:
+                return None
+            assignments = session.exec(
+                select(TeamAssignment)
+                .where(TeamAssignment.team_id == team.id)
+                .order_by(
+                    TeamAssignment.position.asc().nulls_last(), TeamAssignment.player_id
+                )
+            ).all()
+            result = TeamLineup(team.id, team.name, team.season_id, team.category)
+            if not assignments:
+                return result
+            if self.players is None:
+                raise RuntimeError(
+                    "Spieler-Reader für die Aufstellung wurde nicht verdrahtet."
+                )
+            players = self.players.read_players(
+                {item.player_id for item in assignments}
+            )
+            result.players.extend(
+                TeamLineupEntry(
+                    item.player_id,
+                    players[item.player_id].first_name,
+                    players[item.player_id].last_name,
+                    item.position,
+                    item.status,
+                )
+                for item in assignments
+            )
             return result

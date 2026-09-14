@@ -21,6 +21,7 @@ from app.core.competition.application.commands import (
 from app.core.competition.application.queries import (
     GetMatchDetails,
     GetSchedule,
+    GetTeamLineup,
     GetTeamStandings,
     ListTeams,
 )
@@ -58,5 +59,12 @@ def build_get_team_standings(session_factory=None) -> GetTeamStandings:
 def build_get_match_details(session_factory=None) -> GetMatchDetails:
     session_factory = session_factory or (lambda: Session(engine))
     return GetMatchDetails(
+        SqlCompetitionReader(session_factory, SqlMatchPlayerReader(session_factory))
+    )
+
+
+def build_get_team_lineup(session_factory=None) -> GetTeamLineup:
+    session_factory = session_factory or (lambda: Session(engine))
+    return GetTeamLineup(
         SqlCompetitionReader(session_factory, SqlMatchPlayerReader(session_factory))
     )
