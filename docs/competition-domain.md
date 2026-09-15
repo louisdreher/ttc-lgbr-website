@@ -134,7 +134,7 @@ alle Teams berücksichtigt, sonst nur die angegebenen IDs. Eine Mannschaft-ID ge
 zu einer Saison/Halbserie; die Abfrage benötigt keinen separaten Saisonfilter.
 Kategorie und Teams werden als gemeinsame Einschränkungen behandelt. Ohne Treffer
 wird eine leere Liste geliefert. Bootstrap bietet `build_get_schedule()`.
-HTTP ist noch nicht implementiert; die Abfrage löst keinen Sync aus.
+Die Abfrage löst keinen Sync aus; HTTP-Zugriff siehe unten.
 
 Lesende Usecases (`ListTeams`, `GetSchedule`) liegen in `application/queries.py`.
 `AssignPlayerToTeam` bleibt in `application/commands.py`.
@@ -146,7 +146,7 @@ Sortiert wird nach Platzierung und Tabellenzeilen-ID. `is_selected_team` markier
 die gewählte Mannschaft. Das DTO enthält Begegnungs-, Punkte-, Spiel-, Satz- und
 Ballstatistiken. Unbekannte Mannschaften oder fehlende Tabellen liefern `[]`.
 Bootstrap bietet `build_get_team_standings()`. Die Abfrage ist rein lesend,
-ohne myTT-Sync; HTTP ist noch nicht implementiert.
+ohne myTT-Sync; HTTP-Zugriff siehe unten.
 
 
 `GetMatchDetails.execute(GetMatchDetailsQuery(team_match_id))` liefert verschachtelte
@@ -159,7 +159,7 @@ Unbekannte IDs führen zu `MatchNotFoundError`. Ohne Importmarkierung bleiben
 Detail-Listen leer und `details_available=False`. Der Mitgliederadapter liefert
 über `MatchPlayerReader` nur Spieler-ID und Namen, keine privaten Kontaktdaten.
 Abfragen erfolgen gebündelt, maximal sieben SELECTs statt Abfragen pro Einzelspiel.
-Bootstrap: `build_get_match_details()`. Kein Live-Sync, kein HTTP-Endpunkt.
+Bootstrap: `build_get_match_details()`. Kein Live-Sync; HTTP-Zugriff siehe unten.
 
 
 `GetTeamLineup.execute(GetTeamLineupQuery(team_id))` liest ausschließlich die interne
@@ -169,7 +169,7 @@ Position und optionalem Status. Sortierung: Position aufsteigend, fehlende Posit
 zuletzt, bei Gleichstand Spieler-ID. Es wird nicht neu sortiert oder gespeichert.
 Ohne Zuordnungen bleibt `players` leer; unbekannte Teams führen zu `TeamNotFoundError`.
 Bootstrap: `build_get_team_lineup()`. Spielernamen kommen gebündelt über den bereits
-vorhandenen Spieler-Reader. Kein HTTP-Endpunkt, keine Datenbankänderung.
+vorhandenen Spieler-Reader. Keine Datenbankänderung; HTTP-Zugriff siehe unten.
 
 
 `RemovePlayerFromTeam.execute(RemovePlayerFromTeamCommand(team_id, player_id))`
@@ -187,4 +187,28 @@ Speichern und Entfernen erfolgen in einer Transaktion. HTTP ist noch nicht vorha
 innerhalb eines Jahresbereichs Rückrunde vor Vorrunde. Auch Saisons ohne
 Mannschaften werden geliefert; eine leere Datenbank ergibt `[]`.
 Ohne Eingabeparameter ist kein Query-DTO erforderlich. Bootstrap:
-`build_list_seasons()`. Kein Sync und kein HTTP-Endpunkt.
+`build_list_seasons()`. Kein Sync; HTTP-Zugriff siehe unten.
+
+
+## Lesende HTTP-Schnittstellen
+
+Alle Endpunkte liegen unter `/api/competition`:
+
+| GET-Pfad | Parameter | Zugriff |
+| --- | --- | --- |
+| `/seasons` | keine | öffentlich |
+| `/teams` | `season_id`, optional `category` | öffentlich |
+| `/schedule` | `date_from`, `date_to`, optional wiederholtes `team_ids`, `category` | öffentlich |
+| `/teams/{team_id}/standings` | Mannschaft-ID | öffentlich |
+| `/matches/{match_id}` | Begegnungs-ID | öffentlich |
+| `/teams/{team_id}/lineup` | Mannschaft-ID | ADMIN |
+
+Beispiel: `/api/competition/schedule?date_from=2026-09-01&date_to=2026-09-30&team_ids=1&team_ids=2`.
+Ohne `team_ids` werden alle Mannschaften berücksichtigt. IDs müssen positiv sein;
+fehlende oder ungültige Parameter sowie umgekehrte Zeiträume ergeben 422.
+Unbekannte Begegnungen und (bei berechtigtem Zugriff) unbekannte Mannschaften beim
+Lineup ergeben 404. Andere Listenabfragen liefern bei fehlenden Treffern `[]`.
+Die interne Aufstellung ist vorerst nur mit ADMIN-Rolle erreichbar (401 ohne Anmeldung,
+403 ohne Rolle). Öffentliche Begegnungsdetails enthalten Spielernamen, keine privaten
+Mitgliedsdaten. Die Router verwenden eigene Response-Modelle und Bootstrap-Dependencies.
+Es erfolgen keine Sync-Aufrufe oder Schreiboperationen.
