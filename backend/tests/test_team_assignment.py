@@ -253,3 +253,74 @@ def test_read_unknown_team_lineup_raises(database):
     usecase = build_get_team_lineup(lambda: Session(database))
     with pytest.raises(TeamNotFoundError):
         usecase.execute(GetTeamLineupQuery(999))
+
+
+@pytest.mark.parametrize("removed", [1, 2, 3])
+def test_remove_player_preserves_order_status_and_membership(database, removed):
+    from app.adapters.outbound.persistence.competition.teams import TeamAssignment
+    from app.bootstrap.competition import build_remove_player_from_team
+    from app.core.competition.application.dto import RemovePlayerFromTeamCommand
+
+    with Session(database) as session:
+        session.add_all(
+            [
+                TeamAssignment(
+                    team_id=1,
+                    player_id=i,
+                    position=4 - i,
+                    status="Ersatzspieler" if i == 1 else None,
+                )
+                for i in (1, 2, 3)
+            ]
+        )
+        session.add(TeamAssignment(team_id=2, player_id=removed, position=1))
+        session.commit()
+    usecase = build_remove_player_from_team(lambda: Session(database))
+    command = RemovePlayerFromTeamCommand(1, removed)
+    usecase.execute(command)
+    expected = [
+        (i, position, "Ersatzspieler" if i == 1 else None)
+        for position, i in enumerate([i for i in (3, 2, 1) if i != removed], 1)
+    ]
+    assert lineup(database) == expected
+    usecase.execute(command)
+    assert lineup(database) == expected
+    with Session(database) as session:
+        assert session.get(TeamAssignment, (2, removed)) is not None
+        assert session.get(TeamMembership, (1, 1)) is not None
+
+
+def test_remove_last_player_and_unknown_team(database):
+    from app.bootstrap.competition import build_remove_player_from_team
+    from app.core.competition.application.dto import RemovePlayerFromTeamCommand
+
+    build_assign_player_to_team(lambda: Session(database)).execute(
+        AssignPlayerToTeamCommand(1, 1)
+    )
+    usecase = build_remove_player_from_team(lambda: Session(database))
+    usecase.execute(RemovePlayerFromTeamCommand(1, 1))
+    assert lineup(database) == []
+    usecase.execute(RemovePlayerFromTeamCommand(1, 999))
+    with pytest.raises(TeamNotFoundError):
+        usecase.execute(RemovePlayerFromTeamCommand(999, 1))
+
+
+def test_remove_rolls_back_on_failure(database, monkeypatch):
+    from app.bootstrap.competition import build_remove_player_from_team
+    from app.core.competition.application.dto import RemovePlayerFromTeamCommand
+
+    build_assign_player_to_team(lambda: Session(database)).execute(
+        AssignPlayerToTeamCommand(1, 1)
+    )
+    original = SqlCompetitionRepository.save_team
+
+    def fail_after_save(self, team):
+        original(self, team)
+        raise RuntimeError("save failed")
+
+    monkeypatch.setattr(SqlCompetitionRepository, "save_team", fail_after_save)
+    with pytest.raises(RuntimeError, match="save failed"):
+        build_remove_player_from_team(lambda: Session(database)).execute(
+            RemovePlayerFromTeamCommand(1, 1)
+        )
+    assert lineup(database) == [(1, 1, None)]

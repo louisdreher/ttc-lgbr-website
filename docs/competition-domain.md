@@ -170,3 +170,13 @@ zuletzt, bei Gleichstand Spieler-ID. Es wird nicht neu sortiert oder gespeichert
 Ohne Zuordnungen bleibt `players` leer; unbekannte Teams führen zu `TeamNotFoundError`.
 Bootstrap: `build_get_team_lineup()`. Spielernamen kommen gebündelt über den bereits
 vorhandenen Spieler-Reader. Kein HTTP-Endpunkt, keine Datenbankänderung.
+
+
+`RemovePlayerFromTeam.execute(RemovePlayerFromTeamCommand(team_id, player_id))`
+entfernt eine interne Zuordnung. `Team.remove_player` erhält die bestehende
+Reihenfolge (Position, dann Spieler-ID; fehlende Positionen zuletzt) und vergibt
+Positionen lückenlos ab 1. Es erfolgt kein Abgleich mit externen Meldungsrängen.
+Statuswerte, Meldungen und Zuordnungen in anderen Mannschaften bleiben erhalten.
+Fehlende Zuordnungen sind ein unveränderter Erfolg, unbekannte Mannschaften führen
+zu `TeamNotFoundError`. Bootstrap: `build_remove_player_from_team()`.
+Speichern und Entfernen erfolgen in einer Transaktion. HTTP ist noch nicht vorhanden.

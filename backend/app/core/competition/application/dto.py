@@ -161,3 +161,9 @@ class TeamLineup:
     season_id: int
     category: str | None
     players: list[TeamLineupEntry] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class RemovePlayerFromTeamCommand:
+    team_id: int
+    player_id: int

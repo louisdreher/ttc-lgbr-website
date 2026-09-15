@@ -130,6 +130,18 @@ class Team:
 
         self.assignments = assignments
 
+    def remove_player(self, player_id: int) -> bool:
+        remaining = [item for item in self.assignments if item.player_id != player_id]
+        if len(remaining) == len(self.assignments):
+            return False
+        remaining.sort(
+            key=lambda item: (item.position is None, item.position or 0, item.player_id)
+        )
+        for position, item in enumerate(remaining, start=1):
+            item.position = position
+        self.assignments = remaining
+        return True
+
 
 @dataclass(kw_only=True)
 class TeamMembership:

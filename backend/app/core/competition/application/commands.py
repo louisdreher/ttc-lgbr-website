@@ -1,5 +1,6 @@
 from app.core.competition.application.dto import (
     AssignPlayerToTeamCommand,
+    RemovePlayerFromTeamCommand,
 )
 from app.core.competition.application.errors import (
     PlayerNotFoundError,
@@ -40,5 +41,20 @@ class AssignPlayerToTeam:
                 status=command.status,
             )
 
+            self.uow.repository.save_team(team)
+            self.uow.commit()
+
+
+class RemovePlayerFromTeam:
+    def __init__(self, uow: CompetitionUnitOfWork):
+        self.uow = uow
+
+    def execute(self, command: RemovePlayerFromTeamCommand) -> None:
+        with self.uow:
+            team = self.uow.repository.get_team(command.team_id)
+            if team is None:
+                raise TeamNotFoundError(command.team_id)
+            if not team.remove_player(command.player_id):
+                return
             self.uow.repository.save_team(team)
             self.uow.commit()

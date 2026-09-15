@@ -17,6 +17,7 @@ from app.adapters.outbound.persistence.members.player_lookup import SqlPlayerLoo
 from app.bootstrap.events import build_sync_match_event
 from app.core.competition.application.commands import (
     AssignPlayerToTeam,
+    RemovePlayerFromTeam,
 )
 from app.core.competition.application.queries import (
     GetMatchDetails,
@@ -67,4 +68,18 @@ def build_get_team_lineup(session_factory=None) -> GetTeamLineup:
     session_factory = session_factory or (lambda: Session(engine))
     return GetTeamLineup(
         SqlCompetitionReader(session_factory, SqlMatchPlayerReader(session_factory))
+    )
+
+
+def build_remove_player_from_team(session_factory=None) -> RemovePlayerFromTeam:
+    session_factory = session_factory or (lambda: Session(engine))
+    return RemovePlayerFromTeam(
+        SqlCompetitionUnitOfWork(
+            session_factory,
+            SqlCompetitionRepository,
+            lambda session: CompetitionMatchEvents(
+                session, build_sync_match_event(session)
+            ),
+            SqlImportedPlayers,
+        )
     )
