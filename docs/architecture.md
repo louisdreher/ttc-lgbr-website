@@ -66,14 +66,17 @@ The backend is split into technical infrastructure and domain-oriented code:
 
 - `app/bootstrap`: settings, logging, and use-case composition;
 - `app/adapters/outbound/persistence`: database setup and migrated persistence adapters;
-- `app/adapters/inbound`: migrated HTTP adapters and the match-to-event bridge;
+- `app/adapters/inbound`: HTTP and CLI adapters;
+- `app/adapters/outbound/competition`: the match-to-event bridge;
 - `app/core/auth`: framework-free authentication use cases and refresh sessions;
 - `app/core/users`: users and roles;
 - `app/adapters/outbound/persistence/members`: member/player storage and imported-player adapter;
-- `app/core/content`: events, articles, galleries, and media metadata;
+- `app/core/content`: event and article application/domain code;
+- `app/adapters/outbound/persistence/media`: media and gallery storage;
 - `app/core/competition`: seasons, teams, matches, and league tables;
 - `app/adapters/outbound/mytischtennis`: external API access and response mapping;
-- `app/core/competition/application`: current and historical import use cases;
+- `app/core/competition/application`: general reads and internal lineup commands;
+- `app/core/competition/application/sync`: current/historical imports and backfill;
 
 Scheduled synchronization is planned; there is no active scheduler.
 
@@ -81,7 +84,8 @@ Scheduled synchronization is planned; there is no active scheduler.
 to run with `backend/` as the working directory, or otherwise make that package
 root available explicitly.
 
-The content domain is divided into `events`, `articles`, and `media`. `Event`
+Content concerns include events, articles, and media; media currently has
+persistence models without standalone core workflows. `Event`
 acts as the shared editorial context and calendar entry. It may reference a
 `TeamMatch`, but the competition domain remains the owner of match data and
 does not depend on content models. Articles and galleries may exist without an
@@ -98,7 +102,8 @@ actions, and forms for creating and editing entries. The public event API only
 returns public, non-match events in the requested date range. Its Angular page
 offers list and calendar views as well as date and category filters. Team
 matches are deliberately excluded from this public endpoint; their future
-public presentation remains a separate concern.
+frontend presentation remains a separate concern. Competition has its own
+public reading API for schedules and match details.
 
 The article draft-creation workflow uses a framework-free domain, a
 `CreateArticle.execute(command)` use case, repository/unit-of-work ports,
@@ -121,7 +126,7 @@ uses this structure for CRUD, categories, queries, bulk actions, and match
 synchronization. Articles follows the same architecture for its existing
 draft-creation workflow. Users and Auth now follow this structure as well,
 including password/JWT adapters and HTTP permission dependencies outside the core.
-See [the Users/Auth walkthrough](users-auth-architecture.md). Competition imports
+See [the Users/Auth walkthrough](users-auth-architecture.md). Competition reads, internal lineup commands, and imports
 also use application classes and ports. Members and Media persistence models
 have been moved without introducing unused application layers.
 
@@ -140,7 +145,7 @@ app/
   bootstrap/              settings, logging, and wiring support
 ```
 
-This structure is implemented for Events, article draft creation, Users, and Auth. Database setup is located in
+This structure is implemented for Competition, Events, article draft creation, Users, and Auth. Database setup is located in
 `app/adapters/outbound/persistence/database.py`. Competition tables live in
 `persistence/competition`, member tables in `persistence/members`, and media
 and gallery tables in `persistence/media`. New cross-component interactions
@@ -178,8 +183,7 @@ cases and query objects directly. Write operations may use immutable command
 DTOs, domain objects, and repository ports. Read operations may use dedicated
 reader ports and optimized result DTOs without reconstructing complete domain
 objects. HTTP request and response schemas remain separate from
-transport-independent application DTOs where that separation provides a
-clear boundary.
+transport-independent application DTOs.
 
 Components should expose explicit public contracts and must not depend on the
 internal implementation of another component. Direct calls are acceptable
@@ -194,12 +198,66 @@ tradeoffs, and migration constraints.
 See [the Events walkthrough](events-architecture.md) for concrete files,
 transaction boundaries, and the remaining integration compromises.
 
-Events use cases are classes with constructor-injected ports and an `execute`
+Use cases are classes with constructor-injected ports and an `execute`
 method. Write inputs use command DTOs; read inputs use query DTOs when needed.
 `app/bootstrap/events.py` composes these classes with SQL adapters. HTTP
 dependencies supply request-scoped sessions to those factories, and routers
 receive ready-to-use use cases. The match import uses the same composition
 module with its existing transaction session.
+
+## Competition conventions and current scope
+
+The component is an organizational boundary containing multiple aggregates,
+such as `Team` with memberships/assignments and `TeamMatch` with games and sets.
+An aggregate does not need a dedicated folder or an `Aggregate` base class.
+`SeasonKey` is a domain value object alongside `Season` and `SeasonHalf`.
+
+```text
+core/competition/
+  domain/                 seasons.py, teams.py, matches.py, leagues.py
+  application/
+    commands.py           general writes
+    queries.py            general reads
+    dto.py                command/query inputs and results
+    ports.py              general reader, repository, unit-of-work contracts
+    errors.py
+    sync/                 sync use cases and their own contracts/DTOs
+      commands.py, batches.py, backfill.py, queries.py, mapping.py
+      dto.py, imports.py, ports.py, errors.py
+bootstrap/
+  competition.py          general factories
+  competition_sync.py     sync factories, client, backfill, diagnostics
+adapters/inbound/http/competition/
+  router.py, dependencies.py, schemas.py
+```
+
+Use cases expose `execute(command)` or `execute(query)`; parameterless reads
+use `execute()` without an empty query object. DTOs are frozen dataclasses.
+The domain never imports application DTOs. Sync mapping translates source data
+into domain objects; provider JSON stays in the myTischtennis adapter. Existing
+external ID fields and import markers remain in the domain models as a documented
+compatibility compromise, not a reason to import provider code into the domain.
+
+General and sync reader/repository/unit-of-work ports are separate. Their SQL
+implementations may be shared. Repository methods do not commit; write use cases
+control the unit of work. Reader methods return projections instead of loading
+complete aggregates. Read queries never start an external synchronization.
+
+The HTTP flow is: router `Depends(provide_...)` -> HTTP `dependencies.py` ->
+bootstrap factory -> use case with concrete adapters. FastAPI supplies that use
+case to the router. The router builds a core query and returns its result through
+an explicit response schema. Authorization dependencies run before protected
+operations; application errors are translated to HTTP errors by the router.
+
+Implemented reads: `ListSeasons`, `ListTeams`, `GetSchedule`, `GetTeamStandings`,
+`GetMatchDetails`, `GetTeamLineup`. Their GET routes are under `/api/competition`;
+internal lineup requires ADMIN, while the other reads are public. Core commands
+`AssignPlayerToTeam` and `RemovePlayerFromTeam` exist, but their HTTP write routes
+are still planned. The frontend has not been extended for these Competition APIs.
+
+See [Competition details and endpoint contracts](competition-domain.md) and
+[the sync walkthrough](mytischtennis-architecture.md). For agent entry points and
+mandatory conventions, see [backend/AGENTS.md](../backend/AGENTS.md).
 
 ## Authentication
 
