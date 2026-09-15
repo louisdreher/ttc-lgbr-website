@@ -147,3 +147,10 @@ Die generierten PostgreSQL-Tabellen- und Indexdefinitionen wurden vor und nach
 dem Umbau verglichen. Das Schema und die Migrationen bleiben unverändert.
 Es wurden keine echten myTischtennis-Aufrufe oder Imports gegen die lokale
 PostgreSQL-Datenbank als Teil dieses Umbaus ausgeführt.
+
+## Import-Ereignisvertrag
+
+`TeamMatchResultsImported` beschreibt den ersten erfolgreichen Detailimport.
+`ImportOrigin` unterscheidet CURRENT, HISTORY und MANUAL; direkte Imports verwenden MANUAL.
+Aktuelle und historische Batches reichen ihre Herkunft explizit weiter.
+Die Ereignisspeicherung und Verarbeitung folgen in weiteren Schritten.

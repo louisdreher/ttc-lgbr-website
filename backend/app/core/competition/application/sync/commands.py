@@ -127,7 +127,11 @@ class SyncExternalMeeting:
 
     async def execute(self, command: SyncExternalMeetingCommand) -> bool:
         return await self.meeting.execute(
-            SyncMeetingCommand(self.reader.match_id(command.external_id), command.force)
+            SyncMeetingCommand(
+                self.reader.match_id(command.external_id),
+                force=command.force,
+                import_origin=command.import_origin,
+            )
         )
 
 

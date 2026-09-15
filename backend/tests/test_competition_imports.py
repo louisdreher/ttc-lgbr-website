@@ -4,15 +4,11 @@ import subprocess
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock
-
-import httpx
-import pytest
-from sqlalchemy import event
-from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine, select
+from unittest.mock import AsyncMock, Mock
 
 import app.model_registry  # noqa: F401
+import httpx
+import pytest
 from app.adapters.outbound.competition.events import CompetitionMatchEvents
 from app.adapters.outbound.mytischtennis.source import MyTischtennisSource
 from app.adapters.outbound.persistence.competition.leagues import (
@@ -34,9 +30,12 @@ from app.adapters.outbound.persistence.competition.repository import (
 from app.adapters.outbound.persistence.competition.teams import TeamMembership
 from app.adapters.outbound.persistence.events.models import Event
 from app.bootstrap.competition_sync import build_competition
+from app.core.competition.application.events import ImportOrigin
 from app.core.competition.application.sync.batches import ImportBatch
+from app.core.competition.application.sync.commands import SyncExternalMeeting
 from app.core.competition.application.sync.dto import (
     SyncCurrentCommand,
+    SyncExternalMeetingCommand,
     SyncGroupCommand,
     SyncHistoryCommand,
     SyncMeetingCommand,
@@ -44,6 +43,9 @@ from app.core.competition.application.sync.dto import (
 )
 from app.core.competition.application.sync.errors import SourceError
 from app.core.competition.domain.seasons import SeasonHalf, SeasonKey
+from sqlalchemy import event
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine, select
 
 SEASON = SeasonKey(2026, 2027, SeasonHalf.VR)
 
@@ -201,6 +203,14 @@ def seed(imports):
         ).one()
 
 
+
+
+
+
+
+
+
+
 def test_schedule_idempotency_rescheduling_notices_and_events(imports):
     engine, client, usecases, _ = imports
     match_id, _ = seed(imports)
@@ -314,6 +324,52 @@ def test_empty_or_invalid_table_preserves_existing_rows(imports, response):
         assert not asyncio.run(usecases.standings.execute(command))
     with Session(engine) as session:
         assert session.exec(select(LeagueTableEntry)).one().team_name == "TTC I"
+
+
+@pytest.mark.parametrize(
+    "workflow,command,origin",
+    [
+        ("current", SyncCurrentCommand("meetings"), ImportOrigin.CURRENT),
+        ("history", SyncHistoryCommand("meetings"), ImportOrigin.HISTORY),
+    ],
+)
+def test_meeting_batches_pass_their_import_origin(
+    imports, monkeypatch, workflow, command, origin
+):
+    _, _, usecases, _ = imports
+    seed(imports)
+    execute = AsyncMock(return_value=True)
+    monkeypatch.setattr(usecases.meeting, "execute", execute)
+
+    summary = asyncio.run(getattr(usecases, workflow).execute(command))
+
+    assert summary.imported == 1
+    execute.assert_awaited_once()
+    assert execute.await_args.args[0].import_origin is origin
+
+
+@pytest.mark.parametrize("origin", list(ImportOrigin))
+def test_external_meeting_preserves_origin_and_force(origin):
+    reader = Mock()
+    reader.match_id.return_value = 123
+    meeting = Mock()
+    meeting.execute = AsyncMock(return_value=True)
+
+    assert asyncio.run(
+        SyncExternalMeeting(reader, meeting).execute(
+            SyncExternalMeetingCommand(456, force=True, import_origin=origin)
+        )
+    )
+
+    reader.match_id.assert_called_once_with(456)
+    meeting.execute.assert_awaited_once_with(
+        SyncMeetingCommand(123, force=True, import_origin=origin)
+    )
+
+
+def test_direct_meeting_import_defaults_to_manual_origin():
+    assert SyncMeetingCommand(123).import_origin is ImportOrigin.MANUAL
+    assert SyncExternalMeetingCommand(456).import_origin is ImportOrigin.MANUAL
 
 
 def test_current_and_historical_imports_share_usecases(imports):

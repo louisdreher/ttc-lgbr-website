@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 
+from app.core.competition.application.events import ImportOrigin
 from app.core.competition.domain.seasons import SeasonKey
 
 
@@ -17,12 +18,14 @@ class SyncScheduleCommand:
 class SyncMeetingCommand:
     team_match_id: int
     force: bool = False
+    import_origin: ImportOrigin = ImportOrigin.MANUAL
 
 
 @dataclass(frozen=True)
 class SyncExternalMeetingCommand:
     external_id: int
     force: bool = False
+    import_origin: ImportOrigin = ImportOrigin.MANUAL
 
 
 @dataclass(frozen=True)

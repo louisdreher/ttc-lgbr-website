@@ -2,6 +2,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from datetime import date, datetime
 
+from app.core.competition.application.events import ImportOrigin
 from app.core.competition.application.sync.commands import (
     SyncMeeting,
     SyncRegistrations,
@@ -114,7 +115,9 @@ class SyncCurrent:
         if command.kind == "meetings":
             return await self.batch.run(
                 self.reader.pending_match_ids(season_id=season_id),
-                lambda match_id: self.meetings.execute(SyncMeetingCommand(match_id)),
+                lambda match_id: self.meetings.execute(
+                    SyncMeetingCommand(match_id, import_origin=ImportOrigin.CURRENT)
+                ),
             )
         operation = (
             self.registrations if command.kind == "registrations" else self.standings
@@ -147,7 +150,9 @@ class SyncHistory:
         if command.kind == "meetings":
             return await self.batch.run(
                 self.reader.pending_match_ids(before=self.clock()),
-                lambda match_id: self.meetings.execute(SyncMeetingCommand(match_id)),
+                lambda match_id: self.meetings.execute(
+                    SyncMeetingCommand(match_id, import_origin=ImportOrigin.HISTORY)
+                ),
                 attempts=3,
                 delay=1.5,
                 retry_delay=5,
