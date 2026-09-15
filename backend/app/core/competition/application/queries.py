@@ -6,6 +6,7 @@ from app.core.competition.application.dto import (
     ListTeamsQuery,
     MatchDetails,
     ScheduledMatchSummary,
+    SeasonSummary,
     StandingSummary,
     TeamLineup,
     TeamSummary,
@@ -63,3 +64,11 @@ class GetTeamLineup:
         if result is None:
             raise TeamNotFoundError(query.team_id)
         return result
+
+
+class ListSeasons:
+    def __init__(self, reader: CompetitionReader):
+        self.reader = reader
+
+    def execute(self) -> list[SeasonSummary]:
+        return self.reader.list_seasons()

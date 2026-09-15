@@ -1,5 +1,3 @@
-from sqlmodel import Session
-
 from app.adapters.outbound.competition.events import CompetitionMatchEvents
 from app.adapters.outbound.persistence.competition.reader import SqlCompetitionReader
 from app.adapters.outbound.persistence.competition.repository import (
@@ -24,8 +22,10 @@ from app.core.competition.application.queries import (
     GetSchedule,
     GetTeamLineup,
     GetTeamStandings,
+    ListSeasons,
     ListTeams,
 )
+from sqlmodel import Session
 
 
 def build_assign_player_to_team(session_factory=None) -> AssignPlayerToTeam:
@@ -83,3 +83,8 @@ def build_remove_player_from_team(session_factory=None) -> RemovePlayerFromTeam:
             SqlImportedPlayers,
         )
     )
+
+
+def build_list_seasons(session_factory=None) -> ListSeasons:
+    session_factory = session_factory or (lambda: Session(engine))
+    return ListSeasons(SqlCompetitionReader(session_factory))

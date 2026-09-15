@@ -180,3 +180,11 @@ Statuswerte, Meldungen und Zuordnungen in anderen Mannschaften bleiben erhalten.
 Fehlende Zuordnungen sind ein unveränderter Erfolg, unbekannte Mannschaften führen
 zu `TeamNotFoundError`. Bootstrap: `build_remove_player_from_team()`.
 Speichern und Entfernen erfolgen in einer Transaktion. HTTP ist noch nicht vorhanden.
+
+
+`ListSeasons.execute()` liefert alle gespeicherten Saisons/Halbserien als
+`SeasonSummary` (ID, Startjahr, Endjahr, Halbserie). Neueste Saison zuerst,
+innerhalb eines Jahresbereichs Rückrunde vor Vorrunde. Auch Saisons ohne
+Mannschaften werden geliefert; eine leere Datenbank ergibt `[]`.
+Ohne Eingabeparameter ist kein Query-DTO erforderlich. Bootstrap:
+`build_list_seasons()`. Kein Sync und kein HTTP-Endpunkt.

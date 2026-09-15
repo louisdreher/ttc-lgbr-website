@@ -9,6 +9,7 @@ from app.core.competition.application.dto import (
     MatchDetails,
     MatchPlayer,
     ScheduledMatchSummary,
+    SeasonSummary,
     StandingSummary,
     TeamLineup,
     TeamSummary,
@@ -25,6 +26,8 @@ class CompetitionRepository(Protocol):
 
 
 class CompetitionReader(Protocol):
+    def list_seasons(self) -> list[SeasonSummary]: ...
+
     def get_team_lineup(self, query: GetTeamLineupQuery) -> TeamLineup | None: ...
 
     def get_match_details(self, query: GetMatchDetailsQuery) -> MatchDetails | None: ...

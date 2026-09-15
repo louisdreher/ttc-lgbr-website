@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
+from app.core.competition.domain.seasons import SeasonHalf
 from app.core.competition.domain.teams import AssignmentStatus
 
 
@@ -167,3 +168,11 @@ class TeamLineup:
 class RemovePlayerFromTeamCommand:
     team_id: int
     player_id: int
+
+
+@dataclass(frozen=True)
+class SeasonSummary:
+    id: int
+    start_year: int
+    end_year: int
+    half: SeasonHalf

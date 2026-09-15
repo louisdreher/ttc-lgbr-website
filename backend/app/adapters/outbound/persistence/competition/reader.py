@@ -2,8 +2,6 @@ from collections.abc import Callable
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlmodel import Session, select
-
 from app.adapters.outbound.persistence.competition.leagues import (
     LeagueGroup,
     LeagueTableEntry,
@@ -33,6 +31,7 @@ from app.core.competition.application.dto import (
     MatchNotice,
     MatchSet,
     ScheduledMatchSummary,
+    SeasonSummary,
     StandingSummary,
     TeamLineup,
     TeamLineupEntry,
@@ -44,6 +43,8 @@ from app.core.competition.application.sync.imports import (
     MeetingReference,
 )
 from app.core.competition.domain.seasons import SeasonHalf, SeasonKey
+from sqlalchemy import case
+from sqlmodel import Session, select
 
 
 class SqlCompetitionReader:
@@ -391,3 +392,17 @@ class SqlCompetitionReader:
                 for item in assignments
             )
             return result
+
+    def list_seasons(self) -> list[SeasonSummary]:
+        statement = select(
+            Season.id, Season.start_year, Season.end_year, Season.half
+        ).order_by(
+            Season.start_year.desc(),
+            Season.end_year.desc(),
+            case((Season.half == SeasonHalf.RR, 0), else_=1),
+            Season.id,
+        )
+        with self.session_factory() as session:
+            return [
+                SeasonSummary(**row._mapping) for row in session.exec(statement).all()
+            ]
