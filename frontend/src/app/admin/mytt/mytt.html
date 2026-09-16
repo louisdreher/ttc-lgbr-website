@@ -1,0 +1,123 @@
+<header class="page-heading">
+  <p class="eyebrow">Administration</p>
+  <h1>MyTischtennis</h1>
+  <p>Automatische Abgleiche, Spielabrufe und Nachrichten verwalten.</p>
+</header>
+
+<div class="actions">
+  <button class="primary" type="button" (click)="requestSync()" [disabled]="requesting() || !status() || status()?.state?.requested">
+    {{ requesting() ? 'Wird angefordert …' : 'Jetzt synchronisieren' }}
+  </button>
+  <button type="button" (click)="refresh()" [disabled]="statusLoading() || outboxLoading()">Status aktualisieren</button>
+</div>
+<p>Automatische Aktualisierung alle 15 Sekunden. Zeitangaben in deiner lokalen Zeitzone; Nachtlauf in Europe/Berlin.</p>
+@if (updatedAt(); as updated) { <p>Zuletzt aktualisiert: {{ updated | date:'dd.MM.yyyy HH:mm:ss' }}</p> }
+<div role="status">{{ notice() }}</div>
+@if (actionError()) { <p class="error" role="alert">{{ actionError() }}</p> }
+@if (statusError()) { <p class="error" role="alert">{{ statusError() }}</p> }
+@if (statusLoading() && !status()) { <p role="status">Status wird geladen …</p> }
+
+@if (status(); as value) {
+  <section class="card" aria-labelledby="worker-heading">
+    <h2 id="worker-heading">Worker und nächste Abrufe</h2>
+    <p role="status"><strong>{{ statusError() ? 'Worker-Erreichbarkeit unbekannt' : workerOnline() ? 'Worker erreichbar' : 'Worker nicht erreichbar' }}</strong></p>
+    <p>Letztes Lebenszeichen: {{ (value.heartbeat_at | date:'dd.MM.yyyy HH:mm:ss') ?? 'Noch keines empfangen' }}.
+      Nach 90 Sekunden ohne Lebenszeichen gilt der Worker als nicht erreichbar.</p>
+    @if (!workerOnline()) { <p>Ohne erreichbaren Worker können Anforderungen offen bleiben. Ein laufender Auftrag ist dann nicht sicher als aktiv einzustufen.</p> }
+    @if (value.state.requested) { <p class="info" role="status"><strong>Angefordert</strong> – ein allgemeiner Abgleich wartet auf den Worker. Bei laufendem Auftrag ist er zusätzlich vorgemerkt.</p> }
+    @if (value.running && !uncertain()) { <p>Läuft – der Worker bearbeitet einen Auftrag.</p> }
+    @if (value.stale_run) { <p class="error">Offener Lauf ohne aktuelles Lebenszeichen: möglicherweise unterbrochen.</p> }
+    @if (!value.settings.enabled) { <p>Automatik deaktiviert. Manuelle Anforderungen bleiben möglich; bereits gestartete Abrufe werden nicht abgebrochen.</p> }
+    <dl>
+      <dt>Nächster allgemeiner Nachtlauf</dt><dd>{{ (value.next_nightly_at | date:'dd.MM.yyyy HH:mm') ?? 'Nicht geplant' }}</dd>
+      <dt>Nächster Einzelspielabruf</dt><dd>{{ (value.next_match_at | date:'dd.MM.yyyy HH:mm') ?? 'Nicht geplant' }}</dd>
+    </dl>
+    <p>Dies sind Fälligkeiten, keine garantierten Startzeiten. Das Lebenszeichen bestätigt nicht die Erreichbarkeit von myTischtennis.</p>
+  </section>
+  <div class="grid">
+    <section class="card" aria-labelledby="latest-heading">
+      <h2 id="latest-heading">Aktueller / letzter Auftrag</h2>
+      <app-sync-run [run]="value.state.last_run" [uncertain]="uncertain()" />
+    </section>
+    <section class="card" aria-labelledby="general-heading">
+      <h2 id="general-heading">Letzter allgemeiner Abgleich</h2>
+      <app-sync-run [run]="value.state.nightly_run" [uncertain]="uncertain()" />
+      <p>Zuletzt vollständig erfolgreich: {{ (value.state.last_nightly_success_at | date:'dd.MM.yyyy HH:mm') ?? 'Noch nie' }}</p>
+    </section>
+  </div>
+  @if (value.state.last_error) {
+    <section class="card" aria-labelledby="error-heading">
+      <h2 id="error-heading">Zuletzt beobachteter Fehler</h2>
+      <p>{{ value.state.last_error_at | date:'dd.MM.yyyy HH:mm:ss' }} · {{ value.state.last_error }}</p>
+      <p>Dieser Fehler bleibt auch nach späteren erfolgreichen Abrufen sichtbar.</p>
+    </section>
+  }
+}
+
+<section class="card" aria-labelledby="settings-heading">
+  <h2 id="settings-heading">Einstellungen</h2>
+  @if (settingsLoading()) { <p role="status">Einstellungen werden geladen …</p> }
+  @if (settingsError()) {
+    <p class="error" role="alert">{{ settingsError() }}</p>
+    @if (!settingsReady()) { <button type="button" (click)="loadSettings()" [disabled]="settingsLoading()">Erneut laden</button> }
+  }
+  @if (settingsReady()) {
+    <form [formGroup]="form" (ngSubmit)="saveSettings()">
+      <fieldset [disabled]="saving()">
+        <legend class="visually-hidden">Zeitplanung und Umfang</legend>
+        <label class="check"><input type="checkbox" formControlName="enabled"> Automatik aktivieren</label>
+        <div class="grid fields">
+          <label>Nachtlauf (Europe/Berlin)
+            <input type="time" formControlName="nightly_time" required aria-describedby="settings-help" [attr.aria-invalid]="form.controls.nightly_time.touched && form.controls.nightly_time.invalid">
+          </label>
+          <label>Wartezeit nach Spielbeginn (Minuten)
+            <input type="number" formControlName="result_delay_minutes" min="0" max="1440" step="1" required aria-describedby="settings-help" [attr.aria-invalid]="form.controls.result_delay_minutes.touched && form.controls.result_delay_minutes.invalid">
+          </label>
+          <label>Wiederholungsintervall (Minuten)
+            <input type="number" formControlName="result_retry_minutes" min="5" max="1440" step="1" required aria-describedby="settings-help" [attr.aria-invalid]="form.controls.result_retry_minutes.touched && form.controls.result_retry_minutes.invalid">
+          </label>
+          <label>Maximales Abruffenster (Stunden)
+            <input type="number" formControlName="result_retry_window_hours" min="1" max="168" step="1" required aria-describedby="settings-help" [attr.aria-invalid]="form.controls.result_retry_window_hours.touched && form.controls.result_retry_window_hours.invalid">
+          </label>
+        </div>
+        <p id="settings-help">Wartezeit: 0–1440 Minuten; Intervall: 5–1440 Minuten; Abruffenster: 1–168 Stunden ab dem ersten vorgesehenen Abruf. Nur ganze Zahlen.</p>
+        <label class="check"><input type="checkbox" formControlName="include_tables"> Tabellen beim allgemeinen Abgleich laden</label>
+        <label class="check"><input type="checkbox" formControlName="include_registrations"> Aufstellungen beim allgemeinen Abgleich laden</label>
+        <p>Der Umfang gilt für Nachtläufe und manuelle allgemeine Abgleiche. Ungespeicherte Eingaben bleiben bei Statusaktualisierungen erhalten.</p>
+        @if (form.invalid && form.touched) { <p class="error" role="alert">Bitte eine gültige Uhrzeit und ganze Zahlen innerhalb der angegebenen Grenzen eingeben.</p> }
+        <button class="primary" type="submit" [disabled]="saving()">{{ saving() ? 'Wird gespeichert …' : 'Einstellungen speichern' }}</button>
+      </fieldset>
+    </form>
+  }
+</section>
+
+<section class="card" aria-labelledby="outbox-heading">
+  <h2 id="outbox-heading">Outbox</h2>
+  <p>Die letzten 20 Nachrichten. Verarbeitete oder aktuell reservierte Nachrichten können nicht erneut freigegeben werden.</p>
+  @if (outboxError()) { <p class="error" role="alert">{{ outboxError() }}</p> }
+  @if (outboxLoading() && !outbox().length) { <p role="status">Nachrichten werden geladen …</p> }
+  @else if (!outbox().length && !outboxError()) { <p>Keine Nachrichten vorhanden.</p> }
+  @if (outbox().length) {
+    <div class="table-wrapper" tabindex="0" role="region" aria-label="Outbox-Nachrichten, horizontal scrollbar">
+      <table>
+        <thead><tr><th scope="col">Nachricht</th><th scope="col">Status / Versuche</th><th scope="col">Zeitpunkte</th><th scope="col">Letzter Fehler</th><th scope="col">Aktion</th></tr></thead>
+        <tbody>
+          @for (message of outbox(); track message.event_id) {
+            <tr>
+              <td><strong>{{ message.event_type }}</strong><br>{{ message.event_id }}<br>{{ message.deduplication_key }}</td>
+              <td>{{ outboxState(message) }}<br>Versuche: {{ message.attempts }}</td>
+              <td>Erstellt: {{ message.occurred_at | date:'dd.MM.yyyy HH:mm:ss' }}
+                @if (message.processed_at) { <p>Verarbeitet: {{ message.processed_at | date:'dd.MM.yyyy HH:mm:ss' }}</p> }
+                @if (message.next_attempt_at) { <p>Nächster Versuch: {{ message.next_attempt_at | date:'dd.MM.yyyy HH:mm:ss' }}</p> }
+                @if (message.locked_until) { <p>Reserviert bis: {{ message.locked_until | date:'dd.MM.yyyy HH:mm:ss' }}</p> }
+                @if (message.failed_at) { <p>Fehlgeschlagen: {{ message.failed_at | date:'dd.MM.yyyy HH:mm:ss' }}</p> }
+              </td>
+              <td>{{ message.last_error ?? 'Keiner' }}</td>
+              <td><button type="button" (click)="retry(message)" [disabled]="!!retrying() || !canRetry(message)" [attr.aria-label]="'Nachricht ' + message.event_id + ' erneut freigeben'">{{ retrying() === message.event_id ? 'Wird freigegeben …' : 'Erneut freigeben' }}</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

@@ -146,8 +146,28 @@ Regeln: `core/competition/domain/sync_automation.py`. Usecases und Ports:
 `persistence/competition/automation.py`. Verdrahtung:
 `bootstrap/competition_automation.py`. HTTP: `competition/automation_*`.
 
+## Angular-Administration
+
+Unter `/admin/mytt` ist der Tab **MyTischtennis** für ADMIN verfügbar. Die
+Navigation blendet ihn für andere Rollen aus; ein eigener Route-Guard schützt
+auch den direkten Aufruf. Der vorhandene Auth-Interceptor übernimmt die Anmeldung.
+
+Status und die letzten 20 Outbox-Nachrichten werden beim Öffnen und alle 15 Sekunden
+geladen. Beim Verlassen werden Timer und offene HTTP-Aufrufe beendet. Fehler beim
+Aktualisieren kennzeichnen vorhandene Daten als möglicherweise veraltet. Das
+Einstellungsformular wird separat geladen, damit Polling keine Eingaben überschreibt.
+Gespeichert wird immer der vollständige Einstellungsdatensatz.
+
+Eine bestätigte Sync-Anforderung bedeutet **angefordert**, nicht abgeschlossen.
+Worker-Erreichbarkeit, aktueller/letzter Auftrag und letzter allgemeiner Abgleich
+werden getrennt angezeigt. Zeitstempel erscheinen in der lokalen Browser-Zeitzone;
+die eingegebene Nachtlaufzeit gilt weiterhin für Europe/Berlin. Die Outbox erlaubt
+erneute Freigaben unverarbeiteter, nicht aktiv reservierter Nachrichten und erklärt
+409-Konflikte, falls sich deren Zustand inzwischen geändert hat.
+
 Tests prüfen Nachtlauf, Sommer-/Winterzeit, Spieltermine, Wiederholungen,
 Konfigurationsänderungen, unterbrochene Läufe, Admin-Berechtigungen und den
 Abruf-bis-Bericht-Ablauf. PostgreSQL-Tests prüfen neue und bestehende Datenbanken,
 Schemaabgleich, gleichzeitige Änderungen und Prozesssperren ohne echte externe
-Abrufe. Der Admin-Tab selbst bleibt Frontend-Arbeit.
+Abrufe. Frontend-Tests prüfen außerdem ADMIN-Zugriff, Navigation, Polling und dessen
+Abbruch, 202-Anforderungen, Formulareingaben, Fehlerzustände und Outbox-Freigaben.

@@ -154,6 +154,11 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'mytt',
+        loadComponent: () => import('./admin/mytt/mytt').then(module => module.AdminMytt),
+        canActivate: [roleGuard('ADMIN')],
+      },
+      {
         path: 'users',
         component: AdminUsers,
         canActivate: [roleGuard('ADMIN')],
