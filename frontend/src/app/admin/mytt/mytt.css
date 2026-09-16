@@ -14,6 +14,10 @@ button:disabled { cursor: not-allowed; opacity: .65; }
 :is(button, input, .table-wrapper):focus-visible { outline: 3px solid #236a8d; outline-offset: 3px; }
 .error { color: #a51e1e; }
 .info { background: var(--club-primary-light); padding: .75rem; border-radius: .5rem; }
+.worker-badge { display: inline-block; padding: .4rem .75rem; border-radius: 1rem; color: #684500; background: #fff1ca; }
+.worker-badge.online { color: #185b2b; background: #e6f4ea; }
+.worker-badge.offline { color: #942323; background: #fceaea; }
+.updated { color: #525b65; font-size: .85rem; }
 dt { font-weight: 600; }
 dd { margin: .3rem 0 1rem; }
 fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }

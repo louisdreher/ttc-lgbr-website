@@ -51,3 +51,32 @@ export interface OutboxMessage {
   locked_until: string | null;
   failed_at: string | null;
 }
+
+export interface MatchReload {
+  team_match_id: number;
+  status: 'requested' | 'running' | 'succeeded' | 'failed';
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  last_error: string | null;
+}
+
+export interface SyncMatch {
+  id: number;
+  team_id: number;
+  team_name: string;
+  opponent_name: string;
+  is_home: boolean;
+  scheduled_at: string;
+  is_completed: boolean;
+  details_imported_at: string | null;
+  reload: MatchReload | null;
+  can_reload: boolean;
+  reload_blocked_reason: string | null;
+}
+
+export interface SyncMatchOverview {
+  imported: SyncMatch[];
+  missing_details: SyncMatch[];
+  upcoming: SyncMatch[];
+}

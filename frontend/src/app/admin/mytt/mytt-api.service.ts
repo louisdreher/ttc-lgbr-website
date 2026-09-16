@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { OutboxMessage, SyncSettings, SyncStatus } from './mytt.models';
+import { MatchReload, OutboxMessage, SyncMatchOverview, SyncSettings, SyncStatus } from './mytt.models';
 
 @Injectable({ providedIn: 'root' })
 export class MyttApiService {
@@ -8,6 +8,10 @@ export class MyttApiService {
   private readonly url = '/api/admin/mytt';
 
   getStatus() { return this.http.get<SyncStatus>(`${this.url}/status`); }
+  getMatches() { return this.http.get<SyncMatchOverview>(`${this.url}/matches`); }
+  reloadMatch(id: number) {
+    return this.http.post<MatchReload>(`${this.url}/matches/${id}/reload`, null);
+  }
   getSettings() { return this.http.get<SyncSettings>(`${this.url}/settings`); }
   saveSettings(settings: SyncSettings) {
     return this.http.put<SyncSettings>(`${this.url}/settings`, settings);

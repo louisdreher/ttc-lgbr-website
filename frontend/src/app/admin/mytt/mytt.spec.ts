@@ -32,6 +32,8 @@ describe('AdminMytt', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AdminMytt);
     component = fixture.componentInstance;
+    fixture.detectChanges();
+    http.expectOne(`${base}/matches`).flush({ imported: [], missing_details: [], upcoming: [] });
   });
   afterEach(() => { fixture.destroy(); http.verify(); vi.useRealTimers(); });
   function load(value = initialStatus()) {
@@ -45,7 +47,7 @@ describe('AdminMytt', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Status wird geladen');
     const value = initialStatus();
-    value.state.last_run = { kind: 'match', match_id: 42, started_at: value.heartbeat_at!, finished_at: null, status: 'waiting', imported: 0, skipped: 1, errors: ['Incomplete'] };
+    value.state.last_run = { kind: 'match', match_id: 42, started_at: value.heartbeat_at!, finished_at: null, status: 'running', imported: 0, skipped: 1, errors: ['Incomplete'] };
     value.state.nightly_run = { ...value.state.last_run, kind: 'nightly', match_id: null, status: 'succeeded', imported: 3, errors: [] };
     load(value);
     expect(fixture.nativeElement.textContent).toContain('Spiel-ID 42');
@@ -67,7 +69,8 @@ describe('AdminMytt', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Worker nicht erreichbar');
     expect(fixture.nativeElement.textContent).toContain('Angefordert');
-    expect(component.notice()).toContain('noch nicht abgeschlossen');
+    expect(component.syncLabel()).toBe('Angefordert');
+    expect(component.notice()).toBe('');
     component.requestSync();
     http.expectNone(`${base}/sync`);
   });
@@ -89,11 +92,13 @@ describe('AdminMytt', () => {
     load();
     component.form.controls.nightly_time.setValue('04:15');
     vi.advanceTimersByTime(15_000);
+    http.expectOne(`${base}/matches`).flush({ imported: [], missing_details: [], upcoming: [] });
     http.expectOne(`${base}/status`).flush(null, { status: 503, statusText: 'Unavailable' });
     http.expectOne(`${base}/outbox?limit=20`).flush([]);
     expect(component.statusError()).toContain('veraltet');
     expect(component.uncertain()).toBe(true);
     vi.advanceTimersByTime(15_000);
+    http.expectOne(`${base}/matches`).flush({ imported: [], missing_details: [], upcoming: [] });
     http.expectOne(`${base}/status`).flush(initialStatus());
     http.expectOne(`${base}/outbox?limit=20`).flush([]);
     expect(component.statusError()).toBe('');
@@ -128,6 +133,24 @@ describe('AdminMytt', () => {
     expect(component.form.controls.nightly_time.value).toBe('23:59');
     expect(component.settingsError()).toContain('Eingaben bleiben erhalten');
     expect(component.saving()).toBe(false);
+  });
+
+  it('uses a compact worker panel and hides completed individual tasks', () => {
+    const value = initialStatus();
+    value.state.last_run = { kind: 'match', match_id: 42, started_at: value.heartbeat_at!, finished_at: value.heartbeat_at, status: 'succeeded', imported: 1, skipped: 0, errors: [] };
+    load(value);
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Spielplan synchronisieren');
+    expect(text).toContain('Zuletzt aktualisiert');
+    expect(text).not.toContain('Letztes Lebenszeichen');
+    expect(text).not.toContain('Automatische Aktualisierung');
+    expect(text).not.toContain('Aktive Aufgabe');
+    expect(fixture.nativeElement.querySelector('.worker-badge.online')).toBeTruthy();
+    value.state.nightly_run = { ...value.state.last_run, kind: 'manual', status: 'running' };
+    component.status.set({ ...value });
+    expect(component.syncLabel()).toBe('Synchronisierung läuft');
+    component.requestSync();
+    http.expectNone(`${base}/sync`);
   });
 
   it('shows stale runs as uncertain and expires a heartbeat locally', () => {

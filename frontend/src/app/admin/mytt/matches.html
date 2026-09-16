@@ -1,0 +1,48 @@
+<section aria-labelledby="matches-heading">
+  <h2 id="matches-heading">Spiele</h2>
+  <p class="hint">Nachladen ergänzt die Spieldetails, ohne automatisch einen Berichtsentwurf zu erstellen.</p>
+  <p class="feedback" role="status">{{ feedback() }}</p>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+    <button type="button" (click)="refresh()" [disabled]="loading()">Spiele erneut laden</button>
+  }
+  @if (loading() && !overview()) { <p role="status">Spiele werden geladen …</p> }
+  @if (overview()) {
+    @for (group of groups(); track group.key) {
+      <details [open]="group.open">
+        <summary>{{ group.title }} <span class="count">{{ group.matches.length }}</span></summary>
+        @if (!group.matches.length) { <p class="empty">Keine Spiele in dieser Gruppe.</p> }
+        @else {
+          <div class="table-wrapper" tabindex="0" role="region" [attr.aria-label]="group.title">
+            <table>
+              <thead><tr><th scope="col">Spieltermin</th><th scope="col">Begegnung</th><th scope="col">Status</th><th scope="col">{{ group.key === 'missing_details' ? 'Aktion' : 'Detailimport' }}</th></tr></thead>
+              <tbody>
+                @for (match of group.matches; track match.id) {
+                  <tr>
+                    <td>{{ match.scheduled_at | date:'dd.MM.yyyy HH:mm' }}</td>
+                    <td><strong>{{ match.team_name }}</strong><br>{{ match.opponent_name }}<br><small>{{ match.is_home ? 'Heimspiel' : 'Auswärtsspiel' }}</small></td>
+                    <td>
+                      <span class="badge" [class.success]="!!match.details_imported_at" [class.failure]="match.reload?.status === 'failed' && !match.details_imported_at">{{ state(match) }}</span>
+                      @if (match.reload?.last_error && !match.details_imported_at) { <p class="error">{{ match.reload?.last_error }}</p> }
+                      @if (rowErrors()[match.id]) { <p class="error">{{ rowErrors()[match.id] }}</p> }
+                    </td>
+                    <td>
+                      @if (group.key === 'missing_details') {
+                        <button type="button" (click)="reload(match)" [disabled]="!match.can_reload || pending().has(match.id)"
+                          [attr.aria-label]="'Details nachladen: ' + match.team_name + ' gegen ' + match.opponent_name"
+                          [attr.aria-describedby]="!match.can_reload && match.reload_blocked_reason ? 'reload-reason-' + match.id : null">
+                          {{ pending().has(match.id) ? 'Wird angefordert …' : 'Details nachladen' }}
+                        </button>
+                        @if (!match.can_reload && match.reload_blocked_reason) { <p [id]="'reload-reason-' + match.id">{{ match.reload_blocked_reason }}</p> }
+                      } @else { {{ (match.details_imported_at | date:'dd.MM.yyyy HH:mm') ?? 'Noch nicht geladen' }} }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </details>
+    }
+  }
+</section>

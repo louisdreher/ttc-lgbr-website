@@ -7,10 +7,11 @@ import { finalize, interval, Subscription } from 'rxjs';
 import { MyttApiService } from './mytt-api.service';
 import { OutboxMessage, SyncSettings, SyncStatus } from './mytt.models';
 import { SyncRunComponent } from './sync-run';
+import { MyttMatches } from './matches';
 
 @Component({
   selector: 'app-admin-mytt',
-  imports: [DatePipe, ReactiveFormsModule, SyncRunComponent],
+  imports: [DatePipe, ReactiveFormsModule, SyncRunComponent, MyttMatches],
   templateUrl: './mytt.html',
   styleUrl: './mytt.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,6 +44,13 @@ export class AdminMytt {
       this.now() - Date.parse(value.heartbeat_at) <= 90_000;
   });
   readonly uncertain = computed(() => !!this.statusError() || !this.workerOnline() || !!this.status()?.stale_run);
+  readonly generalRunning = computed(() => this.status()?.state.nightly_run?.status === 'running');
+  readonly syncLabel = computed(() => {
+    if (this.requesting()) return 'Wird angefordert …';
+    if (this.status()?.state.requested) return 'Angefordert';
+    if (this.generalRunning()) return this.uncertain() ? 'Laufstatus unklar' : 'Synchronisierung läuft';
+    return 'Spielplan synchronisieren';
+  });
   readonly form = this.fb.group({
     enabled: true,
     nightly_time: ['03:00', [Validators.required, Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)]],
@@ -111,14 +119,13 @@ export class AdminMytt {
   }
 
   requestSync(): void {
-    if (this.requesting() || this.status()?.state.requested) return;
+    if (!this.status() || this.requesting() || this.status()?.state.requested || this.generalRunning()) return;
     this.requesting.set(true);
     this.actionError.set('');
     this.notice.set('');
     this.api.requestSync().pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.requesting.set(false))).subscribe({
       next: () => {
         this.status.update(value => value ? { ...value, state: { ...value.state, requested: true } } : value);
-        this.notice.set('Abgleich angefordert. Der separate Worker übernimmt die Anforderung; der Abgleich ist noch nicht abgeschlossen.');
         this.refreshStatus(true);
       },
       error: error => this.actionError.set(this.errorText(error, 'Anforderung konnte nicht bestätigt werden. Bitte Status aktualisieren, bevor du es erneut versuchst.')),

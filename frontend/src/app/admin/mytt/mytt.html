@@ -5,49 +5,50 @@
 </header>
 
 <div class="actions">
-  <button class="primary" type="button" (click)="requestSync()" [disabled]="requesting() || !status() || status()?.state?.requested">
-    {{ requesting() ? 'Wird angefordert …' : 'Jetzt synchronisieren' }}
+  <button class="primary" type="button" (click)="requestSync()" [disabled]="requesting() || !status() || status()?.state?.requested || generalRunning()">
+    {{ syncLabel() }}
   </button>
-  <button type="button" (click)="refresh()" [disabled]="statusLoading() || outboxLoading()">Status aktualisieren</button>
 </div>
-<p>Automatische Aktualisierung alle 15 Sekunden. Zeitangaben in deiner lokalen Zeitzone; Nachtlauf in Europe/Berlin.</p>
-@if (updatedAt(); as updated) { <p>Zuletzt aktualisiert: {{ updated | date:'dd.MM.yyyy HH:mm:ss' }}</p> }
 <div role="status">{{ notice() }}</div>
+<span class="visually-hidden" role="status">{{ syncLabel() }}</span>
 @if (actionError()) { <p class="error" role="alert">{{ actionError() }}</p> }
-@if (statusError()) { <p class="error" role="alert">{{ statusError() }}</p> }
+@if (statusError()) {
+  <p class="error" role="alert">{{ statusError() }}</p>
+  <button type="button" (click)="refreshStatus()" [disabled]="statusLoading()">Status erneut laden</button>
+}
 @if (statusLoading() && !status()) { <p role="status">Status wird geladen …</p> }
 
 @if (status(); as value) {
   <section class="card" aria-labelledby="worker-heading">
-    <h2 id="worker-heading">Worker und nächste Abrufe</h2>
-    <p role="status"><strong>{{ statusError() ? 'Worker-Erreichbarkeit unbekannt' : workerOnline() ? 'Worker erreichbar' : 'Worker nicht erreichbar' }}</strong></p>
-    <p>Letztes Lebenszeichen: {{ (value.heartbeat_at | date:'dd.MM.yyyy HH:mm:ss') ?? 'Noch keines empfangen' }}.
-      Nach 90 Sekunden ohne Lebenszeichen gilt der Worker als nicht erreichbar.</p>
-    @if (!workerOnline()) { <p>Ohne erreichbaren Worker können Anforderungen offen bleiben. Ein laufender Auftrag ist dann nicht sicher als aktiv einzustufen.</p> }
-    @if (value.state.requested) { <p class="info" role="status"><strong>Angefordert</strong> – ein allgemeiner Abgleich wartet auf den Worker. Bei laufendem Auftrag ist er zusätzlich vorgemerkt.</p> }
-    @if (value.running && !uncertain()) { <p>Läuft – der Worker bearbeitet einen Auftrag.</p> }
-    @if (value.stale_run) { <p class="error">Offener Lauf ohne aktuelles Lebenszeichen: möglicherweise unterbrochen.</p> }
-    @if (!value.settings.enabled) { <p>Automatik deaktiviert. Manuelle Anforderungen bleiben möglich; bereits gestartete Abrufe werden nicht abgebrochen.</p> }
+    <h2 id="worker-heading">Worker</h2>
+    <p role="status"><strong class="worker-badge" [class.online]="!statusError() && workerOnline()" [class.offline]="!statusError() && !workerOnline()">{{ statusError() ? 'Worker-Status unbekannt' : workerOnline() ? 'Worker erreichbar' : 'Worker nicht erreichbar' }}</strong></p>
+    @if (!value.settings.enabled) { <p>Automatik deaktiviert</p> }
     <dl>
-      <dt>Nächster allgemeiner Nachtlauf</dt><dd>{{ (value.next_nightly_at | date:'dd.MM.yyyy HH:mm') ?? 'Nicht geplant' }}</dd>
+      <dt>Nächster Spielplan-Abgleich</dt><dd>{{ (value.next_nightly_at | date:'dd.MM.yyyy HH:mm') ?? 'Nicht geplant' }}</dd>
       <dt>Nächster Einzelspielabruf</dt><dd>{{ (value.next_match_at | date:'dd.MM.yyyy HH:mm') ?? 'Nicht geplant' }}</dd>
     </dl>
-    <p>Dies sind Fälligkeiten, keine garantierten Startzeiten. Das Lebenszeichen bestätigt nicht die Erreichbarkeit von myTischtennis.</p>
+    @if (updatedAt(); as updated) { <p class="updated">Zuletzt aktualisiert: {{ updated | date:'dd.MM.yyyy HH:mm:ss' }}</p> }
   </section>
-  <div class="grid">
+}
+
+<app-mytt-matches [uncertain]="uncertain()" />
+
+@if (status(); as value) {
+  @if (value.state.last_run?.status === 'running') {
     <section class="card" aria-labelledby="latest-heading">
-      <h2 id="latest-heading">Aktueller / letzter Auftrag</h2>
+      <h2 id="latest-heading">Aktive Aufgabe</h2>
       <app-sync-run [run]="value.state.last_run" [uncertain]="uncertain()" />
     </section>
+  }
     <section class="card" aria-labelledby="general-heading">
-      <h2 id="general-heading">Letzter allgemeiner Abgleich</h2>
+      <h2 id="general-heading">Letzter Spielplan-Abgleich</h2>
       <app-sync-run [run]="value.state.nightly_run" [uncertain]="uncertain()" />
       <p>Zuletzt vollständig erfolgreich: {{ (value.state.last_nightly_success_at | date:'dd.MM.yyyy HH:mm') ?? 'Noch nie' }}</p>
     </section>
-  </div>
   @if (value.state.last_error) {
     <section class="card" aria-labelledby="error-heading">
-      <h2 id="error-heading">Zuletzt beobachteter Fehler</h2>
+      <h2 id="error-heading">Fehler</h2>
+      <p>Zuletzt beobachtet:</p>
       <p>{{ value.state.last_error_at | date:'dd.MM.yyyy HH:mm:ss' }} · {{ value.state.last_error }}</p>
       <p>Dieser Fehler bleibt auch nach späteren erfolgreichen Abrufen sichtbar.</p>
     </section>
