@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +12,10 @@ class Settings(BaseSettings):
 
     # Anwendung
     environment: str = "development"
+
+    outbox_max_attempts: int = Field(default=5, ge=1, le=100)
+    outbox_lease_seconds: int = Field(default=300, ge=10)
+    outbox_retry_seconds: int = Field(default=60, ge=1)
 
     # Logging
     log_level: str = "INFO"

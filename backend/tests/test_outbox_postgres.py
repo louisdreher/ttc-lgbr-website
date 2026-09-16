@@ -107,6 +107,33 @@ def test_parallel_report_requests_create_one_draft(postgres_database):
         assert len(session.exec(select(Article)).all()) == 1
 
 
+def test_parallel_outbox_claims_have_distinct_messages(postgres_database):
+    from datetime import timedelta
+
+    from app.adapters.outbound.persistence.messaging.store import SqlOutboxStore
+
+    engine, config = postgres_database
+    command.upgrade(config, "head")
+    now = datetime.now(timezone.utc)
+    with Session(engine) as session:
+        for match_id in (1, 2):
+            SqlCompetitionEventOutbox(session).add(
+                TeamMatchResultsImported(uuid4(), match_id, now, ImportOrigin.CURRENT)
+            )
+        session.commit()
+    store = SqlOutboxStore(lambda: Session(engine))
+    barrier = Barrier(2)
+
+    def claim():
+        barrier.wait(timeout=10)
+        return store.claim(now, timedelta(seconds=30), 5)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(claim) for _ in range(2)]
+        deliveries = [future.result(timeout=20) for future in futures]
+    assert all(deliveries)
+    assert deliveries[0].event_id != deliveries[1].event_id
+    assert store.claim(now, timedelta(seconds=30), 5) is None
 
 
 def test_automation_upgrade_preserves_pending_messages(postgres_database):
