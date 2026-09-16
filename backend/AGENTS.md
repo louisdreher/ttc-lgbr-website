@@ -47,7 +47,8 @@ Check the actual code and preserve unrelated work when documentation differs.
 - Current Competition GET routes live under `/api/competition`. Internal team
   lineup requires ADMIN; other implemented reads are public. Preserve these
   permissions unless the user requests a change. Assignment write HTTP routes
-  and scheduled sync are still planned. Never trigger sync from a read query.
+  are still planned. Scheduled sync runs through the separate content worker.
+  Never trigger sync from a read query.
 - Keep changes scoped: these conventions guide new work, not incidental bulk
   migration of unrelated components. Update walkthroughs when decisions change.
 
@@ -97,5 +98,7 @@ Check the actual code and preserve unrelated work when documentation differs.
 - Preserve idempotency where imports may run more than once.
 - Avoid real external requests in automated unit tests; use fixtures or mocked
   HTTP responses.
-- The scheduler is planned but not implemented. Do not describe the current
-  job module as an active scheduler.
+- The content worker runs scheduled sync and outbox processing when explicitly
+  started with `python -m scripts.content worker`; FastAPI does not start it.
+- Generated reports remain drafts. Preserve generation provenance and idempotency
+  when editing articles or extending message handlers. See `docs/content-automation.md`.

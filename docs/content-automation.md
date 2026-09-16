@@ -13,7 +13,7 @@ SyncCurrent(meetings)
   → Nachricht als verarbeitet markieren
 ```
 
-Der Handler verwendet denselben Usecase wie ein manueller Python-Aufruf.
+Der Handler verwendet denselben Usecase wie der manuelle CLI-Aufruf.
 Historische und manuelle Detailimporte erzeugen ebenfalls Nachrichten, lösen
 aber keine automatische Berichtserstellung aus. Eine manuelle Berichtsanforderung
 kann auch ältere Spiele und Termine ohne Berichtserwartung verarbeiten.
@@ -86,5 +86,65 @@ ohne doppelte Artikel, keine Garantie einer einmaligen Handler-Ausführung.
 Nachrichten bleiben einschließlich verarbeiteter Einträge gespeichert. Eine
 automatische Aufbewahrungs-/Löschstrategie ist nicht Bestandteil dieses Schritts.
 
+## Ausführen
 
-Worker und CLI-Anbindung werden im nächsten Schritt ergänzt.
+Alle Befehle laufen aus `backend/` mit aktivierter Backend-Umgebung.
+Vor Nutzung ist `alembic upgrade head` erforderlich. Die neuen Migrationen
+ergänzen Tabellen/Spalten und den Systemautor; vorhandene Fachdaten bleiben erhalten.
+
+Regelmäßigen Worker starten (führt echte myTischtennis-Imports aus):
+
+```powershell
+python -m scripts.content worker
+```
+
+Der Worker startet Sync und Outbox-Verarbeitung in getrennten Schleifen.
+Standard: Sync sofort und danach stündlich nach Abschluss, Outbox alle zehn Sekunden.
+Ein Sync-Fehler stoppt die Outbox-Verarbeitung nicht. Eine PostgreSQL-Prozesssperre
+verhindert gleichzeitig laufende geplante Syncs. Mehrere Outbox-Worker sind möglich.
+Strg+C beendet den Prozess; nach Neustart werden offene Nachrichten wieder aufgenommen.
+Für Betrieb über Rechnerneustarts hinaus muss dieser Befehl durch den eingesetzten
+Prozessmanager gestartet werden. Der Webserver startet den Worker nicht automatisch.
+
+Ein einzelner Durchlauf (ebenfalls echter Sync):
+
+```powershell
+python -m scripts.content worker --once
+```
+
+Weitere Befehle, jeweils ohne externen Ergebnisabruf:
+
+```powershell
+python -m scripts.content generate-report 123
+python -m scripts.content generate-report 123 --author-id 7
+python -m scripts.content process-outbox --limit 100
+python -m scripts.content outbox-status --limit 20
+python -m scripts.content retry-message <ereignis-uuid>
+python -m scripts.content edit-draft 42 --author-id 7 --title "Spielbericht" --teaser "Kurzfassung" --content-file bericht.txt
+```
+
+`outbox-status` liest nur. Die anderen Befehle schreiben; `retry-message` gibt eine
+unverarbeitete, nicht aktuell reservierte Nachricht frei. `generate-report` gibt
+Artikel-ID und `created`/`already_exists` zurück. Manuelle Erstellung und
+Ereigniswiederholung sind verschiedene Dinge: Historische Nachrichten bleiben
+auch nach Freigabe von der Automatik ausgeschlossen.
+
+### Konfiguration
+
+| Umgebungsvariable | Standard |
+| --- | --- |
+| `COMPETITION_SYNC_INTERVAL_SECONDS` | 3600 |
+| `OUTBOX_POLL_INTERVAL_SECONDS` | 10 |
+| `OUTBOX_BATCH_SIZE` | 100 |
+| `OUTBOX_MAX_ATTEMPTS` | 5 |
+| `OUTBOX_LEASE_SECONDS` | 300 |
+| `OUTBOX_RETRY_SECONDS` | 60 |
+
+## Tests
+
+`test_report_automation.py` prüft den Import-bis-Entwurf-Ablauf mit SQLite und
+gemockter Datenquelle, Herkunftsfilter, Autorenwechsel, Login-Sperre,
+Fehler/Wiederholung, Reservierungsablauf und Worker-Fehlerisolation.
+`test_outbox_postgres.py` prüft Migrationen, Datenerhalt und echte parallele
+Imports, Generierungen und Reservierungen in wegwerfbaren PostgreSQL-Datenbanken.
+Details zur opt-in Testvariable stehen in [Development](development.md).

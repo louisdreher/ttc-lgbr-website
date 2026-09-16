@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
 import pytest
+from app.adapters.inbound.cli.content_worker import ContentWorker
 from app.adapters.outbound.persistence.articles.models import Article, ArticleStatus
 from app.adapters.outbound.persistence.events.models import Event
 from app.adapters.outbound.persistence.messaging.models import OutboxMessage
@@ -275,8 +276,35 @@ def test_published_article_cannot_be_edited_as_draft(reports):
             )
 
 
+def test_worker_processes_outbox_even_when_sync_fails():
+    @contextmanager
+    def acquire():
+        yield True
+
+    sync = AsyncMock(side_effect=RuntimeError("source offline"))
+    process = Mock(return_value=ProcessingSummary(succeeded=1))
+    worker = ContentWorker(
+        sync, process, Mock(acquire=acquire), sync_interval=60, poll_interval=1
+    )
+    assert not asyncio.run(worker.once())
+    process.assert_called_once()
 
 
+def test_worker_skips_sync_owned_by_another_process():
+    @contextmanager
+    def acquire():
+        yield False
+
+    sync = AsyncMock(return_value=ImportSummary())
+    worker = ContentWorker(
+        sync,
+        Mock(return_value=ProcessingSummary()),
+        Mock(acquire=acquire),
+        sync_interval=60,
+        poll_interval=1,
+    )
+    assert asyncio.run(worker.once())
+    sync.assert_not_awaited()
 
 
 def test_system_identity_cannot_login_refresh_or_use_access_token_even_if_activated(

@@ -53,6 +53,14 @@ Requests. Endpunkte, Rollenberechtigungen und Cookie-Konfiguration bleiben gleic
 
 ## Prüfung und offene Arbeit
 
+Die Berichtautomatik ergänzt `User.system_key` als eindeutige Kennzeichnung
+einer technischen Identität. Migration `f3b82e0a7c51` erstellt den inaktiven
+Systemautor ohne Rollen und ohne gültigen Passwort-Hash. Öffentliche interne
+Benutzerprojektionen enthalten `is_system`; HTTP-Antworten bleiben unverändert.
+Login, Refresh und Zugriffstoken-Verwendung lehnen Systemidentitäten unabhängig
+von `is_active` ab. Der Artikeladapter bezieht die System-ID über den öffentlichen
+Users-Reader. Details: [Content-Automation](content-automation.md).
+
 Tests prüfen Domain-Regeln, einen Login mit Test-Ports, Core-Importgrenzen sowie
 HTTP-Abläufe mit SQLite: Benutzerverwaltung, Rollen, Login, Cookies, Rotation,
 Wiederverwendung, Logout, deaktivierte Benutzer und Transaktions-Rollbacks.
@@ -60,18 +68,11 @@ SQLite prüft keine PostgreSQL-Zeilensperren unter parallelen Requests.
 
 Der vollständige OpenAPI-Vertrag und die generierten PostgreSQL-Definitionen
 für User, Role, UserRoleLink und RefreshSession wurden vor und nach dem Umbau
-verglichen. Es sind keine Schemaänderungen oder neuen Migrationen erforderlich.
-Ein Test gegen laufendes PostgreSQL wurde für diesen Umbau nicht durchgeführt.
+verglichen. Die spätere Berichtautomatik ergänzt die oben beschriebene Systemkennung
+und wird einschließlich Migration an PostgreSQL geprüft.
 
 `EnsureDefaultRoles` erhält die bisherige idempotente Rollenerstellung als
 Usecase; `build_ensure_default_roles` verdrahtet ihn. Er wird nicht automatisch
 beim Start ausgeführt. Ein Einrichtungsablauf für den ersten Administrator bleibt
 geplant. Die später ergänzte Competition-Domain und die verschobenen Members-/Media-
 Persistenzmodelle sind in [der Architekturübersicht](architecture.md) beschrieben.
-
-## Systemautor für Berichte
-
-Migration f3b82e0a7c51 ergänzt einen inaktiven Systemautor ohne gültiges Passwort.
-Systemidentitäten werden bei Login, Refresh und Zugriffstoken-Verwendung abgelehnt.
-Die unveränderte Migration bereitet außerdem Artikelherkunft und Outbox-Verarbeitungsfelder vor;
-die zugehörigen Usecases werden separat ergänzt.

@@ -118,7 +118,58 @@ Folgende Fehler wurden beim Umbau korrigiert:
   Exitcode 1 und meldet keinen vollständigen Erfolg.
 
 Pokal, Relegation und unbekannte Wettbewerbsarten bleiben vom Spielplanimport
-ausgeschlossen. Es wurde kein Scheduler eingeführt.
+ausgeschlossen. Der separate Content-Worker startet regelmäßige aktuelle
+Spielimporte; siehe [Content-Automation](content-automation.md).
+
+## Technische Import-Ereignisse und Outbox
+
+`application/events.py` definiert den unveränderlichen Datenvertrag
+`TeamMatchResultsImported`, öffentlich zugänglich über `competition/public.py`.
+Er beschreibt den ersten erfolgreichen Detailimport eines Rundenspiels und enthält
+eine UUID als Ereignis-ID, die interne Begegnungs-ID, den Importzeitpunkt in UTC
+und die Importherkunft. Bei späteren Zustellversuchen bleibt die Ereignis-ID gleich.
+Dieser Vertrag ist unabhängig von den Kalenderterminen in `content/events`.
+
+`SyncMeetingCommand` und `SyncExternalMeetingCommand` tragen `import_origin`:
+`SyncCurrent` setzt `CURRENT`, `SyncHistory` setzt `HISTORY`. Direkte Einzelimporte
+verwenden standardmäßig `MANUAL`; `SyncExternalMeeting` reicht Herkunft und
+`force` unverändert weiter. Die Herkunft beschreibt den gestarteten Ablauf,
+nicht das Alter eines Spiels oder den Datenanbieter.
+
+`SyncMeeting` speichert beim ersten Detailimport das Ereignis über den
+`CompetitionEventOutbox`-Port. `SqlCompetitionEventOutbox` verwendet dieselbe
+Session wie das Competition-Repository. Ergebnisse, Importmarkierung und Nachricht
+werden gemeinsam committet oder zurückgerollt. Ein Fehler beim Schreiben der
+Nachricht lässt somit auch den Detailimport scheitern; ein erneuter Versuch ist möglich.
+
+Nach dem externen Abruf lädt der Usecase die Begegnung mit einer Schreibsperre
+(`SELECT FOR UPDATE`) und prüft die Importmarkierung erneut. Das verhindert,
+dass parallele Importe denselben Erstimport zweimal melden. `force=True` erlaubt
+das erneute Speichern der Ergebnisse, erzeugt aber kein weiteres Erstimport-Ereignis.
+Bereits vor Einführung der Outbox importierte Begegnungen werden nicht nachträglich
+gemeldet. Die UUID entsteht nur beim Erstimport; die Uhr liefert denselben
+Zeitpunkt für Importmarkierung und Ereignis.
+
+Die neue Tabelle `outbox_message` liegt unter `persistence/messaging`, getrennt
+von Kalenderterminen. Sie speichert UUID, versionierten Nachrichtentyp
+`competition.team_match_results_imported.v1`, UTC-Zeitpunkt, JSON-Nutzdaten
+(`team_match_id`, `import_origin`) und den zunächst leeren Verarbeitungszeitpunkt.
+Ein eindeutiger Schlüssel aus Nachrichtentyp und Spiel-ID schützt zusätzlich vor
+doppelten Erstimport-Nachrichten. Es gibt bewusst keinen Fremdschlüssel auf das
+Spiel: Löschen des Spiels löscht keine ausstehende Nachricht. Ein späterer
+Empfänger muss ein inzwischen fehlendes Spiel behandeln können.
+
+Migration `e2a71d9f6b40` ergänzt ausschließlich die Outbox-Tabelle und ihren Index.
+Vor Nutzung des erweiterten Detailimports muss die Datenbank auf diesen Stand
+gebracht werden. Bestehende Spiel-, Termin- und Artikeltabellen bleiben unverändert.
+
+Der Outbox-Verarbeiter reserviert Nachrichten nach dem Commit und stellt sie dem
+Berichts-Handler zu. Dieser verarbeitet ausschließlich `CURRENT` bei
+`report_expected=True` automatisch. Historische Erstimporte erzeugen ebenfalls
+ein Ereignis, lösen aber keine automatische Berichtserstellung aus. Manuell
+angeforderte Berichte werden separat über den Bericht-Usecase gestartet.
+Reservierungen, Fehler und Wiederholungen sind in [Content-Automation](content-automation.md)
+beschrieben. Migration `f3b82e0a7c51` ergänzt dafür die Verarbeitungsfelder.
 
 ## Start und Prüfung
 
@@ -143,17 +194,12 @@ Spielerauflösung, Heim-/Auswärtsperspektive, Fehlermeldungen, Batches und
 CLI-Einstiege. Die bestehenden Meeting-Regressionsprüfungen wurden auf die
 neuen Usecases umgestellt.
 
-Die generierten PostgreSQL-Tabellen- und Indexdefinitionen wurden vor und nach
-dem Umbau verglichen. Das Schema und die Migrationen bleiben unverändert.
-Es wurden keine echten myTischtennis-Aufrufe oder Imports gegen die lokale
-PostgreSQL-Datenbank als Teil dieses Umbaus ausgeführt.
-
-## Import-Ereignisvertrag
-
-`TeamMatchResultsImported` beschreibt den ersten erfolgreichen Detailimport.
-`ImportOrigin` unterscheidet CURRENT, HISTORY und MANUAL; direkte Imports verwenden MANUAL.
-Aktuelle und historische Batches reichen ihre Herkunft explizit weiter.
-SyncMeeting speichert Ergebnisse und Erstimport-Ereignis in derselben Transaktion.
-Die neue Outbox-Tabelle wird durch Migration e2a71d9f6b40 angelegt.
-Zeilensperren und ein eindeutiger Nachrichtenschlüssel verhindern doppelte Erstimport-Ereignisse.
-Die Verarbeitung folgt in einem weiteren Schritt.
+Die Outbox-Tests prüfen Erstimport, alle Importherkünfte, Wiederholung und Force,
+Rollback bei Outbox-/Commit-Fehlern sowie die erneute Prüfung der Importmarkierung.
+Optionale PostgreSQL-Tests in `test_outbox_postgres.py` prüfen die gesamte
+Migrationskette ab leerer Datenbank, das Upgrade vom bisherigen Stand einschließlich
+Datenerhalt, Schemaabgleich und parallele Importe mit echten Zeilensperren.
+Sie benötigen `TTC_TEST_POSTGRES_URL` mit CREATEDB-Recht und erstellen/löschen nur
+zufällig benannte eigene Testdatenbanken. Ohne diese Variable werden sie übersprungen.
+Es erfolgen keine echten myTischtennis-Aufrufe und keine Migrationen der bestehenden
+Entwicklungsdatenbank durch diese Tests.

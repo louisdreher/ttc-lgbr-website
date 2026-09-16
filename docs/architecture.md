@@ -78,7 +78,8 @@ The backend is split into technical infrastructure and domain-oriented code:
 - `app/core/competition/application`: general reads and internal lineup commands;
 - `app/core/competition/application/sync`: current/historical imports and backfill;
 
-Scheduled synchronization is planned; there is no active scheduler.
+Scheduled synchronization is implemented in a separate content worker, started
+with `python -m scripts.content worker`. FastAPI does not start it automatically.
 
 `app.*` is the canonical Python import path. Backend commands therefore need
 to run with `backend/` as the working directory, or otherwise make that package
@@ -109,7 +110,8 @@ The article draft-creation workflow uses a framework-free domain, a
 `CreateArticle.execute(command)` use case, repository/unit-of-work ports,
 HTTP and SQL adapters, and `app/bootstrap/articles.py` composition.
 Persistence models live under `app/adapters/outbound/persistence/articles`.
-Editing, publication, public reads, and the frontend CMS workflow remain planned.
+Backend match-report generation and draft editing are implemented; publication,
+public reads, and the frontend CMS workflow remain planned.
 See [the article architecture walkthrough](articles-architecture.md).
 
 ## Backend architecture direction
@@ -191,6 +193,13 @@ when an immediate result is part of the same use case and the dependency is
 represented by an intentional contract. Events are reserved for genuine
 cross-component reactions; no event dispatcher or shared kernel should be
 introduced without a concrete workflow that requires it.
+
+Competition now stages `TeamMatchResultsImported` in a transactional outbox on
+the first successful detail import. The message and results share one database
+transaction; the SQL outbox lives in `adapters/outbound/persistence/messaging`,
+separate from calendar Events. Message delivery uses expiring reservations,
+bounded retries, and an idempotent report handler. See
+[the automation walkthrough](content-automation.md).
 
 See [ADR 0003](decisions/0003-component-oriented-backend.md) for the decision,
 tradeoffs, and migration constraints.
@@ -320,13 +329,16 @@ these through `CompetitionRepository`; the external snapshots remain input DTOs.
 See [the Competition domain walkthrough](competition-domain.md).
 See [the myTischtennis walkthrough](mytischtennis-architecture.md).
 
-A scheduler is planned but has not been implemented or connected to the
-FastAPI lifecycle.
+A separate content worker runs periodic current-game sync and outbox processing
+in independent loops. It is not connected to the FastAPI lifecycle.
 
-## Planned content automation
+## Content automation and planned AI generation
 
 The CMS is intended to assist editors rather than publish generated content
-autonomously. A future drafting service may combine structured match or event
+autonomously. The implemented drafting service formats stored match results
+as plain text and saves system-authored drafts. Human edits take over authorship
+while preserving generation provenance. The worker and manual CLI share the
+same report use case. A future generator may combine structured match or event
 data with editorial guidance and use the OpenAI API to prepare article drafts.
 Generated text must remain traceable, editable, and unpublished until an
 authorized editor reviews it.

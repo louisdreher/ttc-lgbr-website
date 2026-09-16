@@ -3,7 +3,7 @@
 Articles folgt für den vorhandenen Anwendungsfall dem Events-Muster.
 Neben der bisherigen HTTP-Entwurfserstellung gibt es jetzt die Backend-Usecases
 `CreateMatchReportDraft` und `EditArticleDraft` in `application/commands.py`.
-Die neuen Usecases sind direkt über Bootstrap aufrufbar; neue
+Die neuen Usecases sind über CLI und Ereignisverarbeitung erreichbar; neue
 HTTP-Endpunkte oder Veröffentlichungsfunktionen wurden nicht ergänzt.
 Der vollständige Ablauf ist unter [Content-Automation](content-automation.md) beschrieben.
 

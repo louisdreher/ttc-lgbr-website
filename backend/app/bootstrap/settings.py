@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     # Anwendung
     environment: str = "development"
 
+    competition_sync_interval_seconds: int = Field(default=3600, ge=60)
+    outbox_poll_interval_seconds: int = Field(default=10, ge=1)
+    outbox_batch_size: int = Field(default=100, ge=1, le=1000)
     outbox_max_attempts: int = Field(default=5, ge=1, le=100)
     outbox_lease_seconds: int = Field(default=300, ge=10)
     outbox_retry_seconds: int = Field(default=60, ge=1)

@@ -162,6 +162,25 @@ Scripts that contact
 myTischtennis or write to PostgreSQL are integration utilities, not isolated
 unit tests. Inspect their arguments and effects before running them.
 
+### Optional PostgreSQL outbox checks
+
+Set `TTC_TEST_POSTGRES_URL` to a PostgreSQL administrative connection URL
+(SQLAlchemy format, `postgresql+psycopg://.../postgres`) with CREATEDB permission,
+then run `python -m pytest tests/test_outbox_postgres.py` from `backend/`.
+These tests create and drop only randomly named `ttc_outbox_test_*` databases;
+they never migrate the application database. They cover clean migration,
+upgrade with existing data, schema comparison, and concurrent detail imports.
+Without that variable, these tests are skipped by the normal suite.
+
+## Content worker
+
+After `alembic upgrade head`, run `python -m scripts.content worker` from `backend/`
+to start periodic current-game synchronization and outbox processing. This performs
+real imports and creates article drafts. The worker is a separate process and
+must be started explicitly; FastAPI does not launch it. See
+[Content automation](content-automation.md) for intervals, manual reports,
+draft editing, message status and retry commands.
+
 ## Suggested learning workflow with Codex
 
 Prefix a task with the kind of collaboration you want:
@@ -173,9 +192,3 @@ Prefix a task with the kind of collaboration you want:
 
 For database work, ask Codex to explain whether a command changes schema, data,
 or only Alembic's recorded revision before executing it.
-
-## PostgreSQL outbox tests
-
-`TTC_TEST_POSTGRES_URL` enables tests in disposable databases.
-Run `python -m pytest tests/test_outbox_postgres.py` from backend.
-Tests cover clean migrations, upgrades and concurrent result imports.
