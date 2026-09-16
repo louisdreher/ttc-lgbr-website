@@ -173,3 +173,9 @@ Prefix a task with the kind of collaboration you want:
 
 For database work, ask Codex to explain whether a command changes schema, data,
 or only Alembic's recorded revision before executing it.
+
+## PostgreSQL outbox tests
+
+`TTC_TEST_POSTGRES_URL` enables tests in disposable databases.
+Run `python -m pytest tests/test_outbox_postgres.py` from backend.
+Tests cover clean migrations, upgrades and concurrent result imports.

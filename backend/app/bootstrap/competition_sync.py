@@ -8,6 +8,9 @@ from app.adapters.outbound.mytischtennis.source import MyTischtennisSource
 from app.adapters.outbound.persistence.competition.diagnostics import (
     SqlRegistrationReportReader,
 )
+from app.adapters.outbound.persistence.competition.outbox import (
+    SqlCompetitionEventOutbox,
+)
 from app.adapters.outbound.persistence.competition.reader import SqlCompetitionReader
 from app.adapters.outbound.persistence.competition.repository import (
     SqlCompetitionRepository,
@@ -47,6 +50,7 @@ def build_backfill_match_events(session_factory=None):
                 session, build_sync_match_event(session)
             ),
             SqlImportedPlayers,
+            SqlCompetitionEventOutbox,
         )
     )
 
@@ -93,6 +97,7 @@ def build_competition(
                 session, build_sync_match_event(session)
             ),
             SqlImportedPlayers,
+            SqlCompetitionEventOutbox,
         )
 
     schedule = SyncSchedule(source, uow())

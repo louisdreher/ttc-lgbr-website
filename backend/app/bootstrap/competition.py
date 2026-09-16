@@ -1,4 +1,7 @@
 from app.adapters.outbound.competition.events import CompetitionMatchEvents
+from app.adapters.outbound.persistence.competition.outbox import (
+    SqlCompetitionEventOutbox,
+)
 from app.adapters.outbound.persistence.competition.reader import SqlCompetitionReader
 from app.adapters.outbound.persistence.competition.repository import (
     SqlCompetitionRepository,
@@ -37,6 +40,7 @@ def build_assign_player_to_team(session_factory=None) -> AssignPlayerToTeam:
             session, build_sync_match_event(session)
         ),
         SqlImportedPlayers,
+        SqlCompetitionEventOutbox,
     )
     return AssignPlayerToTeam(uow, SqlPlayerLookup(session_factory))
 
@@ -81,6 +85,7 @@ def build_remove_player_from_team(session_factory=None) -> RemovePlayerFromTeam:
                 session, build_sync_match_event(session)
             ),
             SqlImportedPlayers,
+            SqlCompetitionEventOutbox,
         )
     )
 

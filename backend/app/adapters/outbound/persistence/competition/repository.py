@@ -3,8 +3,6 @@
 from dataclasses import fields
 from datetime import datetime, timezone
 
-from sqlmodel import Session, select
-
 from app.adapters.outbound.persistence.competition import (
     leagues,
     matches,
@@ -16,6 +14,7 @@ from app.core.competition.domain import matches as domain_matches
 from app.core.competition.domain import seasons as domain_seasons
 from app.core.competition.domain import teams as domain_teams
 from app.core.competition.domain.seasons import SeasonKey
+from sqlmodel import Session, select
 
 
 def _entity(entity_type, row):
@@ -186,8 +185,15 @@ class SqlCompetitionRepository:
         ).first()
         return self.get_team_match(row.id) if row is not None else None
 
-    def get_team_match(self, match_id: int) -> domain_matches.TeamMatch | None:
-        row = self.session.get(matches.TeamMatch, match_id)
+    def get_team_match(
+        self, match_id: int, *, for_update: bool = False
+    ) -> domain_matches.TeamMatch | None:
+        statement = select(matches.TeamMatch).where(matches.TeamMatch.id == match_id)
+        if for_update:
+            statement = statement.with_for_update().execution_options(
+                populate_existing=True
+            )
+        row = self.session.exec(statement).first()
         if row is None:
             return None
         match = _entity(domain_matches.TeamMatch, row)

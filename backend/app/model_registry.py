@@ -1,4 +1,5 @@
 """Import table definitions so Alembic and tests see complete SQLModel metadata."""
+
 # ruff: noqa: F401 -- these imports intentionally register tables through module loading
 from app.adapters.outbound.persistence.articles.models import Article, ArticleTag, Tag
 from app.adapters.outbound.persistence.auth.models import RefreshSession
@@ -31,4 +32,5 @@ from app.adapters.outbound.persistence.members.models import (
     Player,
     PlayerRating,
 )
+from app.adapters.outbound.persistence.messaging.models import OutboxMessage
 from app.adapters.outbound.persistence.users.models import User

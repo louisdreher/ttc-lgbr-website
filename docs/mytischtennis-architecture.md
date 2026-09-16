@@ -153,4 +153,7 @@ PostgreSQL-Datenbank als Teil dieses Umbaus ausgeführt.
 `TeamMatchResultsImported` beschreibt den ersten erfolgreichen Detailimport.
 `ImportOrigin` unterscheidet CURRENT, HISTORY und MANUAL; direkte Imports verwenden MANUAL.
 Aktuelle und historische Batches reichen ihre Herkunft explizit weiter.
-Die Ereignisspeicherung und Verarbeitung folgen in weiteren Schritten.
+SyncMeeting speichert Ergebnisse und Erstimport-Ereignis in derselben Transaktion.
+Die neue Outbox-Tabelle wird durch Migration e2a71d9f6b40 angelegt.
+Zeilensperren und ein eindeutiger Nachrichtenschlüssel verhindern doppelte Erstimport-Ereignisse.
+Die Verarbeitung folgt in einem weiteren Schritt.

@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Protocol, Self
 
+from app.core.competition.application.events import TeamMatchResultsImported
 from app.core.competition.application.sync.imports import (
     GroupReference,
     ImportedPlayer,
@@ -31,7 +32,9 @@ class CompetitionRepository(Protocol):
     def save_team(self, team: Team) -> None: ...
 
     def find_team_match(self, external_id: int) -> TeamMatch | None: ...
-    def get_team_match(self, match_id: int) -> TeamMatch | None: ...
+    def get_team_match(
+        self, match_id: int, *, for_update: bool = False
+    ) -> TeamMatch | None: ...
     def save_team_match(self, match: TeamMatch) -> None: ...
 
 
@@ -66,6 +69,12 @@ class MatchEvents(Protocol):
     def synchronize(self, match_id: int) -> bool: ...
 
 
+class CompetitionEventOutbox(Protocol):
+    """Stage a message in the same transaction as the imported results."""
+
+    def add(self, event: TeamMatchResultsImported) -> None: ...
+
+
 class RegistrationReportReader(Protocol):
     def read(self) -> tuple[list[dict], list[dict]]: ...
 
@@ -74,6 +83,7 @@ class SyncUnitOfWork(Protocol):
     repository: CompetitionRepository
     players: ImportedPlayers
     events: MatchEvents
+    outbox: CompetitionEventOutbox
 
     def __enter__(self) -> Self: ...
     def __exit__(self, exc_type, exc_value, traceback) -> None: ...

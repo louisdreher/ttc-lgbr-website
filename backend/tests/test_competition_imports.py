@@ -23,12 +23,16 @@ from app.adapters.outbound.persistence.competition.matches import (
     TeamMatch,
     TeamMatchNotice,
 )
+from app.adapters.outbound.persistence.competition.outbox import (
+    SqlCompetitionEventOutbox,
+)
 from app.adapters.outbound.persistence.competition.reader import SqlCompetitionReader
 from app.adapters.outbound.persistence.competition.repository import (
     SqlCompetitionRepository,
 )
 from app.adapters.outbound.persistence.competition.teams import TeamMembership
 from app.adapters.outbound.persistence.events.models import Event
+from app.adapters.outbound.persistence.messaging.models import OutboxMessage
 from app.bootstrap.competition_sync import build_competition
 from app.core.competition.application.events import ImportOrigin
 from app.core.competition.application.sync.batches import ImportBatch
@@ -203,12 +207,108 @@ def seed(imports):
         ).one()
 
 
+@pytest.mark.parametrize("origin", list(ImportOrigin))
+def test_first_detail_import_persists_one_outbox_message(imports, origin):
+    engine, _, usecases, _ = imports
+    match_id, _ = seed(imports)
+    with Session(engine) as session:
+        # A completed schedule is not yet a completed detail import.
+        assert session.get(TeamMatch, match_id).is_completed
+        assert session.exec(select(OutboxMessage)).all() == []
+
+    assert asyncio.run(
+        usecases.meeting.execute(SyncMeetingCommand(match_id, import_origin=origin))
+    )
+    with Session(engine) as session:
+        message = session.exec(select(OutboxMessage)).one()
+        event_id = message.event_id
+        assert message.event_type == "competition.team_match_results_imported.v1"
+        assert message.payload == {
+            "team_match_id": match_id,
+            "import_origin": origin.value,
+        }
+        assert (
+            message.occurred_at == session.get(TeamMatch, match_id).details_imported_at
+        )
+        assert message.processed_at is None
+
+    assert not asyncio.run(usecases.meeting.execute(SyncMeetingCommand(match_id)))
+    assert asyncio.run(
+        usecases.meeting.execute(SyncMeetingCommand(match_id, force=True))
+    )
+    with Session(engine) as session:
+        assert session.exec(select(OutboxMessage)).one().event_id == event_id
 
 
+@pytest.mark.parametrize("failure_at", ["outbox", "commit"])
+def test_outbox_failure_rolls_back_results_and_message(
+    imports, monkeypatch, failure_at
+):
+    engine, _, usecases, _ = imports
+    match_id, _ = seed(imports)
+    original_add = SqlCompetitionEventOutbox.add
+
+    def fail_after_outbox_flush(self, message):
+        original_add(self, message)
+        raise RuntimeError("outbox test failure")
+
+    def fail_commit(self):
+        raise RuntimeError("commit test failure")
+
+    with monkeypatch.context() as context:
+        if failure_at == "outbox":
+            context.setattr(SqlCompetitionEventOutbox, "add", fail_after_outbox_flush)
+        else:
+            context.setattr(Session, "commit", fail_commit)
+        with pytest.raises(RuntimeError, match="test failure"):
+            asyncio.run(usecases.meeting.execute(SyncMeetingCommand(match_id)))
+
+    with Session(engine) as session:
+        assert session.get(TeamMatch, match_id).details_imported_at is None
+        assert session.exec(select(Match)).all() == []
+        assert session.exec(select(OutboxMessage)).all() == []
+
+    # Retrying a rolled-back import can still create the first message.
+    assert asyncio.run(usecases.meeting.execute(SyncMeetingCommand(match_id)))
+    with Session(engine) as session:
+        assert len(session.exec(select(OutboxMessage)).all()) == 1
 
 
+def test_incomplete_details_do_not_create_outbox_message(imports):
+    engine, client, usecases, _ = imports
+    match_id, _ = seed(imports)
+    client.get_meeting.return_value["data"]["is_completed"] = False
+    assert not asyncio.run(usecases.meeting.execute(SyncMeetingCommand(match_id)))
+    with Session(engine) as session:
+        assert session.get(TeamMatch, match_id).details_imported_at is None
+        assert session.exec(select(OutboxMessage)).all() == []
 
 
+@pytest.mark.parametrize("force", [False, True])
+def test_detail_import_rechecks_marker_after_source_request(imports, force):
+    engine, client, usecases, _ = imports
+    match_id, _ = seed(imports)
+    original_response = meeting_response()
+
+    async def another_import_finishes(**kwargs):
+        client.get_meeting.side_effect = None
+        assert await usecases.meeting.execute(
+            SyncMeetingCommand(match_id, import_origin=ImportOrigin.HISTORY)
+        )
+        return original_response
+
+    client.get_meeting.side_effect = another_import_finishes
+    result = asyncio.run(
+        usecases.meeting.execute(
+            SyncMeetingCommand(
+                match_id, force=force, import_origin=ImportOrigin.CURRENT
+            )
+        )
+    )
+    assert result is force
+    with Session(engine) as session:
+        message = session.exec(select(OutboxMessage)).one()
+        assert message.payload["import_origin"] == "HISTORY"
 
 
 def test_schedule_idempotency_rescheduling_notices_and_events(imports):

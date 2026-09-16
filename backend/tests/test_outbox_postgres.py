@@ -1,0 +1,194 @@
+"""Opt-in checks against disposable PostgreSQL databases, never the app database.
+
+Set TTC_TEST_POSTGRES_URL to an administrative connection URL with CREATEDB.
+Each test creates and drops only its own randomly named ttc_outbox_test_* database.
+"""
+
+import asyncio
+import os
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from pathlib import Path
+from threading import Barrier
+from uuid import uuid4
+
+import pytest
+from alembic import command
+from alembic.config import Config
+from app.adapters.outbound.persistence import database
+from app.adapters.outbound.persistence.competition.leagues import LeagueGroup
+from app.adapters.outbound.persistence.competition.matches import TeamMatch
+from app.adapters.outbound.persistence.competition.outbox import (
+    SqlCompetitionEventOutbox,
+)
+from app.adapters.outbound.persistence.competition.seasons import Season, SeasonHalf
+from app.adapters.outbound.persistence.competition.teams import Team
+from app.adapters.outbound.persistence.messaging.models import OutboxMessage
+from app.bootstrap.competition_sync import build_competition
+from app.core.competition.application.events import (
+    ImportOrigin,
+    TeamMatchResultsImported,
+)
+from app.core.competition.application.sync.dto import SyncMeetingCommand
+from app.core.competition.application.sync.imports import MeetingDetails
+from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session, select
+
+
+
+
+
+
+
+
+
+
+@pytest.fixture
+def postgres_database(monkeypatch):
+    connection_url = os.environ.get("TTC_TEST_POSTGRES_URL")
+    if not connection_url:
+        pytest.skip(
+            "TTC_TEST_POSTGRES_URL is not set; requires disposable PostgreSQL DBs"
+        )
+    url = make_url(connection_url)
+    if url.get_backend_name() != "postgresql":
+        pytest.fail("TTC_TEST_POSTGRES_URL must refer to PostgreSQL")
+    admin = create_engine(url, isolation_level="AUTOCOMMIT")
+    name = f"ttc_outbox_test_{uuid4().hex}"
+    engine = None
+    created = False
+    try:
+        with admin.connect() as connection:
+            connection.execute(text(f'CREATE DATABASE "{name}"'))
+        created = True
+        engine = create_engine(
+            url.set(database=name),
+            connect_args={"options": "-c lock_timeout=5000 -c statement_timeout=15000"},
+        )
+        # alembic/env.py imports this engine; no application configuration changes.
+        monkeypatch.setattr(database, "engine", engine)
+        config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+        yield engine, config
+    finally:
+        if engine is not None:
+            engine.dispose()
+        if created:
+            with admin.connect() as connection:
+                connection.execute(text(f'DROP DATABASE "{name}"'))
+        admin.dispose()
+
+
+def test_outbox_migration_on_empty_postgres(postgres_database):
+    engine, config = postgres_database
+    command.upgrade(config, "head")
+    command.check(config)
+    event = TeamMatchResultsImported(
+        event_id=uuid4(),
+        team_match_id=123,
+        occurred_at=datetime(2026, 9, 15, tzinfo=timezone.utc),
+        import_origin=ImportOrigin.HISTORY,
+    )
+    with Session(engine) as session:
+        SqlCompetitionEventOutbox(session).add(event)
+        session.commit()
+    with Session(engine) as session:
+        message = session.exec(select(OutboxMessage)).one()
+        assert message.event_id == event.event_id
+        assert message.occurred_at == event.occurred_at
+        assert message.payload == {"team_match_id": 123, "import_origin": "HISTORY"}
+        assert message.processed_at is None
+        duplicate = TeamMatchResultsImported(
+            event_id=uuid4(),
+            team_match_id=123,
+            occurred_at=event.occurred_at,
+            import_origin=ImportOrigin.CURRENT,
+        )
+        with pytest.raises(IntegrityError):
+            SqlCompetitionEventOutbox(session).add(duplicate)
+        session.rollback()
+        assert session.exec(select(OutboxMessage)).one().event_id == event.event_id
+
+
+def test_outbox_upgrade_preserves_existing_data(postgres_database):
+    engine, config = postgres_database
+    command.upgrade(config, "d490e19c6832")
+    with Session(engine) as session:
+        session.add(Season(start_year=2026, end_year=2027, half=SeasonHalf.VR))
+        session.commit()
+
+    command.upgrade(config, "head")
+    command.check(config)
+    with Session(engine) as session:
+        assert session.exec(select(Season)).one().start_year == 2026
+        assert session.exec(select(OutboxMessage)).all() == []
+
+    # This downgrade removes only the new, empty outbox in the disposable DB.
+    command.downgrade(config, "d490e19c6832")
+    assert "outbox_message" not in inspect(engine).get_table_names()
+    command.upgrade(config, "head")
+    command.check(config)
+    with Session(engine) as session:
+        assert session.exec(select(Season)).one().start_year == 2026
+
+
+@pytest.mark.parametrize("force", [False, True])
+def test_parallel_imports_emit_only_one_event(postgres_database, force):
+    engine, config = postgres_database
+    command.upgrade(config, "head")
+    with Session(engine) as session:
+        season = Season(start_year=2026, end_year=2027, half=SeasonHalf.VR)
+        session.add(season)
+        session.flush()
+        group = LeagueGroup(season_id=season.id, name="Liga", mytt_group_id=1)
+        session.add(group)
+        session.flush()
+        team = Team(
+            season_id=season.id, league_group_id=group.id, mytt_team_id=1, name="TTC"
+        )
+        session.add(team)
+        session.flush()
+        match = TeamMatch(
+            team_id=team.id,
+            mytt_meeting_id=123,
+            opponent_name="Gast",
+            is_home=True,
+            scheduled_at=datetime(2026, 9, 15, tzinfo=timezone.utc),
+            status="completed",
+            is_completed=True,
+        )
+        session.add(match)
+        session.commit()
+        match_id = match.id
+
+    barrier = Barrier(2)
+
+    class Source:
+        async def meeting(self, external_id):
+            # Both readers see an unimported match before either writer begins.
+            barrier.wait(timeout=10)
+            return MeetingDetails(completed=True, score_home=7, score_away=3)
+
+    def run_import():
+        sync = build_competition(
+            session_factory=lambda: Session(engine), source=Source()
+        ).meeting
+        return asyncio.run(
+            sync.execute(
+                SyncMeetingCommand(
+                    match_id, force=force, import_origin=ImportOrigin.CURRENT
+                )
+            )
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(run_import) for _ in range(2)]
+        results = [future.result(timeout=20) for future in futures]
+    assert sum(results) == (2 if force else 1)
+    with Session(engine) as session:
+        assert (
+            session.exec(select(OutboxMessage)).one().payload["team_match_id"]
+            == match_id
+        )
+        assert session.get(TeamMatch, match_id).details_imported_at is not None

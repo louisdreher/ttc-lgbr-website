@@ -1,7 +1,9 @@
 from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
+from uuid import uuid4
 
+from app.core.competition.application.events import TeamMatchResultsImported
 from app.core.competition.application.sync.dto import (
     SyncExternalMeetingCommand,
     SyncGroupCommand,
@@ -107,16 +109,30 @@ class SyncMeeting:
         if not details.completed:
             return False
         with self.uow:
-            entity = self.uow.repository.get_team_match(match.id)
+            entity = self.uow.repository.get_team_match(match.id, for_update=True)
             if entity is None:
                 raise ValueError("Begegnung ist während des Imports verschwunden.")
+            # Another import may have finished while we fetched the external data.
+            first_import = entity.details_imported_at is None
+            if not first_import and not command.force:
+                return False
             player_ids = {}
             for game in details.games:
                 for player in game.own_players(entity.is_home):
                     if (not player.absent or game.played) and player not in player_ids:
                         player_ids[player] = self.uow.players.resolve(player)
-            apply_meeting(entity, details, player_ids, self.clock())
+            imported_at = self.clock()
+            apply_meeting(entity, details, player_ids, imported_at)
             self.uow.repository.save_team_match(entity)
+            if first_import:
+                self.uow.outbox.add(
+                    TeamMatchResultsImported(
+                        event_id=uuid4(),
+                        team_match_id=match.id,
+                        occurred_at=imported_at,
+                        import_origin=command.import_origin,
+                    )
+                )
             self.uow.commit()
         return True
 
