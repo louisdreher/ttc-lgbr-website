@@ -2,15 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import extract
-from sqlmodel import Session, select
-
 from app.adapters.outbound.persistence.events.models import Event, EventCategory
 from app.adapters.outbound.persistence.events.repository import category_from_row
 from app.core.content.events.application.dto import EventDetails
 from app.core.content.events.domain.category import TEAM_MATCH_CATEGORY_SLUG
 from app.core.content.types import Visibility
 from app.core.users.public import UserReader
+from sqlalchemy import extract
+from sqlmodel import Session, select
 
 
 class SqlEventReader:
@@ -54,6 +53,12 @@ class SqlEventReader:
 
     def get(self, event_id: int) -> EventDetails | None:
         row = self.session.get(Event, event_id)
+        return self._details([row])[0] if row is not None else None
+
+    def get_by_match(self, team_match_id: int) -> EventDetails | None:
+        row = self.session.exec(
+            select(Event).where(Event.team_match_id == team_match_id)
+        ).first()
         return self._details([row])[0] if row is not None else None
 
     def get_many(self, event_ids: list[int]) -> list[EventDetails]:

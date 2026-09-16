@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import StrEnum
 
-from .errors import EmptyArticleFieldError
+from .errors import ArticleDomainError, EmptyArticleFieldError
 
 
 class ArticleStatus(StrEnum):
@@ -41,6 +41,21 @@ class Article:
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    generation_key: str | None = None
+    generation_method: str | None = None
+    generated_at: datetime | None = None
+
+    def edit_draft(
+        self, *, author_id: int, title: str, teaser: str, content: str
+    ) -> None:
+        if self.status != ArticleStatus.DRAFT:
+            raise ArticleDomainError("Nur Entwürfe dürfen hier bearbeitet werden.")
+        title = self._required_text(title, "Der Titel")
+        teaser = self._required_text(teaser, "Der Teaser")
+        content = self._required_text(content, "Der Inhalt")
+        self.title, self.teaser, self.content = title, teaser, content
+        self.author_id = author_id
+        self.updated_at = utc_now()
 
     @classmethod
     def create_draft(

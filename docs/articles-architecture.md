@@ -1,8 +1,11 @@
-# Articles: vorhandene Entwurfserstellung
+# Articles: Entwurfserstellung und Spielberichte
 
 Articles folgt für den vorhandenen Anwendungsfall dem Events-Muster.
-Der Umfang bleibt die Erstellung eines Artikelentwurfs. Neue Lese-, Bearbeitungs-
-oder Veröffentlichungsfunktionen wurden nicht ergänzt.
+Neben der bisherigen HTTP-Entwurfserstellung gibt es jetzt die Backend-Usecases
+`CreateMatchReportDraft` und `EditArticleDraft` in `application/commands.py`.
+Die neuen Usecases sind direkt über Bootstrap aufrufbar; neue
+HTTP-Endpunkte oder Veröffentlichungsfunktionen wurden nicht ergänzt.
+Der vollständige Ablauf ist unter [Content-Automation](content-automation.md) beschrieben.
 
 ## Aufbau
 
@@ -42,6 +45,8 @@ Die Article-Tests prüfen Entwurfsnormalisierung, Slug-Konflikte, HTTP-Antworten
 die angemeldete Autorenschaft und Rollback nach Flush. Ein Import-Test hält
 Framework- und Adapter-Abhängigkeiten aus dem Article-Core heraus.
 
-Tabellen, Indizes, Enum-Werte und der OpenAPI-Vertrag wurden vor und nach dem
-Umbau verglichen und sind unverändert. Keine Migration ist erforderlich.
-Die Tests verwenden SQLite; ein Live-PostgreSQL-Test wurde nicht ausgeführt.
+Der OpenAPI-Vertrag bleibt unverändert. Migration `f3b82e0a7c51` ergänzt
+Generierungsherkunft, einen eindeutigen Generierungsschlüssel, den Systemautor
+und Outbox-Verarbeitungsfelder. PostgreSQL-Tests prüfen Schemaabgleich und
+gleichzeitige Berichtsanfragen; SQLite-Tests prüfen den vollständigen Ablauf
+einschließlich Autorenwechsel und Schutz redaktioneller Änderungen.

@@ -37,8 +37,74 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 
+def seed_report_match(engine):
+    from app.adapters.outbound.competition.events import CompetitionMatchEvents
+    from app.bootstrap.events import build_sync_match_event
+
+    with Session(engine) as session:
+        season = Season(start_year=2026, end_year=2027, half=SeasonHalf.VR)
+        session.add(season)
+        session.flush()
+        group = LeagueGroup(season_id=season.id, name="Liga", mytt_group_id=1)
+        session.add(group)
+        session.flush()
+        team = Team(
+            season_id=season.id, league_group_id=group.id, mytt_team_id=1, name="TTC"
+        )
+        session.add(team)
+        session.flush()
+        match = TeamMatch(
+            team_id=team.id,
+            mytt_meeting_id=321,
+            opponent_name="Gast",
+            is_home=True,
+            scheduled_at=datetime(2026, 9, 15, tzinfo=timezone.utc),
+            status="completed",
+            is_completed=True,
+            details_imported_at=datetime.now(timezone.utc),
+            score_ttc=7,
+            score_opponent=3,
+        )
+        session.add(match)
+        session.flush()
+        match_id = match.id
+        CompetitionMatchEvents(session, build_sync_match_event(session)).synchronize(
+            match_id
+        )
+        session.commit()
+        return match_id
 
 
+def test_parallel_report_requests_create_one_draft(postgres_database):
+    from app.adapters.outbound.articles.template import PlainTextMatchReportGenerator
+    from app.adapters.outbound.persistence.articles.models import Article
+    from app.bootstrap.articles import build_create_match_report_draft
+    from app.core.content.articles.application.dto import CreateMatchReportDraftCommand
+
+    engine, config = postgres_database
+    command.upgrade(config, "head")
+    match_id = seed_report_match(engine)
+    barrier = Barrier(2)
+
+    class Generator(PlainTextMatchReportGenerator):
+        def generate(self, data):
+            result = super().generate(data)
+            barrier.wait(timeout=10)
+            return result
+
+    def generate():
+        with Session(engine) as session:
+            return build_create_match_report_draft(
+                session, generator=Generator()
+            ).execute(CreateMatchReportDraftCommand(match_id))
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(generate) for _ in range(2)]
+        results = [future.result(timeout=20) for future in futures]
+    assert sum(result.created for result in results) == 1
+    assert results[0].article_id == results[1].article_id
+    with Session(engine) as session:
+        assert len(session.exec(select(Article)).all()) == 1
 
 
 
