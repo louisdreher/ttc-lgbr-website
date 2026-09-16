@@ -239,6 +239,62 @@ def test_outbox_migration_on_empty_postgres(postgres_database):
         assert session.exec(select(OutboxMessage)).one().event_id == event.event_id
 
 
+def test_sync_automation_upgrade_and_parallel_control(postgres_database):
+    from app.adapters.outbound.persistence.competition.automation import (
+        SqlAutomationUnitOfWork,
+        SyncAutomation,
+    )
+    from app.adapters.outbound.persistence.competition.worker_lock import (
+        SqlCompetitionWorkerLock,
+    )
+    from app.core.competition.application.sync.automation.commands import (
+        RecordWorkerHeartbeat,
+        RequestSync,
+        UpdateSyncSettings,
+    )
+    from app.core.competition.application.sync.automation.dto import (
+        UpdateSyncSettingsCommand,
+    )
+    from app.core.competition.domain.sync_automation import SyncSettings
+
+    engine, config = postgres_database
+    command.upgrade(config, "f3b82e0a7c51")
+    match_id = seed_report_match(engine)
+    command.upgrade(config, "head")
+    command.check(config)
+    uow = lambda: SqlAutomationUnitOfWork(lambda: Session(engine))
+    now = datetime.now(timezone.utc)
+    barrier = Barrier(3)
+
+    def execute(operation):
+        barrier.wait(timeout=10)
+        operation()
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        operations = [
+            lambda: RequestSync(uow).execute(),
+            lambda: RecordWorkerHeartbeat(uow, lambda: now).execute(),
+            lambda: UpdateSyncSettings(uow).execute(
+                UpdateSyncSettingsCommand(SyncSettings(nightly_hour=4))
+            ),
+        ]
+        futures = [pool.submit(execute, operation) for operation in operations]
+        for future in futures:
+            future.result(timeout=20)
+    with uow() as unit:
+        assert unit.repository.settings().nightly_hour == 4
+        assert unit.repository.state().requested
+        assert unit.repository.heartbeat() == now
+    with Session(engine) as session:
+        assert session.get(TeamMatch, match_id).details_imported_at is not None
+        assert session.get(SyncAutomation, 1) is not None
+    lock = SqlCompetitionWorkerLock(engine)
+    with lock.acquire() as first, lock.acquire() as second:
+        assert first and not second
+    with lock.acquire() as next_owner:
+        assert next_owner
+
+
 def test_outbox_upgrade_preserves_existing_data(postgres_database):
     engine, config = postgres_database
     command.upgrade(config, "d490e19c6832")

@@ -3,6 +3,10 @@
 # ruff: noqa: F401 -- these imports intentionally register tables through module loading
 from app.adapters.outbound.persistence.articles.models import Article, ArticleTag, Tag
 from app.adapters.outbound.persistence.auth.models import RefreshSession
+from app.adapters.outbound.persistence.competition.automation import (
+    MatchPoll,
+    SyncAutomation,
+)
 from app.adapters.outbound.persistence.competition.leagues import (
     LeagueGroup,
     LeagueTableEntry,
