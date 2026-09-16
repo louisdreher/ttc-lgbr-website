@@ -180,6 +180,9 @@ def postgres_database(monkeypatch):
         pytest.skip(
             "TTC_TEST_POSTGRES_URL is not set; requires disposable PostgreSQL DBs"
         )
+    # Alembic's fileConfig otherwise disables application loggers globally and
+    # breaks later caplog tests. Keep pytest's logging configuration in test DBs.
+    monkeypatch.setattr("logging.config.fileConfig", lambda *args, **kwargs: None)
     url = make_url(connection_url)
     if url.get_backend_name() != "postgresql":
         pytest.fail("TTC_TEST_POSTGRES_URL must refer to PostgreSQL")

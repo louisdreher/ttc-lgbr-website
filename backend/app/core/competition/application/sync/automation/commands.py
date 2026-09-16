@@ -1,10 +1,17 @@
 import asyncio
 from collections.abc import Callable
+from dataclasses import asdict
 from datetime import datetime, timedelta
 
 from app.core.competition.application.events import ImportOrigin
 from app.core.competition.application.sync.automation.dto import (
+    MatchReloadStatus,
+    RequestMatchReloadCommand,
     UpdateSyncSettingsCommand,
+)
+from app.core.competition.application.sync.automation.errors import (
+    MatchReloadConflictError,
+    ReloadMatchNotFoundError,
 )
 from app.core.competition.application.sync.automation.ports import (
     AutomationUnitOfWork,
@@ -17,6 +24,7 @@ from app.core.competition.application.sync.dto import (
     SyncScheduleCommand,
 )
 from app.core.competition.application.sync.ports import CompetitionReader
+from app.core.competition.domain.match_reload import MatchReload
 from app.core.competition.domain.seasons import SeasonKey
 from app.core.competition.domain.sync_automation import BERLIN, SyncRun
 
@@ -60,6 +68,45 @@ class RecordWorkerHeartbeat:
             uow.commit()
 
 
+class RequestMatchReload:
+    def __init__(
+        self,
+        uow_factory: Callable[[], AutomationUnitOfWork],
+        clock: Callable[[], datetime],
+    ):
+        self.uow_factory, self.clock = uow_factory, clock
+
+    def execute(self, command: RequestMatchReloadCommand) -> MatchReloadStatus:
+        with self.uow_factory() as uow:
+            repo = uow.repository
+            # Serialize enqueueing with worker selection, without holding locks during I/O.
+            state = repo.state()
+            target = repo.reload_target(command.team_match_id)
+            if target is None:
+                raise ReloadMatchNotFoundError()
+            reason = target.blocked_reason()
+            if reason:
+                raise MatchReloadConflictError(reason)
+            request = repo.reload_request(target.id)
+            if request and request.is_open:
+                return MatchReloadStatus(**asdict(request))
+            if (
+                state.last_run
+                and state.last_run.status == "running"
+                and state.last_run.match_id == target.id
+            ):
+                raise MatchReloadConflictError(
+                    "Für dieses Spiel läuft bereits ein automatischer Abruf."
+                )
+            if request is None:
+                request = MatchReload(target.id, self.clock())
+            else:
+                request.request(self.clock())
+            repo.save_reload(request)
+            uow.commit()
+            return MatchReloadStatus(**asdict(request))
+
+
 class RunScheduledSync:
     """One due job per tick. The caller MUST hold the cross-process sync lock."""
 
@@ -93,9 +140,17 @@ class RunScheduledSync:
                     state.nightly_run = abandoned
                     state.requested = True
                 repo.save_state(state)
+            for interrupted in repo.running_reloads():
+                interrupted.recover()
+                repo.save_reload(interrupted)
+            reload_request = repo.next_reload()
             kind, match = None, None
             slot = settings.nightly_slot(now)
-            if state.requested:
+            if reload_request:
+                kind = "match"
+                reload_request.start(now)
+                repo.save_reload(reload_request)
+            elif state.requested:
                 kind = "manual"
                 state.requested = False
             elif settings.enabled and (
@@ -123,17 +178,29 @@ class RunScheduledSync:
             if kind is None:
                 uow.commit()
                 return ImportSummary()
-            run = SyncRun(kind, now, match.id if match else None)
+            match_id = (
+                reload_request.team_match_id
+                if reload_request
+                else match.id
+                if match
+                else None
+            )
+            run = SyncRun(kind, now, match_id)
             state.last_run = run
             if match:
                 repo.attempted(match, now)
-            else:
+            elif kind != "match":
                 state.last_nightly_slot, state.nightly_run = slot, run
             repo.save_state(state)
             uow.commit()
 
         try:
-            if match:
+            if reload_request:
+                imported, error = await self._reload_match(reload_request.team_match_id)
+                run.imported, run.skipped = int(imported), int(not imported)
+                if error:
+                    run.errors.append(error)
+            elif match:
                 imported = await self.competition.meeting.execute(
                     SyncMeetingCommand(match.id, import_origin=ImportOrigin.CURRENT)
                 )
@@ -158,7 +225,12 @@ class RunScheduledSync:
         with self.uow_factory() as uow:
             state = uow.repository.state()
             state.last_run = run
-            if not match:
+            if reload_request:
+                current = uow.repository.reload_request(reload_request.team_match_id)
+                if current is not None:  # deleting the match cascades to its request
+                    current.finish(run.finished_at, "; ".join(run.errors) or None)
+                    uow.repository.save_reload(current)
+            if kind != "match":
                 state.nightly_run = run
                 if not run.errors:
                     state.last_nightly_success_at = run.finished_at
@@ -170,8 +242,32 @@ class RunScheduledSync:
             uow.repository.save_state(state)
             uow.commit()
         return ImportSummary(
-            run.imported, run.skipped, [match.id if match else 0] if run.errors else []
+            run.imported, run.skipped, [match_id or 0] if run.errors else []
         )
+
+    async def _reload_match(self, match_id: int) -> tuple[bool, str | None]:
+        with self.uow_factory() as uow:
+            target = uow.repository.reload_target(match_id)
+        if target is None:
+            return False, "Das angeforderte Spiel wurde gelöscht."
+        if target.details_imported_at is not None:
+            return (
+                False,
+                None,
+            )  # e.g. crash after result commit, before job confirmation
+        reason = target.blocked_reason()
+        if reason:
+            return False, reason
+        imported = await self.competition.meeting.execute(
+            SyncMeetingCommand(match_id, import_origin=ImportOrigin.MANUAL)
+        )
+        if imported:
+            return True, None
+        with self.uow_factory() as uow:
+            target = uow.repository.reload_target(match_id)
+        if target and target.details_imported_at is not None:
+            return False, None  # another explicit import completed in the meantime
+        return False, "myTischtennis liefert noch keine vollständigen Ergebnisse."
 
     async def _general(self, run, settings):
         season = SeasonKey.current(self.clock().astimezone(BERLIN).date())

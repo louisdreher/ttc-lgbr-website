@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import Protocol, Self
 
+from app.core.competition.application.sync.automation.dto import SyncMatchOverview
 from app.core.competition.application.sync.commands import (
     SyncMeeting,
     SyncRegistrations,
     SyncSchedule,
     SyncStandings,
 )
+from app.core.competition.domain.match_reload import MatchReload, ReloadTarget
 from app.core.competition.domain.sync_automation import (
     ScheduledMatch,
     SyncSettings,
@@ -23,6 +25,15 @@ class AutomationRepository(Protocol):
     def save_heartbeat(self, now: datetime) -> None: ...
     def candidates(self, since: datetime) -> list[ScheduledMatch]: ...
     def attempted(self, match: ScheduledMatch, now: datetime) -> None: ...
+    def reload_target(self, match_id: int) -> ReloadTarget | None: ...
+    def reload_request(self, match_id: int) -> MatchReload | None: ...
+    def save_reload(self, request: MatchReload) -> None: ...
+    def next_reload(self) -> MatchReload | None: ...
+    def running_reloads(self) -> list[MatchReload]: ...
+
+
+class SyncMatchOverviewReader(Protocol):
+    def read(self, now: datetime) -> SyncMatchOverview: ...
 
 
 class AutomationUnitOfWork(Protocol):

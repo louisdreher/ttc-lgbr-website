@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from app.adapters.outbound.persistence.competition.matches import TeamMatch
+from app.core.competition.domain.match_reload import MatchReload, ReloadTarget
 from app.core.competition.domain.sync_automation import (
     ScheduledMatch,
     SyncRun,
@@ -34,6 +35,46 @@ class MatchPoll(SQLModel, table=True):
     )
     scheduled_at: datetime = Field(sa_type=sa.DateTime(timezone=True))
     attempted_at: datetime = Field(sa_type=sa.DateTime(timezone=True))
+
+
+class MatchReloadRequest(SQLModel, table=True):
+    __tablename__ = "mytt_match_reload"
+    __table_args__ = (
+        sa.CheckConstraint(
+            "status IN ('requested', 'running', 'succeeded', 'failed')",
+            name="ck_mytt_match_reload_status",
+        ),
+        sa.Index(
+            "ix_mytt_match_reload_queue", "status", "requested_at", "team_match_id"
+        ),
+    )
+    team_match_id: int = Field(
+        sa_column=sa.Column(
+            sa.Integer,
+            sa.ForeignKey("team_match.id", ondelete="CASCADE"),
+            primary_key=True,
+        )
+    )
+    status: str
+    requested_at: datetime = Field(sa_type=sa.DateTime(timezone=True))
+    started_at: datetime | None = Field(
+        default=None, sa_type=sa.DateTime(timezone=True)
+    )
+    finished_at: datetime | None = Field(
+        default=None, sa_type=sa.DateTime(timezone=True)
+    )
+    last_error: str | None = None
+
+
+def reload_domain(row):
+    return MatchReload(
+        row.team_match_id,
+        aware(row.requested_at),
+        row.status,
+        aware(row.started_at),
+        aware(row.finished_at),
+        row.last_error,
+    )
 
 
 def aware(value):
@@ -104,10 +145,14 @@ class SqlAutomationRepository:
         rows = self.session.exec(
             select(TeamMatch, MatchPoll)
             .outerjoin(MatchPoll, MatchPoll.team_match_id == TeamMatch.id)
+            .outerjoin(
+                MatchReloadRequest, MatchReloadRequest.team_match_id == TeamMatch.id
+            )
             .where(
                 TeamMatch.details_imported_at.is_(None),
                 TeamMatch.mytt_meeting_id.is_not(None),
                 TeamMatch.scheduled_at >= since,
+                MatchReloadRequest.team_match_id.is_(None),
             )
         ).all()
         return [
@@ -132,6 +177,58 @@ class SqlAutomationRepository:
         else:
             poll.scheduled_at, poll.attempted_at = match.scheduled_at, now
         self.session.add(poll)
+
+    def reload_target(self, match_id):
+        self._get()  # consistent lock order: singleton, then match
+        query = select(TeamMatch).where(TeamMatch.id == match_id)
+        if self.write:
+            query = query.with_for_update()
+        row = self.session.exec(query).first()
+        return (
+            ReloadTarget(
+                row.id,
+                row.is_completed,
+                aware(row.details_imported_at),
+                row.mytt_meeting_id,
+            )
+            if row
+            else None
+        )
+
+    def reload_request(self, match_id):
+        self._get()
+        row = self.session.get(MatchReloadRequest, match_id)
+        return reload_domain(row) if row else None
+
+    def save_reload(self, request):
+        self._get()
+        row = self.session.get(MatchReloadRequest, request.team_match_id)
+        if row is None:
+            row = MatchReloadRequest(**asdict(request))
+        else:
+            for key, value in asdict(request).items():
+                setattr(row, key, value)
+        self.session.add(row)
+        self.session.flush()
+
+    def next_reload(self):
+        self._get()
+        row = self.session.exec(
+            select(MatchReloadRequest)
+            .where(MatchReloadRequest.status == "requested")
+            .order_by(MatchReloadRequest.requested_at, MatchReloadRequest.team_match_id)
+            .limit(1)
+        ).first()
+        return reload_domain(row) if row else None
+
+    def running_reloads(self):
+        self._get()
+        return [
+            reload_domain(row)
+            for row in self.session.exec(
+                select(MatchReloadRequest).where(MatchReloadRequest.status == "running")
+            ).all()
+        ]
 
 
 class SqlAutomationUnitOfWork:

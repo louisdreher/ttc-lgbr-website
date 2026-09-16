@@ -5,6 +5,7 @@ from app.adapters.outbound.persistence.articles.models import Article, ArticleTa
 from app.adapters.outbound.persistence.auth.models import RefreshSession
 from app.adapters.outbound.persistence.competition.automation import (
     MatchPoll,
+    MatchReloadRequest,
     SyncAutomation,
 )
 from app.adapters.outbound.persistence.competition.leagues import (

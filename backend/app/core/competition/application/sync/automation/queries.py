@@ -1,8 +1,22 @@
 from collections.abc import Callable
 from datetime import datetime, timedelta
 
-from app.core.competition.application.sync.automation.dto import AutomationStatus
-from app.core.competition.application.sync.automation.ports import AutomationUnitOfWork
+from app.core.competition.application.sync.automation.dto import (
+    AutomationStatus,
+    SyncMatchOverview,
+)
+from app.core.competition.application.sync.automation.ports import (
+    AutomationUnitOfWork,
+    SyncMatchOverviewReader,
+)
+
+
+class GetSyncMatches:
+    def __init__(self, reader: SyncMatchOverviewReader, clock: Callable[[], datetime]):
+        self.reader, self.clock = reader, clock
+
+    def execute(self) -> SyncMatchOverview:
+        return self.reader.read(self.clock())
 
 
 class GetSyncStatus:
