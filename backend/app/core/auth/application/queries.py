@@ -16,6 +16,6 @@ class GetCurrentUser:
         user = self.users.get_public(user_id)
         if user is None:
             raise AuthenticationError("Benutzer nicht gefunden")
-        if not user.is_active:
+        if not user.is_active or user.is_system:
             raise AuthenticationError("Benutzer ist deaktiviert")
         return user

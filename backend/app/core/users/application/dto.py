@@ -25,6 +25,7 @@ class UserDetails:
     name: str
     is_active: bool
     roles: list[str]
+    is_system: bool = False
 
     @classmethod
     def from_user(cls, user: User) -> "UserDetails":
@@ -36,6 +37,7 @@ class UserDetails:
             name=user.name,
             is_active=user.is_active,
             roles=[role.name for role in user.roles],
+            is_system=user.system_key is not None,
         )
 
 
@@ -46,3 +48,4 @@ class UserCredentials:
     user_id: int
     is_active: bool
     password_hash: str = field(repr=False)
+    is_system: bool = False

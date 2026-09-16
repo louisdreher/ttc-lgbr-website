@@ -1,8 +1,7 @@
-from sqlmodel import Session, select
-
 from app.adapters.outbound.persistence.users.models import User
 from app.core.users.application.dto import UserCredentials, UserDetails
 from app.core.users.domain.user import normalize_email
+from sqlmodel import Session, select
 
 
 class SqlUserReader:
@@ -19,6 +18,7 @@ class SqlUserReader:
             name=user.name,
             is_active=user.is_active,
             roles=[role.name for role in user.roles],
+            is_system=user.system_key is not None,
         )
 
     def get_credentials(self, email: str) -> UserCredentials | None:
@@ -28,8 +28,16 @@ class SqlUserReader:
         if user is None:
             return None
         return UserCredentials(
-            user_id=user.id, password_hash=user.password_hash, is_active=user.is_active
+            user_id=user.id,
+            password_hash=user.password_hash,
+            is_active=user.is_active,
+            is_system=user.system_key is not None,
         )
+
+    def get_system_author_id(self) -> int | None:
+        return self.session.exec(
+            select(User.id).where(User.system_key == "article-automation")
+        ).first()
 
     def get_names(self, user_ids: set[int]) -> dict[int, str]:
         if not user_ids:

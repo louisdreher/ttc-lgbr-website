@@ -43,6 +43,41 @@ from sqlmodel import Session, select
 
 
 
+def test_automation_upgrade_preserves_pending_messages(postgres_database):
+    import json
+
+    from app.adapters.outbound.persistence.users.models import User
+
+    engine, config = postgres_database
+    command.upgrade(config, "e2a71d9f6b40")
+    event_id = uuid4()
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO outbox_message "
+                "(event_id, event_type, deduplication_key, occurred_at, payload) "
+                "VALUES (:id, :type, :key, :now, CAST(:payload AS JSON))"
+            ),
+            {
+                "id": event_id,
+                "type": "competition.team_match_results_imported.v1",
+                "key": "old-message",
+                "now": datetime.now(timezone.utc),
+                "payload": json.dumps({"team_match_id": 1, "import_origin": "HISTORY"}),
+            },
+        )
+    command.upgrade(config, "head")
+    command.check(config)
+    with Session(engine) as session:
+        message = session.exec(select(OutboxMessage)).one()
+        assert message.event_id == event_id and message.attempts == 0
+        assert message.failed_at is None and message.processed_at is None
+        system = session.exec(
+            select(User).where(User.system_key == "article-automation")
+        ).one()
+        assert (
+            not system.is_active and system.password_hash == "!" and system.roles == []
+        )
 
 
 @pytest.fixture

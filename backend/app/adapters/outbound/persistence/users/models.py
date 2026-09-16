@@ -18,6 +18,7 @@ class User(SQLModel, table=True):
     password_hash: str
 
     is_active: bool = True
+    system_key: str | None = Field(default=None, unique=True)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

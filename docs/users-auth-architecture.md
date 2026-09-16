@@ -68,3 +68,10 @@ Usecase; `build_ensure_default_roles` verdrahtet ihn. Er wird nicht automatisch
 beim Start ausgeführt. Ein Einrichtungsablauf für den ersten Administrator bleibt
 geplant. Die später ergänzte Competition-Domain und die verschobenen Members-/Media-
 Persistenzmodelle sind in [der Architekturübersicht](architecture.md) beschrieben.
+
+## Systemautor für Berichte
+
+Migration f3b82e0a7c51 ergänzt einen inaktiven Systemautor ohne gültiges Passwort.
+Systemidentitäten werden bei Login, Refresh und Zugriffstoken-Verwendung abgelehnt.
+Die unveränderte Migration bereitet außerdem Artikelherkunft und Outbox-Verarbeitungsfelder vor;
+die zugehörigen Usecases werden separat ergänzt.

@@ -1,8 +1,7 @@
-from sqlmodel import Session, select
-
 from app.adapters.outbound.persistence.users.models import Role as RoleRow
 from app.adapters.outbound.persistence.users.models import User as UserRow
 from app.core.users.domain.user import Role, User
+from sqlmodel import Session, select
 
 
 def to_domain(row: UserRow) -> User:
@@ -12,6 +11,7 @@ def to_domain(row: UserRow) -> User:
         name=row.name,
         password_hash=row.password_hash,
         is_active=row.is_active,
+        system_key=row.system_key,
         created_at=row.created_at,
         member_id=row.member_id,
         roles=[Role(id=role.id, name=role.name) for role in row.roles],
@@ -40,6 +40,7 @@ class SqlUserRepository:
                 name=user.name,
                 password_hash=user.password_hash,
                 is_active=user.is_active,
+                system_key=user.system_key,
                 created_at=user.created_at,
                 member_id=user.member_id,
             )

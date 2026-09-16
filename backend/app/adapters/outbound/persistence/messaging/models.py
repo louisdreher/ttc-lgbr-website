@@ -18,3 +18,13 @@ class OutboxMessage(SQLModel, table=True):
     processed_at: datetime | None = Field(
         default=None, sa_type=sa.DateTime(timezone=True), index=True
     )
+    attempts: int = 0
+    next_attempt_at: datetime | None = Field(
+        default=None, sa_type=sa.DateTime(timezone=True)
+    )
+    locked_until: datetime | None = Field(
+        default=None, sa_type=sa.DateTime(timezone=True)
+    )
+    lock_token: UUID | None = None
+    failed_at: datetime | None = Field(default=None, sa_type=sa.DateTime(timezone=True))
+    last_error: str | None = None

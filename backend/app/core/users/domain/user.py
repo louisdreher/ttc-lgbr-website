@@ -26,6 +26,7 @@ class User:
     password_hash: str = field(repr=False)
     id: int | None = None
     is_active: bool = True
+    system_key: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     member_id: int | None = None
     roles: list[Role] = field(default_factory=list)

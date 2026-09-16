@@ -39,6 +39,7 @@ class Login:
             if (
                 user is None
                 or not user.is_active
+                or user.is_system
                 or not self.passwords.verify(command.password, user.password_hash)
             ):
                 raise AuthenticationError("E-Mail oder Passwort ist falsch")
@@ -92,7 +93,7 @@ class RefreshAccess:
                 reuse_error = error
             if reuse_error is None:
                 user = self.users.get_public(session.user_id)
-                if user is None or not user.is_active:
+                if user is None or not user.is_active or user.is_system:
                     raise AuthenticationError(
                         "Benutzer ist deaktiviert oder nicht vorhanden"
                     )

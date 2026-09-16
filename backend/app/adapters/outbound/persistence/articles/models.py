@@ -2,9 +2,8 @@ from datetime import datetime, timezone
 from enum import StrEnum
 
 import sqlalchemy as sa
-from sqlmodel import Field, SQLModel
-
 from app.core.content.types import Visibility
+from sqlmodel import Field, SQLModel
 
 
 def utc_now() -> datetime:
@@ -72,6 +71,11 @@ class Article(SQLModel, table=True):
     slug: str = Field(unique=True, index=True)
     teaser: str
     content: str
+    generation_key: str | None = Field(default=None, unique=True)
+    generation_method: str | None = None
+    generated_at: datetime | None = Field(
+        default=None, sa_type=sa.DateTime(timezone=True)
+    )
     cover_image_id: int | None = Field(
         default=None,
         foreign_key="media_asset.id",
