@@ -64,3 +64,32 @@ class OutboxStatusSchema(BaseModel):
     next_attempt_at: datetime | None
     locked_until: datetime | None
     failed_at: datetime | None
+
+
+class MatchReloadStatusSchema(BaseModel):
+    team_match_id: int
+    status: Literal["requested", "running", "succeeded", "failed"]
+    requested_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    last_error: str | None
+
+
+class SyncMatchSchema(BaseModel):
+    id: int
+    team_id: int
+    team_name: str
+    opponent_name: str
+    is_home: bool
+    scheduled_at: datetime
+    is_completed: bool
+    details_imported_at: datetime | None
+    reload: MatchReloadStatusSchema | None
+    can_reload: bool
+    reload_blocked_reason: str | None
+
+
+class SyncMatchOverviewSchema(BaseModel):
+    imported: list[SyncMatchSchema]
+    missing_details: list[SyncMatchSchema]
+    upcoming: list[SyncMatchSchema]

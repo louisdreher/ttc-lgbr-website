@@ -171,7 +171,10 @@ def registration_response():
 
 @pytest.fixture
 def imports():
-    engine = create_engine("sqlite://", poolclass=StaticPool)
+    # Also used by the admin HTTP tests, whose handlers run in a worker thread.
+    engine = create_engine(
+        "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
+    )
 
     @event.listens_for(engine, "connect")
     def foreign_keys(connection, _):
