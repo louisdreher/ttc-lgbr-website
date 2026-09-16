@@ -80,6 +80,9 @@ The backend is split into technical infrastructure and domain-oriented code:
 
 Scheduled synchronization is implemented in a separate content worker, started
 with `python -m scripts.content worker`. FastAPI does not start it automatically.
+Nightly and match-relative scheduling is configured in the database. ADMIN-only
+HTTP endpoints expose configuration, latest status, outbox operations, and a
+durable coalesced sync request. See [MyTT automation](mytt-automation.md).
 
 `app.*` is the canonical Python import path. Backend commands therefore need
 to run with `backend/` as the working directory, or otherwise make that package

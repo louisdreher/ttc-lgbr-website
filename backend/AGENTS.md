@@ -49,6 +49,10 @@ Check the actual code and preserve unrelated work when documentation differs.
   permissions unless the user requests a change. Assignment write HTTP routes
   are still planned. Scheduled sync runs through the separate content worker.
   Never trigger sync from a read query.
+- MyTischtennis automation has ADMIN-only endpoints under `/api/admin/mytt`.
+  Settings and latest status live in the database; HTTP requests only enqueue
+  a coalesced general sync. See `docs/mytt-automation.md`. Keep scheduled jobs
+  behind the PostgreSQL worker lock, and keep heartbeat/outbox independent.
 - Keep changes scoped: these conventions guide new work, not incidental bulk
   migration of unrelated components. Update walkthroughs when decisions change.
 

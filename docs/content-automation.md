@@ -3,7 +3,7 @@
 ## Implementiert
 
 ```text
-SyncCurrent(meetings)
+Geplanter allgemeiner Abgleich / gezielter Spielabruf
   → Spielplan aktualisieren, abgeschlossene Details importieren
   → Ergebnisse + TeamMatchResultsImported gemeinsam committen
   → Outbox-Verarbeiter reserviert die Nachricht
@@ -18,7 +18,9 @@ Historische und manuelle Detailimporte erzeugen ebenfalls Nachrichten, lösen
 aber keine automatische Berichtserstellung aus. Eine manuelle Berichtsanforderung
 kann auch ältere Spiele und Termine ohne Berichtserwartung verarbeiten.
 Es werden weder Artikel veröffentlicht noch externe KI-Dienste aufgerufen.
-HTTP-Endpunkte und Webseiten-Bedienung für diese Funktionen sind nicht implementiert.
+Admin-HTTP-Endpunkte für Sync-Steuerung und Outbox sind implementiert; Webseiten-
+Bedienung und HTTP-Endpunkte für Berichtserstellung/-bearbeitung bleiben geplant.
+Siehe [MyTischtennis-Zeitplanung und Admin-API](mytt-automation.md).
 
 ## Artikel, Daten und Autorenschaft
 
@@ -99,14 +101,17 @@ python -m scripts.content worker
 ```
 
 Der Worker startet Sync und Outbox-Verarbeitung in getrennten Schleifen.
-Standard: Sync sofort und danach stündlich nach Abschluss, Outbox alle zehn Sekunden.
+Standard: allgemeiner Abgleich nachts um 03:00 Europe/Berlin, gezielte Ergebnisabrufe
+ab drei Stunden nach Spielbeginn. Einstellungen und Status liegen in der Datenbank;
+Details einschließlich Nachholen und Wiederholungen stehen in [MyTT-Automation](mytt-automation.md).
+Die Outbox läuft mit zehn Sekunden Pause zwischen Durchläufen.
 Ein Sync-Fehler stoppt die Outbox-Verarbeitung nicht. Eine PostgreSQL-Prozesssperre
 verhindert gleichzeitig laufende geplante Syncs. Mehrere Outbox-Worker sind möglich.
 Strg+C beendet den Prozess; nach Neustart werden offene Nachrichten wieder aufgenommen.
 Für Betrieb über Rechnerneustarts hinaus muss dieser Befehl durch den eingesetzten
 Prozessmanager gestartet werden. Der Webserver startet den Worker nicht automatisch.
 
-Ein einzelner Durchlauf (ebenfalls echter Sync):
+Eine fällige Sync-Aufgabe und Outbox-Verarbeitung (gegebenenfalls echter Sync):
 
 ```powershell
 python -m scripts.content worker --once
@@ -133,7 +138,6 @@ auch nach Freigabe von der Automatik ausgeschlossen.
 
 | Umgebungsvariable | Standard |
 | --- | --- |
-| `COMPETITION_SYNC_INTERVAL_SECONDS` | 3600 |
 | `OUTBOX_POLL_INTERVAL_SECONDS` | 10 |
 | `OUTBOX_BATCH_SIZE` | 100 |
 | `OUTBOX_MAX_ATTEMPTS` | 5 |

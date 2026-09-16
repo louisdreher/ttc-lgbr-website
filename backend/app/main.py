@@ -5,6 +5,9 @@ from app.adapters.inbound.http.articles.admin_router import (
     router as article_admin_router,
 )
 from app.adapters.inbound.http.auth.router import router as auth_router
+from app.adapters.inbound.http.competition.automation_router import (
+    router as automation_router,
+)
 from app.adapters.inbound.http.competition.router import router as competition_router
 from app.adapters.inbound.http.events.admin_router import router as event_admin_router
 from app.adapters.inbound.http.events.public_router import router as event_public_router
@@ -46,6 +49,7 @@ app.add_middleware(
 
 
 app.include_router(competition_router)
+app.include_router(automation_router)
 app.include_router(user_router)
 app.include_router(article_admin_router)
 app.include_router(event_admin_router)

@@ -181,6 +181,12 @@ must be started explicitly; FastAPI does not launch it. See
 [Content automation](content-automation.md) for intervals, manual reports,
 draft editing, message status and retry commands.
 
+The worker now uses database-backed nightly and match-relative scheduling.
+Migration `a7c93d1e8402` is required. Use `python -m scripts.content sync-status`
+to inspect it and `python -m scripts.content request-sync` to request a general
+sync. `worker --once` performs at most one due job, rather than forcing a full
+sync. See [MyTT automation](mytt-automation.md) for ADMIN API contracts and defaults.
+
 ## Suggested learning workflow with Codex
 
 Prefix a task with the kind of collaboration you want:

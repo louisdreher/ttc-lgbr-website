@@ -173,6 +173,12 @@ beschrieben. Migration `f3b82e0a7c51` ergänzt dafür die Verarbeitungsfelder.
 
 ## Start und Prüfung
 
+Der Content-Worker verwendet eine datenbankgestützte Zeitplanung mit Nachtlauf
+und gezielten Ergebnisabrufen ab drei Stunden nach Spielbeginn. Letzter Status,
+Fehler und Einstellungen sind über ADMIN-Endpunkte verfügbar. Die bisherigen
+direkten CLI-Importbefehle bleiben unabhängig davon. Siehe
+[Zeitplanung und Admin-API](mytt-automation.md).
+
 Die bisherigen Modulbefehle und Parameter bleiben bestehen, beispielsweise:
 
 ```powershell
