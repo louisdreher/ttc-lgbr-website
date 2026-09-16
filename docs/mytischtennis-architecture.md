@@ -99,6 +99,15 @@ Domain-Aggregate oder leeren Usecases angelegt.
 
 ## Wiederholungen und bewusst korrigiertes Verhalten
 
+API-Fehlercode 449 im JSON wird zentral im Datenquellen-Adapter behandelt:
+Der identische Abruf wird nach 2, 5 und 10 Sekunden wiederholt (höchstens vier
+Versuche). Das gilt auch für direkte Aufrufe durch den geplanten Worker.
+Nach Ausschöpfen dieses Budgets wird ein `SourceError` ohne weitere
+Batch-Wiederholung ausgelöst. Andere API-Fehler und ungültige Daten lösen diese
+449-Wiederholung nicht aus. Logs enthalten nur Code, Wartezeit und Versuch,
+keine fremden Fehlermeldungen oder Rohantworten. Diagnose-Probes verwenden
+weiterhin den unveränderten HTTP-Client und zeigen die erste Antwort direkt.
+
 Der Core erhält `SourceError` mit einer Angabe, ob ein Fehler temporär ist.
 Verbindungsfehler, ungültiges JSON, HTTP 403/408/429 und Serverfehler können
 wiederholt werden. Wartezeiten werden injiziert; Tests schlafen nicht real.

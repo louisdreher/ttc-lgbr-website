@@ -1,5 +1,6 @@
 """Validate myTischtennis responses and translate them into core snapshots."""
 
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -69,16 +70,34 @@ def season_name(season):
 
 
 class MyTischtennisSource:
-    def __init__(self, client, club_number: str):
+    def __init__(self, client, club_number: str, *, sleep=asyncio.sleep):
         self.client = client
         self.club_number = str(club_number)
+        self.sleep = sleep
 
     async def _request(self, method, **kwargs):
         try:
-            result = object_value(await method(**kwargs))
-            if result.get("error"):
-                raise SourceError("myTischtennis meldet einen API-Fehler.")
-            return result
+            delays = (2, 5, 10)
+            for attempt in range(len(delays) + 1):
+                result = object_value(await method(**kwargs))
+                error = result.get("error")
+                if not error:
+                    return result
+                if not isinstance(error, dict) or error.get("code") not in (449, "449"):
+                    raise SourceError("myTischtennis meldet einen API-Fehler.")
+                if attempt == len(delays):
+                    # This retry budget is exhausted; outer batches must not restart it.
+                    raise SourceError(
+                        "myTischtennis API 449 nach vier Abrufversuchen."
+                    )
+                delay = delays[attempt]
+                logger.warning(
+                    "myTischtennis API 449: erneuter Abruf in %s Sekunden "
+                    "(Versuch %s/4).",
+                    delay,
+                    attempt + 2,
+                )
+                await self.sleep(delay)
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code
             raise SourceError(
