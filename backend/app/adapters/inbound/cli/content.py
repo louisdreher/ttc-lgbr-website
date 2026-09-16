@@ -12,6 +12,10 @@ from app.bootstrap.articles import (
     build_create_match_report_draft,
     build_edit_article_draft,
 )
+from app.bootstrap.competition_automation import (
+    build_get_sync_status,
+    build_request_sync,
+)
 from app.bootstrap.content_worker import build_content_worker
 from app.bootstrap.logging import configure_logging
 from app.bootstrap.messaging import (
@@ -37,6 +41,10 @@ def main(argv=None):
         description="Berichtsentwürfe und Outbox-Verarbeitung"
     )
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("sync-status", help="Zeitplanung und letzten Sync anzeigen")
+    commands.add_parser(
+        "request-sync", help="Allgemeinen Abgleich beim Worker anfordern"
+    )
     report = commands.add_parser(
         "generate-report", help="Entwurf für ein gespeichertes Spiel erzeugen"
     )
@@ -66,7 +74,9 @@ def main(argv=None):
         "worker", help="Regelmäßigen Sync und Outbox-Verarbeitung starten"
     )
     worker.add_argument(
-        "--once", action="store_true", help="Einmal Sync und Verarbeitung ausführen"
+        "--once",
+        action="store_true",
+        help="Eine fällige Sync-Aufgabe und Outbox verarbeiten",
     )
     args = parser.parse_args(argv)
     configure_logging(
@@ -77,7 +87,14 @@ def main(argv=None):
         log_max_bytes=settings.log_max_bytes,
         log_backup_count=settings.log_backup_count,
     )
-    if args.command == "worker":
+    if args.command == "sync-status":
+        print(
+            json.dumps(asdict(build_get_sync_status().execute()), default=str, indent=2)
+        )
+    elif args.command == "request-sync":
+        build_request_sync().execute()
+        print("Abgleich angefordert; ein laufender Worker übernimmt ihn.")
+    elif args.command == "worker":
         worker = build_content_worker()
         try:
             result = asyncio.run(worker.once() if args.once else worker.run())

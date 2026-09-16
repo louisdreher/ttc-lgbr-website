@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # Anwendung
     environment: str = "development"
 
+    # Compatibility with existing .env files; scheduling now lives in the database.
     competition_sync_interval_seconds: int = Field(default=3600, ge=60)
     outbox_poll_interval_seconds: int = Field(default=10, ge=1)
     outbox_batch_size: int = Field(default=100, ge=1, le=1000)

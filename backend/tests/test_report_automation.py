@@ -93,6 +93,52 @@ def test_current_results_create_system_draft_with_sets(reports):
         assert session.exec(select(OutboxMessage)).one().processed_at is not None
 
 
+def test_scheduled_match_import_creates_report_without_schedule_refresh(reports):
+    from dataclasses import asdict
+
+    from app.adapters.outbound.persistence.competition.automation import (
+        SqlAutomationUnitOfWork,
+        SyncAutomation,
+    )
+    from app.adapters.outbound.persistence.competition.matches import TeamMatch
+    from app.core.competition.application.sync.automation.commands import (
+        RunScheduledSync,
+    )
+    from app.core.competition.domain.sync_automation import SyncSettings
+
+    engine, usecases, match_id, _, _ = reports
+    settings = SyncSettings()
+    with Session(engine) as session:
+        match = session.get(TeamMatch, match_id)
+        match.scheduled_at = NOW - timedelta(hours=3)
+        session.add(
+            SyncAutomation(
+                id=1,
+                settings=asdict(settings),
+                state={
+                    "last_nightly_slot": settings.nightly_slot(NOW).isoformat(),
+                },
+            )
+        )
+        session.commit()
+    usecases.schedule = Mock()
+    scheduler = RunScheduledSync(
+        lambda: SqlAutomationUnitOfWork(lambda: Session(engine)),
+        usecases,
+        Mock(),
+        lambda: NOW,
+    )
+    assert asyncio.run(scheduler.execute()).imported == 1
+    usecases.schedule.execute.assert_not_called()
+    assert processor(engine).execute(ProcessOutboxCommand()).succeeded == 1
+    assert asyncio.run(scheduler.execute()).imported == 0
+    with Session(engine) as session:
+        assert (
+            session.exec(select(Article)).one().generation_key
+            == f"team-match:{match_id}"
+        )
+
+
 @pytest.mark.parametrize(
     "origin,expected",
     [
@@ -305,6 +351,43 @@ def test_worker_skips_sync_owned_by_another_process():
     )
     assert asyncio.run(worker.once())
     sync.assert_not_awaited()
+
+
+def test_worker_once_keeps_heartbeat_alive_during_sync():
+    @contextmanager
+    def acquire():
+        yield True
+
+    async def scenario():
+        loop = asyncio.get_running_loop()
+        pulse = asyncio.Event()
+        calls = []
+
+        def heartbeat():
+            calls.append(True)
+            if len(calls) >= 2:
+                loop.call_soon_threadsafe(pulse.set)
+
+        async def sync():
+            await asyncio.wait_for(pulse.wait(), timeout=2)
+            return ImportSummary()
+
+        async def sleep(_):
+            await asyncio.sleep(0)
+
+        worker = ContentWorker(
+            sync,
+            Mock(return_value=ProcessingSummary()),
+            Mock(acquire=acquire),
+            sync_interval=15,
+            poll_interval=10,
+            heartbeat=heartbeat,
+            sleep=sleep,
+        )
+        assert await worker.once()
+        assert len(calls) >= 2
+
+    asyncio.run(scenario())
 
 
 def test_system_identity_cannot_login_refresh_or_use_access_token_even_if_activated(
