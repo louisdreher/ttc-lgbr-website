@@ -1,0 +1,309 @@
+<header class="heading">
+  <p class="eyebrow">Beiträge</p>
+  <h1 articleFocus>{{ editorial() ? 'Redaktion' : 'Meine Beiträge' }}</h1>
+  <p class="muted">
+    {{
+      editorial()
+        ? 'Beiträge prüfen, bearbeiten und veröffentlichen.'
+        : 'Deine Entwürfe und veröffentlichten Geschichten an einem Ort.'
+    }}
+  </p>
+</header>
+@if (editorial()) {
+  <div class="tabs editorial-tabs" role="group" aria-label="Beitragsstatus">
+    @for (entry of statuses; track entry.value) {
+      <button
+        type="button"
+        [attr.aria-pressed]="status() === entry.value"
+        [disabled]="loading() || busyId() !== null"
+        (click)="selectStatus(entry.value)"
+      >
+        {{ entry.label }}
+        @if (entry.value === 'IN_REVIEW' && reviewCount() !== null) {
+          <span class="count">{{ reviewCount() }}</span>
+        }
+      </button>
+    }
+  </div>
+}
+<div class="toolbar">
+  @if (!editorial()) {
+    <a class="button primary" routerLink="/admin/articles/new">Neuer Beitrag</a>
+  }
+  <div class="filters" [class.editorial-filters]="editorial()">
+    @if (editorial() && status() !== 'IN_REVIEW') {
+      <div>
+        <label for="article-period">Zuletzt bearbeitet</label>
+        <select
+          id="article-period"
+          [ngModel]="period()"
+          (ngModelChange)="period.set($event); load(0)"
+          [disabled]="loading() || busyId() !== null"
+        >
+          <option value="14">Letzte zwei Wochen</option>
+          <option value="30">Letzte 30 Tage</option>
+          <option value="90">Letzte 90 Tage</option>
+          <option value="all">Gesamter Zeitraum</option>
+        </select>
+      </div>
+    }
+    <div>
+      <label for="article-type-filter">Beitragsart</label
+      ><select
+        id="article-type-filter"
+        [ngModel]="type()"
+        (ngModelChange)="type.set($event); load(0)"
+        [disabled]="loading() || busyId() !== null"
+      >
+        <option value="">Alle Beitragsarten</option>
+        @for (type of types; track type.value) {
+          <option [value]="type.value">{{ type.label }}</option>
+        }
+      </select>
+    </div>
+    @if (editorial() && status() === 'IN_REVIEW') {
+      <p class="filter-hint">Alle offenen Einreichungen – ohne Zeitbegrenzung.</p>
+    }
+  </div>
+</div>
+@if (!editorial()) {
+  <div class="tabs" role="group" aria-label="Meine Beiträge">
+    <button
+      type="button"
+      [attr.aria-pressed]="view() === 'drafts'"
+      [disabled]="loading() || busyId() !== null"
+      (click)="selectView('drafts')"
+    >
+      Entwürfe
+    </button>
+    <button
+      type="button"
+      [attr.aria-pressed]="view() === 'published'"
+      [disabled]="loading() || busyId() !== null"
+      (click)="selectView('published')"
+    >
+      Veröffentlicht
+    </button>
+  </div>
+}
+@if (error()) {
+  <p class="error" role="alert" articleFocus>{{ error() }}</p>
+  <button type="button" (click)="load()">Erneut versuchen</button>
+}
+@if (notice()) {
+  <p class="notice" role="status">{{ notice() }}</p>
+}
+@if (loading()) {
+  <p role="status">Beiträge werden geladen …</p>
+}
+@if (page(); as data) {
+  <section class="panel" aria-label="Beitragsliste" [attr.aria-busy]="loading()">
+    <ul class="rows">
+      @for (article of data.items; track article.id) {
+        <li class="row article-row">
+          <div class="article-summary">
+            <h2>
+              <a [routerLink]="['/admin/articles', article.id, 'edit']">{{ article.title }}</a>
+            </h2>
+            <div class="meta">
+              <span
+                class="badge"
+                [class.review]="article.status === 'IN_REVIEW'"
+                [class.published]="article.status === 'PUBLISHED'"
+                >{{ labels[article.status] }}</span
+              >
+              <span>{{ typeLabel(article.article_type) }}</span>
+              @if (editorial()) {
+                <span>{{ article.author_name }}</span>
+              }
+              <time [attr.datetime]="article.updated_at"
+                >Geändert am {{ article.updated_at | date: 'dd.MM.yyyy' }}</time
+              >
+            </div>
+            @if (editorial()) {
+              <div class="meta">
+                @if (article.tags.length) {
+                  <span>Tags: {{ article.tags.join(', ') }}</span>
+                }
+                @if (article.event_id) {
+                  <span>Mit Event verknüpft</span>
+                }
+                @if (article.generated) {
+                  <span>{{
+                    article.system_authored ? 'Systementwurf' : 'Automatisch vorbereitet'
+                  }}</span>
+                }
+                @if (article.published_at) {
+                  <span>Veröffentlicht: {{ article.published_at | date: 'dd.MM.yyyy' }}</span>
+                }
+              </div>
+            }
+          </div>
+          <div class="article-controls">
+            @if (editorial()) {
+              <details
+                class="action-menu"
+                #visibilityMenu
+                (focusout)="closeMenu($event, visibilityMenu)"
+                (keydown.escape)="visibilityMenu.open = false; visibilityTrigger.focus()"
+              >
+                <summary
+                  class="icon-button"
+                  #visibilityTrigger
+                  [attr.aria-label]="
+                    'Sichtbarkeit: ' + article.title + ' – ' + visibilityLabels[article.visibility]
+                  "
+                  [title]="'Sichtbarkeit: ' + visibilityLabels[article.visibility]"
+                >
+                  <app-visibility-icon [visibility]="article.visibility" />
+                </summary>
+                <div class="menu-panel" role="group" aria-label="Sichtbarkeit wählen">
+                  @for (value of visibilities; track value) {
+                    <button
+                      type="button"
+                      [attr.aria-pressed]="article.visibility === value"
+                      [disabled]="
+                        loading() ||
+                        busyId() !== null ||
+                        !article.allowed_actions.includes('visibility')
+                      "
+                      (click)="
+                        changeVisibility(article, value);
+                        visibilityMenu.open = false;
+                        visibilityTrigger.focus()
+                      "
+                    >
+                      <app-visibility-icon [visibility]="value" />
+                      {{ visibilityLabels[value] }}
+                    </button>
+                  }
+                </div>
+              </details>
+            } @else {
+              <span class="meta visibility-display" [title]="visibilityLabels[article.visibility]">
+                <app-visibility-icon [visibility]="article.visibility" />
+                {{ visibilityLabels[article.visibility] }}
+              </span>
+            }
+            <div class="row-actions">
+              <a
+                class="icon-button"
+                [routerLink]="['/admin/articles', article.id, 'edit']"
+                [attr.aria-label]="
+                  article.title +
+                  (article.allowed_actions.includes('save') ? ' bearbeiten' : ' ansehen')
+                "
+                [title]="article.allowed_actions.includes('save') ? 'Bearbeiten' : 'Ansehen'"
+              >
+                @if (article.allowed_actions.includes('save')) {
+                  <span aria-hidden="true">✎</span>
+                } @else {
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                }
+              </a>
+              @if (editorial()) {
+                @if (article.allowed_actions.includes('publish')) {
+                  <button
+                    type="button"
+                    class="publish-button"
+                    title="Veröffentlichen"
+                    [attr.aria-label]="article.title + ' veröffentlichen'"
+                    [disabled]="loading() || busyId() !== null"
+                    (click)="publish(article)"
+                  >
+                    Veröffentlichen
+                  </button>
+                }
+                @if (article.allowed_actions.includes('archive')) {
+                  <button
+                    type="button"
+                    class="icon-button"
+                    title="Archivieren"
+                    [attr.aria-label]="article.title + ' archivieren'"
+                    [disabled]="loading() || busyId() !== null"
+                    (click)="archive(article)"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M3 4h18v4H3zM5 8v12h14V8M9 12h6" />
+                    </svg>
+                  </button>
+                }
+                @if (article.allowed_actions.includes('restore')) {
+                  <button
+                    type="button"
+                    class="icon-button"
+                    title="Als Entwurf wiederherstellen"
+                    [attr.aria-label]="article.title + ' wiederherstellen'"
+                    [disabled]="loading() || busyId() !== null"
+                    (click)="restore(article)"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M4 11a8 8 0 1 1 1 7M4 4v7h7" />
+                    </svg>
+                  </button>
+                }
+                @if (article.allowed_actions.includes('delete')) {
+                  <details
+                    class="action-menu"
+                    #moreMenu
+                    (focusout)="closeMenu($event, moreMenu)"
+                    (keydown.escape)="moreMenu.open = false; moreTrigger.focus()"
+                  >
+                    <summary
+                      class="icon-button"
+                      #moreTrigger
+                      [attr.aria-label]="'Weitere Aktionen: ' + article.title"
+                      title="Weitere Aktionen"
+                    >
+                      ⋯
+                    </summary>
+                    <div class="menu-panel">
+                      <button
+                        type="button"
+                        class="delete-button"
+                        title="Löschen"
+                        [attr.aria-label]="article.title + ' löschen'"
+                        [disabled]="loading() || busyId() !== null"
+                        (click)="moreMenu.open = false; moreTrigger.focus(); remove(article)"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                          <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
+                        </svg>
+                        Löschen
+                      </button>
+                    </div>
+                  </details>
+                }
+              }
+            </div>
+            @if (busyId() === article.id) {
+              <span class="meta" role="status">Wird gespeichert …</span>
+            }
+          </div>
+        </li>
+      } @empty {
+        <li class="empty">Keine Beiträge für diese Filter gefunden.</li>
+      }
+    </ul>
+  </section>
+  <nav class="pagination" aria-label="Beitragsseiten">
+    <button
+      type="button"
+      [disabled]="loading() || data.offset === 0"
+      (click)="load(data.offset - data.limit)"
+    >
+      Zurück
+    </button>
+    <span>{{ data.total }} Beiträge · Seite {{ data.offset / data.limit + 1 }}</span>
+    <button
+      type="button"
+      [disabled]="loading() || data.offset + data.limit >= data.total"
+      (click)="load(data.offset + data.limit)"
+    >
+      Weiter
+    </button>
+  </nav>
+}

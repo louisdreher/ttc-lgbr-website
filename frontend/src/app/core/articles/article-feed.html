@@ -1,0 +1,76 @@
+<header class="heading">
+  <p class="eyebrow">TTC 1970 Langen-Brombach</p>
+  <h1 articleFocus>{{ members() ? 'Beiträge für Mitglieder' : 'Aktuelles' }}</h1>
+  <p class="muted">Neuigkeiten, Berichte und Geschichten aus unserem Verein.</p>
+</header>
+<div class="toolbar">
+  <div>
+    <label for="feed-type">Beitragsart</label
+    ><select id="feed-type" [formControl]="type">
+      <option value="">Alle Beiträge</option>
+      @for (type of types; track type.value) {
+        <option [value]="type.value">{{ type.label }}</option>
+      }
+    </select>
+  </div>
+</div>
+@if (error()) {
+  <p class="error" role="alert" articleFocus>{{ error() }}</p>
+  <button type="button" (click)="load()">Erneut versuchen</button>
+}
+@if (loading()) {
+  <p role="status">Beiträge werden geladen …</p>
+}
+@if (page(); as data) {
+  <div class="feed-grid" [attr.aria-busy]="loading()">
+    @for (article of data.items; track article.id) {
+      <article class="panel feed-card">
+        <span class="eyebrow">{{ typeLabel(article.article_type) }}</span>
+        <h2>
+          <a [routerLink]="[members() ? '/intern/articles' : '/news', article.slug]">{{
+            article.title
+          }}</a>
+        </h2>
+        <p class="teaser">
+          {{
+            article.teaser ||
+              (article.content.length > 180
+                ? article.content.slice(0, 180) + ' …'
+                : article.content)
+          }}
+        </p>
+        <div class="meta">
+          <time [attr.datetime]="article.published_at">{{
+            article.published_at | date: 'dd.MM.yyyy'
+          }}</time
+          ><span>{{ article.author_name }}</span>
+        </div>
+        <a
+          class="read-link"
+          [routerLink]="[members() ? '/intern/articles' : '/news', article.slug]"
+          [attr.aria-label]="'Weiterlesen: ' + article.title"
+          >Weiterlesen →</a
+        >
+      </article>
+    } @empty {
+      <p class="empty">Hier sind noch keine Beiträge veröffentlicht.</p>
+    }
+  </div>
+  <nav class="pagination" aria-label="Nachrichtenseiten">
+    <button
+      type="button"
+      [disabled]="loading() || data.offset === 0"
+      (click)="load(data.offset - data.limit)"
+    >
+      Zurück
+    </button>
+    <span>{{ data.total }} Beiträge · Seite {{ data.offset / data.limit + 1 }}</span>
+    <button
+      type="button"
+      [disabled]="loading() || data.offset + data.limit >= data.total"
+      (click)="load(data.offset + data.limit)"
+    >
+      Weiter
+    </button>
+  </nav>
+}

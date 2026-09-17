@@ -1,0 +1,255 @@
+:host {
+  display: block;
+  max-width: 1120px;
+  margin: 0 auto;
+  color: #20252b;
+}
+h1 {
+  font-size: clamp(1.65rem, 3vw, 2.25rem);
+  margin: 0.25rem 0 0.65rem;
+  overflow-wrap: anywhere;
+}
+h2 {
+  font-size: 1.2rem;
+  margin: 0 0 1rem;
+}
+p {
+  line-height: 1.6;
+}
+.eyebrow {
+  color: #226487;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.muted,
+.meta {
+  color: #535e69;
+}
+.heading {
+  margin-bottom: 1.5rem;
+}
+.toolbar,
+.actions,
+.pagination,
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.toolbar {
+  justify-content: space-between;
+  margin: 1.5rem 0;
+}
+.tabs {
+  margin: 1rem 0;
+}
+button,
+.button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  border: 1px solid #8b98a5;
+  border-radius: 0.5rem;
+  background: white;
+  color: #20252b;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.primary {
+  background: #226487;
+  color: white;
+  border-color: #226487;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+a {
+  color: #226487;
+}
+a:hover {
+  text-decoration: underline;
+}
+:where(a, button, input, textarea, select, summary):focus-visible {
+  outline: 3px solid #17587b;
+  outline-offset: 3px;
+}
+.tabs button[aria-pressed='true'] {
+  background: #eaf6fb;
+  border-color: #226487;
+  color: #194e69;
+}
+.panel {
+  padding: 1.4rem;
+  border: 1px solid #dce2e7;
+  border-radius: 0.75rem;
+  background: white;
+  margin-bottom: 1rem;
+}
+.rows {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.15rem 0;
+  border-top: 1px solid #e5e7eb;
+}
+.row:first-child {
+  border-top: 0;
+}
+.row > div {
+  min-width: 0;
+}
+.row h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+.row .button {
+  flex-shrink: 0;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.badge {
+  display: inline-block;
+  border-radius: 2rem;
+  padding: 0.2rem 0.65rem;
+  background: #edf1f5;
+  color: #344454;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.badge.review {
+  background: #fff2d5;
+  color: #704b00;
+}
+.badge.published {
+  background: #e5f3e7;
+  color: #215e2d;
+}
+.error {
+  padding: 1rem;
+  border-left: 4px solid #b42323;
+  background: #fff0ef;
+  color: #8a1919;
+  border-radius: 0.3rem;
+}
+.notice {
+  padding: 1rem;
+  background: #eaf6fb;
+  color: #194e69;
+  border-radius: 0.5rem;
+}
+.success {
+  color: #215e2d;
+}
+.empty {
+  padding: 1.5rem 0;
+  color: #535e69;
+}
+.pagination {
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+input:not([type='checkbox']),
+textarea,
+select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #8795a2;
+  border-radius: 0.4rem;
+  background: #fff;
+  color: #20252b;
+  min-height: 44px;
+}
+textarea {
+  resize: vertical;
+  line-height: 1.65;
+}
+input:disabled,
+select:disabled {
+  background: #f1f4f7;
+  color: #535e69;
+}
+.field {
+  margin-bottom: 1.2rem;
+}
+.field small {
+  display: block;
+  color: #535e69;
+  line-height: 1.5;
+  margin-top: 0.4rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.filters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.filters label {
+  font-size: 0.85rem;
+}
+.filters select {
+  min-width: 180px;
+}
+.read-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+}
+.teaser {
+  font-size: 1.1rem;
+  color: #465562;
+}
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .panel {
+    padding: 1rem;
+  }
+  .actions .button,
+  .actions button {
+    flex: 1;
+  }
+  .filters {
+    width: 100%;
+  }
+  .filters > div {
+    flex: 1;
+  }
+  .filters select {
+    min-width: 0;
+  }
+}

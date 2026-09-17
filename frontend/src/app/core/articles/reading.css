@@ -1,0 +1,43 @@
+:host {
+  display: block;
+  padding: clamp(1rem, 4vw, 3rem);
+  box-sizing: border-box;
+}
+.feed-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.feed-card {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+.feed-card h2 {
+  margin-top: 1rem;
+  line-height: 1.4;
+}
+.feed-card .teaser {
+  flex: 1;
+}
+.read-link {
+  margin-top: 1rem;
+  font-weight: 600;
+}
+.read-content {
+  max-width: 75ch;
+  margin: 2rem 0;
+}
+article .teaser {
+  max-width: 70ch;
+}
+@media (max-width: 1000px) {
+  .feed-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .feed-grid {
+    grid-template-columns: 1fr;
+  }
+}

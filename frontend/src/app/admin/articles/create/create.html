@@ -1,1 +1,72 @@
-<p>create works!</p>
+<header class="heading">
+  <p class="eyebrow">Beiträge</p>
+  <h1 articleFocus>Neuer Beitrag</h1>
+  <p class="muted">Schreibe frei oder wähle einen Termin als Ausgangspunkt.</p>
+</header>
+<section class="panel">
+  <h2>Was gibt es Neues?</h2>
+  <p>Nachrichten, Ankündigungen und Geschichten aus dem Verein.</p>
+  <a class="button primary" routerLink="/admin/articles/write">Beitrag erstellen</a>
+</section>
+@if (error()) {
+  <p class="error" role="alert" articleFocus>{{ error() }}</p>
+  <button type="button" (click)="load()">Erneut versuchen</button>
+}
+@if (loading()) {
+  <p role="status">Termine werden geladen …</p>
+}
+@if (page(); as data) {
+  @for (
+    group of [
+      { title: 'Mannschaftsspiele', items: data.team_matches },
+      { title: 'Andere Events', items: data.other_events },
+    ];
+    track group.title
+  ) {
+    <section class="panel" [attr.aria-label]="group.title" [attr.aria-busy]="loading()">
+      <h2>{{ group.title }}</h2>
+      <ul class="rows">
+        @for (event of group.items; track event.event_id) {
+          <li class="row">
+            <div>
+              <h3>{{ event.title }}</h3>
+              <div class="meta">
+                <time [attr.datetime]="event.starts_at">{{
+                  event.starts_at | date: 'dd.MM.yyyy, HH:mm'
+                }}</time>
+                @if (event.article_id) {
+                  <span class="badge">Entwurf vorbereitet</span>
+                }
+              </div>
+            </div>
+            <a
+              class="button"
+              [routerLink]="['/admin/articles/event', event.event_id]"
+              [attr.aria-label]="'Bericht schreiben: ' + event.title"
+              >Bericht schreiben</a
+            >
+          </li>
+        } @empty {
+          <li class="empty">Auf dieser Seite sind keine offenen Termine in dieser Gruppe.</li>
+        }
+      </ul>
+    </section>
+  }
+  <nav class="pagination" aria-label="Terminseiten">
+    <button
+      type="button"
+      [disabled]="loading() || data.offset === 0"
+      (click)="load(data.offset - data.limit)"
+    >
+      Zurück
+    </button>
+    <span>{{ data.total }} offene Termine · Seite {{ data.offset / data.limit + 1 }}</span>
+    <button
+      type="button"
+      [disabled]="loading() || data.offset + data.limit >= data.total"
+      (click)="load(data.offset + data.limit)"
+    >
+      Weiter
+    </button>
+  </nav>
+}

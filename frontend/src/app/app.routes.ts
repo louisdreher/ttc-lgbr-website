@@ -5,23 +5,17 @@ import { InternLayoutComponent } from './layout/intern-layout/intern-layout';
 import { AdminLayoutComponent } from './layout/admin-layout/admin-layout';
 
 import { Home } from './pages/home/home';
-import { News } from './pages/news/news';
 import { Teams } from './pages/teams/teams';
 import { Training } from './pages/training/training';
 import { Contact } from './pages/contact/contact';
 
 import { InternDashboard } from './intern/dashboard/dashboard';
-import { InternArticles } from './intern/articles/articles';
 import { InternTeams } from './intern/teams/teams';
 import { InternEvents } from './intern/events/events';
 
 import { AdminDashboard } from './admin/dashboard/dashboard';
 
-import { AdminArticles } from './admin/articles/articles';
-import { AdminArticleCreate } from './admin/articles/create/create';
-import { AdminArticleDrafts } from './admin/articles/drafts/drafts';
-import { AdminArticleList } from './admin/articles/list/list';
-import { AdminNewsletter } from './admin/articles/newsletter/newsletter';
+import { articleLeaveGuard } from './admin/articles/editor/article-leave.guard';
 
 import { AdminTeams } from './admin/teams/teams';
 import { AdminEvents } from './admin/events/events';
@@ -45,7 +39,14 @@ export const routes: Routes = [
       },
       {
         path: 'news',
-        component: News,
+        loadComponent: () => import('./pages/news/news').then((module) => module.News),
+        title: 'Aktuelles | TTC',
+      },
+      {
+        path: 'news/:slug',
+        loadComponent: () =>
+          import('./core/articles/article-detail').then((module) => module.ArticleDetail),
+        title: 'Beitrag | TTC',
       },
       {
         path: 'mannschaften',
@@ -83,8 +84,16 @@ export const routes: Routes = [
       },
       {
         path: 'articles',
-        component: InternArticles,
-        canActivate: [roleGuard('ADMIN', 'EDITOR')],
+        loadComponent: () =>
+          import('./intern/articles/articles').then((module) => module.InternArticles),
+        title: 'Beiträge für Mitglieder | TTC',
+      },
+      {
+        path: 'articles/:slug',
+        loadComponent: () =>
+          import('./core/articles/article-detail').then((module) => module.ArticleDetail),
+        data: { members: true },
+        title: 'Beitrag | TTC Intern',
       },
       {
         path: 'teams',
@@ -111,30 +120,67 @@ export const routes: Routes = [
       },
       {
         path: 'articles',
-        component: AdminArticles,
+        loadComponent: () =>
+          import('./admin/articles/articles').then((module) => module.AdminArticles),
 
         children: [
           {
             path: '',
-            redirectTo: 'list',
+            redirectTo: 'drafts',
             pathMatch: 'full',
           },
           {
             path: 'new',
-            component: AdminArticleCreate,
+            loadComponent: () =>
+              import('./admin/articles/create/create').then((module) => module.AdminArticleCreate),
+            title: 'Neuer Beitrag | TTC',
           },
           {
             path: 'drafts',
-            component: AdminArticleDrafts,
+            loadComponent: () =>
+              import('./admin/articles/drafts/drafts').then((module) => module.AdminArticleDrafts),
+            title: 'Meine Beiträge | TTC',
           },
           {
             path: 'list',
-            component: AdminArticleList,
+            loadComponent: () =>
+              import('./admin/articles/list/list').then((module) => module.AdminArticleList),
             canActivate: [roleGuard('ADMIN', 'EDITOR')],
+            title: 'Redaktion | TTC',
+          },
+          {
+            path: 'write',
+            loadComponent: () =>
+              import('./admin/articles/editor/article-editor').then(
+                (module) => module.ArticleEditor,
+              ),
+            canDeactivate: [articleLeaveGuard],
+            title: 'Beitrag schreiben | TTC',
+          },
+          {
+            path: 'event/:eventId',
+            loadComponent: () =>
+              import('./admin/articles/editor/article-editor').then(
+                (module) => module.ArticleEditor,
+              ),
+            canDeactivate: [articleLeaveGuard],
+            title: 'Bericht schreiben | TTC',
+          },
+          {
+            path: ':id/edit',
+            loadComponent: () =>
+              import('./admin/articles/editor/article-editor').then(
+                (module) => module.ArticleEditor,
+              ),
+            canDeactivate: [articleLeaveGuard],
+            title: 'Beitrag | TTC Redaktion',
           },
           {
             path: 'newsletter',
-            component: AdminNewsletter,
+            loadComponent: () =>
+              import('./admin/articles/newsletter/newsletter').then(
+                (module) => module.AdminNewsletter,
+              ),
             canActivate: [roleGuard('ADMIN', 'EDITOR')],
           },
         ],
@@ -155,7 +201,7 @@ export const routes: Routes = [
       },
       {
         path: 'mytt',
-        loadComponent: () => import('./admin/mytt/mytt').then(module => module.AdminMytt),
+        loadComponent: () => import('./admin/mytt/mytt').then((module) => module.AdminMytt),
         canActivate: [roleGuard('ADMIN')],
       },
       {

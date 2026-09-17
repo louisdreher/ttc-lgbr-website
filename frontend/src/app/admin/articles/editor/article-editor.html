@@ -1,0 +1,213 @@
+<a routerLink="/admin/articles/drafts">← Meine Beiträge</a>
+<header class="heading">
+  <p class="eyebrow">Beiträge</p>
+  <h1 articleFocus>
+    {{ readOnly() ? article()?.title : articleId() ? 'Beitrag bearbeiten' : 'Beitrag schreiben' }}
+  </h1>
+  @if (article(); as current) {
+    <div class="meta">
+      <span
+        class="badge"
+        [class.review]="current.status === 'IN_REVIEW'"
+        [class.published]="current.status === 'PUBLISHED'"
+        >{{ labels[current.status] }}</span
+      ><span>{{ current.author_name }}</span>
+      <time [attr.datetime]="current.updated_at"
+        >Geändert am {{ current.updated_at | date: 'dd.MM.yyyy, HH:mm' }}</time
+      >
+    </div>
+  }
+</header>
+@if (loading()) {
+  <p role="status">Beitrag wird geladen …</p>
+}
+@if (error()) {
+  <p class="error" role="alert" articleFocus>{{ error() }}</p>
+}
+@if (notice()) {
+  <p class="notice" role="status">{{ notice() }}</p>
+}
+@if (!loading()) {
+  @if (!loaded()) {
+    <button type="button" (click)="load()">Erneut laden</button>
+  }
+  @if (readOnly()) {
+    <article class="panel">
+      <p class="teaser">{{ article()?.teaser }}</p>
+      <div class="read-content">{{ article()?.content }}</div>
+      <p class="meta">{{ article()?.tags?.join(' · ') }}</p>
+    </article>
+  } @else if (loaded()) {
+    @if (article()?.status === 'IN_REVIEW') {
+      <p class="notice">
+        Eingereicht – du kannst deinen Beitrag bis zur Veröffentlichung weiter bearbeiten.
+      </p>
+    }
+    @if (article()?.status === 'PUBLISHED') {
+      <p class="notice">
+        Änderungen an diesem veröffentlichten Beitrag sind nach dem Speichern sofort sichtbar.
+      </p>
+    }
+    @if (eventId()) {
+      <p class="muted">
+        Dieser Beitrag gehört zu einem Termin. Die Zuordnung bleibt beim Speichern erhalten.
+      </p>
+    }
+    <form [formGroup]="form" (ngSubmit)="save('save')">
+      <fieldset class="editor-fields" [disabled]="saving()">
+        <section class="panel" aria-label="Beitragsinhalt">
+          <div class="field">
+            <label for="article-title">Titel</label
+            ><input
+              id="article-title"
+              formControlName="title"
+              (input)="setSlug()"
+              maxlength="255"
+              [attr.aria-invalid]="form.controls.title.touched && form.controls.title.invalid"
+            />
+            @if (form.controls.title.touched && form.controls.title.invalid) {
+              <small class="error">Bitte gib einen Titel ein.</small>
+            }
+          </div>
+          <div class="field">
+            <label for="article-teaser">Teaser <span class="muted">(optional)</span></label
+            ><textarea
+              id="article-teaser"
+              rows="3"
+              formControlName="teaser"
+              aria-describedby="teaser-help"
+            ></textarea
+            ><small id="teaser-help">Ein kurzer Einstieg für die Beitragsübersicht.</small>
+          </div>
+          <div class="field">
+            <label for="article-content">Inhalt</label
+            ><textarea id="article-content" rows="16" formControlName="content"></textarea>
+          </div>
+        </section>
+        <section class="panel" aria-label="Beitragseinstellungen">
+          <h2>Beitragseinstellungen</h2>
+          <div class="grid">
+            <div class="field">
+              <label for="article-type">Beitragsart</label
+              ><select id="article-type" formControlName="article_type">
+                @for (type of types; track type.value) {
+                  @if (
+                    type.value !== 'MATCH_REPORT' ||
+                    form.controls.article_type.value === 'MATCH_REPORT'
+                  ) {
+                    <option [value]="type.value">{{ type.label }}</option>
+                  }
+                }
+              </select>
+              @if (form.controls.article_type.disabled) {
+                <small>Die Beitragsart ist für dieses Mannschaftsspiel festgelegt.</small>
+              }
+            </div>
+            <div class="field">
+              <label for="article-visibility">Sichtbarkeit nach Veröffentlichung</label
+              ><select id="article-visibility" formControlName="visibility">
+                <option value="PUBLIC">Öffentlich</option>
+                <option value="MEMBERS_ONLY">Nur Mitglieder</option>
+                <option value="HIDDEN">Verborgen</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="article-tags">Tags <span class="muted">(optional)</span></label
+            ><input id="article-tags" formControlName="tags" aria-describedby="tags-help" /><small
+              id="tags-help"
+              >Mit Kommas trennen, zum Beispiel: Jugend, Verein</small
+            >
+          </div>
+          <div class="field">
+            <label for="article-slug">Linkname</label
+            ><input
+              id="article-slug"
+              formControlName="slug"
+              aria-describedby="slug-help"
+              [attr.aria-invalid]="form.controls.slug.touched && form.controls.slug.invalid"
+            /><small id="slug-help">{{
+              form.controls.slug.disabled
+                ? 'Der Linkname wird aus Mannschaft, Mannschaftsnummer und Spieldatum gebildet und bleibt unabhängig vom Titel.'
+                : 'Wird aus dem Titel vorgeschlagen. Verwende Buchstaben a–z, Zahlen, Bindestriche oder Unterstriche.'
+            }}</small>
+          </div>
+        </section>
+        @if (articleId() === null && eventId() === null) {
+          <section class="panel">
+            <label class="check"
+              ><input
+                type="checkbox"
+                [checked]="creatingEvent()"
+                (change)="toggleEvent(!creatingEvent())"
+              />
+              Zusätzlich einen Event anlegen</label
+            >
+            @if (creatingEvent()) {
+              <p class="muted">
+                Der Event wird zusammen mit dem Beitrag gespeichert und bleibt im Kalender
+                verborgen.
+              </p>
+              @if (categoryError()) {
+                <p class="error" role="alert" articleFocus>{{ categoryError() }}</p>
+                <button type="button" (click)="loadCategories()">Kategorien erneut laden</button>
+              }
+              <div [formGroup]="eventForm">
+                <div class="field">
+                  <label for="event-title">Event-Titel</label
+                  ><input id="event-title" formControlName="title" />
+                </div>
+                <div class="grid">
+                  <div class="field">
+                    <label for="event-start">Beginn</label
+                    ><input id="event-start" type="datetime-local" formControlName="starts_at" />
+                  </div>
+                  <div class="field">
+                    <label for="event-end">Ende (optional)</label
+                    ><input id="event-end" type="datetime-local" formControlName="ends_at" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="event-category">Kategorie</label
+                  ><select id="event-category" formControlName="category_id">
+                    <option [ngValue]="null">Bitte auswählen</option>
+                    @for (category of categories(); track category.id) {
+                      <option [ngValue]="category.id">{{ category.name }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="event-location">Ort (optional)</label
+                  ><input id="event-location" formControlName="location" />
+                </div>
+                <div class="field">
+                  <label for="event-description">Event-Beschreibung (optional)</label
+                  ><textarea
+                    id="event-description"
+                    rows="3"
+                    formControlName="description"
+                  ></textarea>
+                </div>
+              </div>
+            }
+          </section>
+        }
+        <div class="actions">
+          <button type="submit" [disabled]="saving()">
+            {{ saving() ? 'Wird gespeichert …' : 'Speichern' }}
+          </button>
+          @if (canSubmit() && article()?.status !== 'IN_REVIEW') {
+            <button type="button" class="primary" (click)="save('submit')" [disabled]="saving()">
+              Einreichen
+            </button>
+          }
+          @if (canPublish()) {
+            <button type="button" class="primary" (click)="save('publish')" [disabled]="saving()">
+              Veröffentlichen
+            </button>
+          }
+        </div>
+      </fieldset>
+    </form>
+  }
+}

@@ -26,6 +26,7 @@ describe('AdminEvents', () => {
                   starts_at: '2026-09-01T18:00:00Z',
                   category_id: 2,
                   status: 'PLANNED',
+                  visibility: 'PUBLIC',
                   team_match_id: null,
                 },
               ]),

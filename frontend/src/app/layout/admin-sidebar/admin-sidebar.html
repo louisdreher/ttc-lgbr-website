@@ -1,22 +1,9 @@
-<aside
-  class="admin-sidebar"
-  [class.open]="open"
->
-
+<aside class="admin-sidebar" [class.open]="open">
   <div class="sidebar-header">
-
-    <span class="sidebar-label">
-      Administration
-    </span>
-
+    <span class="sidebar-label"> Administration </span>
   </div>
 
-
-  <nav
-    class="sidebar-nav"
-    aria-label="Administration"
-  >
-
+  <nav class="sidebar-nav" aria-label="Administration">
     <!-- Dashboard -->
 
     <a
@@ -28,122 +15,73 @@
       Dashboard
     </a>
 
-
     <!-- Beiträge -->
 
-    <div
-      class="sidebar-group"
-      routerLinkActive="active-group"
-    >
-
+    <div class="sidebar-group" routerLinkActive="active-group">
       <button
         class="sidebar-group-button"
         type="button"
         (click)="toggleArticles()"
         [attr.aria-expanded]="articlesOpen"
       >
+        <span> Beiträge </span>
 
-        <span>
-          Beiträge
-        </span>
-
-        <span
-          class="sidebar-group-arrow"
-          [class.open]="articlesOpen"
-        >
-          ▾
-        </span>
-
+        <span class="sidebar-group-arrow" [class.open]="articlesOpen"> ▾ </span>
       </button>
 
-
-      <div
-        class="sidebar-subnav"
-        [class.open]="articlesOpen"
-      >
-
-        <a
-          routerLink="/admin/articles/new"
-          routerLinkActive="active"
-          (click)="onNavigate()"
-        >
+      <div class="sidebar-subnav" [class.open]="articlesOpen">
+        <a routerLink="/admin/articles/new" routerLinkActive="active" (click)="onNavigate()">
           Neuer Beitrag
         </a>
 
-
-        <a
-          routerLink="/admin/articles/drafts"
-          routerLinkActive="active"
-          (click)="onNavigate()"
-        >
-          Entwürfe
+        <a routerLink="/admin/articles/drafts" routerLinkActive="active" (click)="onNavigate()">
+          Meine Beiträge
         </a>
 
+        @if (authService.hasAnyRole('ADMIN', 'EDITOR')) {
+          <a routerLink="/admin/articles/list" routerLinkActive="active" (click)="onNavigate()">
+            Redaktion
+          </a>
 
-        <a
-          routerLink="/admin/articles/list"
-          routerLinkActive="active"
-          (click)="onNavigate()"
-        >
-          Alle Beiträge
-        </a>
-
-
-        <a
-          routerLink="/admin/articles/newsletter"
-          routerLinkActive="active"
-          (click)="onNavigate()"
-        >
-          Newsletter erstellen
-        </a>
-
+          <a
+            routerLink="/admin/articles/newsletter"
+            routerLinkActive="active"
+            (click)="onNavigate()"
+          >
+            Newsletter erstellen
+          </a>
+        }
       </div>
-
     </div>
 
-
     <!-- Mannschaften -->
+    @if (authService.hasAnyRole('ADMIN', 'EDITOR')) {
+      <a routerLink="/admin/teams" routerLinkActive="active" (click)="onNavigate()">
+        Mannschaften
+      </a>
 
-    <a
-      routerLink="/admin/teams"
-      routerLinkActive="active"
-      (click)="onNavigate()"
-    >
-      Mannschaften
-    </a>
+      <!-- Veranstaltungen -->
 
-
-    <!-- Veranstaltungen -->
-
-    <a
-      routerLink="/admin/events"
-      routerLinkActive="active"
-      (click)="onNavigate()"
-    >
-      Veranstaltungen
-    </a>
-
+      <a routerLink="/admin/events" routerLinkActive="active" (click)="onNavigate()">
+        Veranstaltungen
+      </a>
+    }
 
     <!-- Nur ADMIN -->
 
     @if (authService.hasAnyRole('ADMIN')) {
-
       <div class="sidebar-divider"></div>
 
-      <a routerLink="/admin/mytt" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="onNavigate()">
+      <a
+        routerLink="/admin/mytt"
+        routerLinkActive="active"
+        ariaCurrentWhenActive="page"
+        (click)="onNavigate()"
+      >
         MyTischtennis
       </a>
 
-      <a
-        routerLink="/admin/users"
-        routerLinkActive="active"
-        (click)="onNavigate()"
-      >
-        Benutzer
-      </a>
-
+      <a routerLink="/admin/users" routerLinkActive="active" (click)="onNavigate()"> Benutzer </a>
     }
-
   </nav>
-
 </aside>
