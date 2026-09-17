@@ -187,6 +187,13 @@ to inspect it and `python -m scripts.content request-sync` to request a general
 sync. `worker --once` performs at most one due job, rather than forcing a full
 sync. See [MyTT automation](mytt-automation.md) for ADMIN API contracts and defaults.
 
+Manual per-match detail reloads and the grouped ADMIN match overview additionally
+require migration `b8d04e2f9513`. Tests in `test_match_reload*.py` cover the HTTP
+contract, sorting, durable requests, recovery and report suppression. PostgreSQL
+checks use the same disposable-database fixture and `TTC_TEST_POSTGRES_URL` as the
+outbox tests; they cover upgrades, cascading job deletion, concurrent requests and
+competing workers without contacting myTischtennis.
+
 ## Suggested learning workflow with Codex
 
 Prefix a task with the kind of collaboration you want:

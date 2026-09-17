@@ -188,6 +188,12 @@ Fehler und Einstellungen sind über ADMIN-Endpunkte verfügbar. Die bisherigen
 direkten CLI-Importbefehle bleiben unabhängig davon. Siehe
 [Zeitplanung und Admin-API](mytt-automation.md).
 
+ADMIN kann über `GET /api/admin/mytt/matches` fehlende Details unabhängig vom
+automatischen Abruffenster sehen und über `POST /api/admin/mytt/matches/{id}/reload`
+einen dauerhaften Einzelspielauftrag anfordern. Der separate Worker verwendet
+dafür denselben `SyncMeeting`-Usecase mit `MANUAL` und ohne `force`. Dadurch bleibt
+der Erstimport idempotent und löst keine automatische Berichtserstellung aus.
+
 Die bisherigen Modulbefehle und Parameter bleiben bestehen, beispielsweise:
 
 ```powershell

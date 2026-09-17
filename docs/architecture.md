@@ -83,6 +83,9 @@ with `python -m scripts.content worker`. FastAPI does not start it automatically
 Nightly and match-relative scheduling is configured in the database. ADMIN-only
 HTTP endpoints expose configuration, latest status, outbox operations, and a
 durable coalesced sync request. See [MyTT automation](mytt-automation.md).
+The ADMIN API also exposes a read-only grouped match overview and durable manual
+detail-reload requests. The existing worker executes those with MANUAL origin,
+without automatically generating reports; one latest request is retained per match.
 
 `app.*` is the canonical Python import path. Backend commands therefore need
 to run with `backend/` as the working directory, or otherwise make that package
