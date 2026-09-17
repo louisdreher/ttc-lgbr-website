@@ -139,6 +139,7 @@ class MatchDetails:
     notices: list[MatchNotice] = field(default_factory=list)
     lineup: list[MatchLineupEntry] = field(default_factory=list)
     games: list[MatchGame] = field(default_factory=list)
+    team_number: int | None = None
 
 
 @dataclass(frozen=True)

@@ -255,17 +255,18 @@ class SqlCompetitionReader:
     def get_match_details(self, query: GetMatchDetailsQuery) -> MatchDetails | None:
         with self.session_factory() as session:
             row = session.exec(
-                select(TeamMatch, Team.name)
+                select(TeamMatch, Team.name, Team.team_number)
                 .join(Team, Team.id == TeamMatch.team_id)
                 .where(TeamMatch.id == query.team_match_id)
             ).first()
             if row is None:
                 return None
-            meeting, team_name = row
+            meeting, team_name, team_number = row
             result = MatchDetails(
                 id=meeting.id,
                 team_id=meeting.team_id,
                 team_name=team_name,
+                team_number=team_number,
                 opponent_name=meeting.opponent_name,
                 is_home=meeting.is_home,
                 scheduled_at=meeting.scheduled_at,

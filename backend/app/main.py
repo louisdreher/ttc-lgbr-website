@@ -4,6 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.adapters.inbound.http.articles.admin_router import (
     router as article_admin_router,
 )
+from app.adapters.inbound.http.articles.public_router import (
+    member_router as article_member_router,
+)
+from app.adapters.inbound.http.articles.public_router import (
+    router as article_public_router,
+)
 from app.adapters.inbound.http.auth.router import router as auth_router
 from app.adapters.inbound.http.competition.automation_router import (
     router as automation_router,
@@ -52,6 +58,8 @@ app.include_router(competition_router)
 app.include_router(automation_router)
 app.include_router(user_router)
 app.include_router(article_admin_router)
+app.include_router(article_public_router)
+app.include_router(article_member_router)
 app.include_router(event_admin_router)
 app.include_router(event_public_router)
 app.include_router(auth_router)

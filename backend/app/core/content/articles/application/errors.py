@@ -14,6 +14,10 @@ class ArticleAuthorError(ArticleApplicationError):
     pass
 
 
+class ArticleConflictError(ArticleApplicationError):
+    pass
+
+
 class ArticleSlugAlreadyExistsError(ArticleApplicationError):
     def __init__(self, slug: str):
         super().__init__(f"Ein Artikel mit dem Slug '{slug}' existiert bereits.")

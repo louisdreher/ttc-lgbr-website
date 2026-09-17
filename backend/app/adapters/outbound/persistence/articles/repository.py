@@ -4,9 +4,13 @@ from app.adapters.outbound.persistence.articles.models import (
 from app.adapters.outbound.persistence.articles.models import (
     ArticleStatus as PersistenceArticleStatus,
 )
+from app.adapters.outbound.persistence.articles.models import ArticleTag, Tag
 from app.adapters.outbound.persistence.articles.models import (
     ArticleType as PersistenceArticleType,
 )
+from app.adapters.outbound.persistence.events.models import Event
+from app.adapters.outbound.persistence.media.models import MediaAsset
+from app.core.content.articles.application.errors import ArticleNotFoundError
 from app.core.content.articles.domain.article import (
     Article,
 )
@@ -19,8 +23,9 @@ from app.core.content.articles.domain.article import (
 from app.core.content.articles.domain.article import (
     Visibility as DomainVisibility,
 )
+from app.core.content.articles.domain.errors import ArticleDomainError
 from app.core.content.types import Visibility as PersistenceVisibility
-from sqlalchemy import or_, text
+from sqlalchemy import delete, or_, text
 from sqlmodel import Session, select
 
 
@@ -42,10 +47,25 @@ class SQLModelArticleRepository:
         if record is None:
             record = values
         else:
-            # Preserve cover images and tags, which are not part of this domain operation.
-            record.sqlmodel_update(values.model_dump(exclude={"cover_image_id"}))
+            record.sqlmodel_update(values.model_dump())
 
         self.session.add(record)
+        self.session.flush()
+
+        self.session.exec(delete(ArticleTag).where(ArticleTag.article_id == record.id))
+        for slug in sorted(article.tags):
+            # Serialize shared tag creation across articles.
+            if self.session.get_bind().dialect.name == "postgresql":
+                self.session.execute(
+                    text("SELECT pg_advisory_xact_lock(72106, hashtext(:slug))"),
+                    {"slug": slug},
+                )
+            tag = self.session.exec(select(Tag).where(Tag.slug == slug)).first()
+            if tag is None:
+                tag = Tag(name=slug, slug=slug)
+                self.session.add(tag)
+                self.session.flush()
+            self.session.add(ArticleTag(article_id=record.id, tag_id=tag.id))
         self.session.flush()
 
         return self._to_domain(record)
@@ -59,19 +79,43 @@ class SQLModelArticleRepository:
 
     def lock_generation(self, team_match_id: int) -> None:
         if self.session.get_bind().dialect.name == "postgresql":
-            # A transaction-scoped namespace lock also covers a not-yet-existing article.
+            # A transaction-scoped lock also covers a not-yet-existing article.
             self.session.execute(
                 text("SELECT pg_advisory_xact_lock(72104, :match_id)"),
                 {"match_id": team_match_id},
             )
+
+    def lock_event(self, event_id: int) -> None:
+        row = self.session.exec(
+            select(Event).where(Event.id == event_id).with_for_update()
+        ).first()
+        if row is None:
+            raise ArticleNotFoundError("Event nicht gefunden.")
+
+    def find_by_event(self, event_id: int) -> Article | None:
+        row = self.session.exec(
+            select(ArticleRecord).where(ArticleRecord.event_id == event_id)
+        ).first()
+        return self._to_domain(row) if row else None
+
+    def validate_cover(self, cover_image_id: int | None) -> None:
+        if (
+            cover_image_id is not None
+            and self.session.get(MediaAsset, cover_image_id) is None
+        ):
+            raise ArticleDomainError("Titelbild nicht gefunden.")
+
+    def delete(self, article: Article) -> None:
+        self.session.exec(delete(ArticleTag).where(ArticleTag.article_id == article.id))
+        self.session.exec(delete(ArticleRecord).where(ArticleRecord.id == article.id))
+        self.session.flush()
 
     def find_match_report(self, key: str, event_id: int | None) -> Article | None:
         condition = ArticleRecord.generation_key == key
         if event_id is not None:
             condition = or_(
                 condition,
-                (ArticleRecord.event_id == event_id)
-                & (ArticleRecord.article_type == PersistenceArticleType.MATCH_REPORT),
+                ArticleRecord.event_id == event_id,
             )
         row = self.session.exec(
             select(ArticleRecord).where(condition).order_by(ArticleRecord.id)
@@ -97,10 +141,10 @@ class SQLModelArticleRepository:
             generation_key=article.generation_key,
             generation_method=article.generation_method,
             generated_at=article.generated_at,
+            cover_image_id=article.cover_image_id,
         )
 
-    @staticmethod
-    def _to_domain(record: ArticleRecord) -> Article:
+    def _to_domain(self, record: ArticleRecord) -> Article:
         return Article(
             id=record.id,
             author_id=record.author_id,
@@ -118,4 +162,13 @@ class SQLModelArticleRepository:
             generation_key=record.generation_key,
             generation_method=record.generation_method,
             generated_at=record.generated_at,
+            cover_image_id=record.cover_image_id,
+            tags=list(
+                self.session.exec(
+                    select(Tag.slug)
+                    .join(ArticleTag, ArticleTag.tag_id == Tag.id)
+                    .where(ArticleTag.article_id == record.id)
+                    .order_by(Tag.slug)
+                ).all()
+            ),
         )

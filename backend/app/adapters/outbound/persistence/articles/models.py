@@ -55,6 +55,7 @@ class ArticleTag(SQLModel, table=True):
 
 class Article(SQLModel, table=True):
     __tablename__ = "article"
+    __table_args__ = (sa.UniqueConstraint("event_id", name="uq_article_event_id"),)
 
     id: int | None = Field(default=None, primary_key=True)
     event_id: int | None = Field(

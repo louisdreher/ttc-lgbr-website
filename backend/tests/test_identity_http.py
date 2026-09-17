@@ -378,8 +378,8 @@ def test_existing_event_permissions_still_use_current_roles(client, user_id, exp
     )
 
 
-@pytest.mark.parametrize("user_id,expected", [(1, 201), (2, 201), (3, 403), (4, 403)])
-def test_existing_article_permissions_still_use_current_roles(
+@pytest.mark.parametrize("user_id,expected", [(1, 201), (2, 201), (3, 201), (4, 403)])
+def test_article_writing_allows_admin_editor_and_reporter(
     client, user_id, expected
 ):
     response = client.post(
