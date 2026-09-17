@@ -45,8 +45,12 @@ werden nicht dafür umgewidmet. Es wird kein Standardpasswort angelegt.
 Automatische Berichte erhalten den Systemautor. Manuelle Aufrufe können einen
 aktiven ADMIN/EDITOR als Autor angeben; ohne Angabe verwenden vertrauenswürdige
 CLI-Aufrufe ebenfalls den Systemautor. Bei `EditArticleDraft` wird der speichernde
-ADMIN/EDITOR zum Autor. Nur DRAFT ist bearbeitbar; Titel, Teaser und Inhalt werden
+ADMIN/EDITOR bei Systementwürfen zum Autor; bei menschlichen Beiträgen bleibt der
+Autor erhalten. Im bisherigen CLI-Editor ist nur DRAFT bearbeitbar; Titel, Teaser und Inhalt werden
 validiert. Generierungsherkunft, Datum, Zuordnung, Slug und Titelbild bleiben erhalten.
+
+Der neue CMS-Ablauf erlaubt auch TEAM_REPORTER das Schreiben und die weitere
+Bearbeitung nach dem Einreichen. Siehe [Articles](articles-architecture.md).
 
 Die Artikelspalten `generation_key`, `generation_method` und `generated_at`
 halten die Herkunft fest. `team-match:<ID>` ist ein eindeutiger Generierungsschlüssel,

@@ -43,12 +43,14 @@ FastAPI application lifecycle and should not yet be relied upon.
 
 ### Status
 
-In progress; draft creation implemented, remaining workflow planned.
+Backend and frontend CMS workflow implemented; media management planned.
 
-Article draft creation is implemented at `POST /api/admin/articles` and uses
-Ports and Adapters with domain validation and transaction handling.
-Editing, publication, public reads, and the frontend workflow remain planned.
-The existing draft-creation endpoint is not a complete CMS API.
+Preparation, saving/claiming drafts, submission, publication, own/editorial lists,
+and visibility-filtered public/member reads are implemented. See
+[Articles](articles-architecture.md) for the API and role rules. Apply migration
+`c9e15f30a624` before using the new workflow. Editorial visibility changes,
+archiving, restoration as a draft, and deletion are implemented. Media upload,
+rich-text editing and version-conflict detection remain unimplemented.
 
 ## Media storage not implemented
 

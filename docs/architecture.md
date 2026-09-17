@@ -112,12 +112,14 @@ matches are deliberately excluded from this public endpoint; their future
 frontend presentation remains a separate concern. Competition has its own
 public reading API for schedules and match details.
 
-The article draft-creation workflow uses a framework-free domain, a
-`CreateArticle.execute(command)` use case, repository/unit-of-work ports,
-HTTP and SQL adapters, and `app/bootstrap/articles.py` composition.
-Persistence models live under `app/adapters/outbound/persistence/articles`.
-Backend match-report generation and draft editing are implemented; publication,
-public reads, and the frontend CMS workflow remain planned.
+The article CMS uses a framework-free domain, bundled save/submit/publish use
+cases, separate reader ports, HTTP and SQL adapters, and `app/bootstrap/articles.py`
+composition. TEAM_REPORTER, EDITOR and ADMIN can write; EDITOR and ADMIN can
+manage all articles and publish. Event preparation is read-only; saving claims
+system drafts. Submission remains editable until publication. Public and member
+reads enforce publication and visibility. Optional hidden-event creation shares
+the article transaction through a public Events contract. A database constraint
+enforces one article per event. The frontend CMS and media management remain planned.
 See [the article architecture walkthrough](articles-architecture.md).
 
 ## Backend architecture direction
@@ -131,8 +133,8 @@ than standalone management workflows. Their future use cases remain planned.
 New backend functionality and code selected explicitly for refactoring should
 move toward a component-oriented Ports and Adapters architecture. Events now
 uses this structure for CRUD, categories, queries, bulk actions, and match
-synchronization. Articles follows the same architecture for its existing
-draft-creation workflow. Users and Auth now follow this structure as well,
+synchronization. Articles follows the same architecture for its CMS workflows.
+Users and Auth now follow this structure as well,
 including password/JWT adapters and HTTP permission dependencies outside the core.
 See [the Users/Auth walkthrough](users-auth-architecture.md). Competition reads, internal lineup commands, and imports
 also use application classes and ports. Members and Media persistence models
@@ -153,7 +155,7 @@ app/
   bootstrap/              settings, logging, and wiring support
 ```
 
-This structure is implemented for Competition, Events, article draft creation, Users, and Auth. Database setup is located in
+This structure is implemented for Competition, Events, Articles, Users, and Auth. Database setup is located in
 `app/adapters/outbound/persistence/database.py`. Competition tables live in
 `persistence/competition`, member tables in `persistence/members`, and media
 and gallery tables in `persistence/media`. New cross-component interactions
@@ -342,8 +344,9 @@ in independent loops. It is not connected to the FastAPI lifecycle.
 
 The CMS is intended to assist editors rather than publish generated content
 autonomously. The implemented drafting service formats stored match results
-as plain text and saves system-authored drafts. Human edits take over authorship
-while preserving generation provenance. The worker and manual CLI share the
+as plain text and saves system-authored drafts. Saving a system draft takes over
+authorship while preserving provenance; later editor corrections preserve the author.
+The worker and manual CLI share the
 same report use case. A future generator may combine structured match or event
 data with editorial guidance and use the OpenAI API to prepare article drafts.
 Generated text must remain traceable, editable, and unpublished until an

@@ -137,6 +137,20 @@ npm test
 npm run build
 ```
 
+The article browser check uses Playwright with installed Microsoft Edge and a
+mocked API. Start Angular on port 4201, then run from `frontend/`:
+
+```powershell
+node scripts/check-articles.cjs
+```
+
+Set `ARTICLE_TEST_URL` to use another local preview URL, and `BROWSER_CHANNEL`
+to use another installed Playwright browser channel. The check exercises reporter,
+editor and member views, direct editorial actions, and responsive layouts with
+Axe WCAG AA checks. Screenshots are written to ignored `frontend/tmp/article-checks`.
+It does not modify application data. Google Fonts requires network access during
+the production build.
+
 Backend tests use `pytest` as the common runner. It discovers both the existing
 `unittest.TestCase` tests and the pytest functions in nested directories.
 `test_backend_architecture.py` checks every core module for forbidden
@@ -163,6 +177,11 @@ myTischtennis or write to PostgreSQL are integration utilities, not isolated
 unit tests. Inspect their arguments and effects before running them.
 
 ### Optional PostgreSQL outbox checks
+
+The article CMS additionally requires migration `c9e15f30a624`. Its tests in
+`tests/test_article_cms_postgres.py` use the same disposable-database fixture and
+`TTC_TEST_POSTGRES_URL` below, covering schema upgrades and concurrent claims.
+The application database is never used by these tests.
 
 Set `TTC_TEST_POSTGRES_URL` to a PostgreSQL administrative connection URL
 (SQLAlchemy format, `postgresql+psycopg://.../postgres`) with CREATEDB permission,
