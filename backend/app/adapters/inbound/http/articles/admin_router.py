@@ -84,11 +84,14 @@ def opportunities(
     current_user: Writer,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    group: Literal["team_matches", "other_events"] | None = None,
     use_case=Depends(dep.provide_opportunities),
 ):
     with article_errors():
         return use_case.execute(
-            OpportunityQuery(actor=actor(current_user), offset=offset, limit=limit)
+            OpportunityQuery(
+                actor=actor(current_user), offset=offset, limit=limit, group=group
+            )
         )
 
 

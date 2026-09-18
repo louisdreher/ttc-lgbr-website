@@ -21,8 +21,13 @@ Tags; eine fachliche Zuordnung von Event-Kategorien zu Artikel-Tags besteht noch
 Ein Systementwurf liefert dagegen auch seine vorhandenen Tags und sein Titelbild.
 Es wird bei dieser Leseabfrage keine Textgenerierung gestartet.
 
-Unter „Neuer Beitrag“ erscheinen Events ohne Artikel oder mit einem Systementwurf
-im Status DRAFT, gruppiert in Mannschaftsspiele und andere Events. Die Sichtbarkeit
+Unter „Neuer Beitrag“ erscheinen vergangene Events ohne Artikel oder mit einem Systementwurf
+im Status DRAFT. Als Zeitgrenze zählt das Ende, ersatzweise der Beginn; der Zeitpunkt
+muss vor der serverseitigen Abfragezeit liegen. Mannschaftsspiele und andere Events
+werden unabhängig abgefragt und paginiert (`group=team_matches` bzw.
+`group=other_events`). Der Gruppenfilter wird vor Zählung und Pagination angewandt.
+Jede Liste hat eigene Trefferzahlen, Seiten, Ladezustände und Fehleranzeigen.
+Ohne Gruppenparameter bleibt die kombinierte API-Abfrage verfügbar. Die Sichtbarkeit
 des Events und `report_expected` begrenzen die manuelle Auswahl nicht. Letzteres
 bleibt eine Regel für die automatische Generierung. Ein bereits selbst übernommener
 Beitrag kann erneut vorbereitet werden; ein fremder zugeordneter Beitrag führt zu 409.

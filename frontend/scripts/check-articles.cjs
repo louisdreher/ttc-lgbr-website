@@ -93,6 +93,11 @@ const initial = (id, changes = {}) => ({
           roles: role === 'MEMBER' ? [] : [role],
         });
       if (p === '/api/event-categories') return json([{ id: 1, name: 'Verein', slug: 'verein' }]);
+      if (
+        p === '/api/admin/articles/opportunities' &&
+        url.searchParams.get('group') === 'other_events'
+      )
+        return json({ team_matches: [], other_events: [], total: 0, offset: 0, limit: 20 });
       if (p === '/api/admin/articles/opportunities')
         return json({
           team_matches: [

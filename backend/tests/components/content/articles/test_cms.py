@@ -96,6 +96,60 @@ def cms():
     engine.dispose()
 
 
+def test_opportunities_filter_time_and_paginate_groups_independently(cms):
+    from test_outbox_postgres import seed_report_match
+
+    client, engine, _ = cms
+    match_id = seed_report_match(engine)
+    now = datetime.now(timezone.utc)
+    with Session(engine) as session:
+        other = session.get(Event, 1)
+        other.starts_at = now - timedelta(days=10)
+        match = session.exec(select(Event).where(Event.team_match_id == match_id)).one()
+        match.starts_at = now - timedelta(days=1)
+        match.ends_at = None
+        match_event_id = match.id
+        session.add_all(
+            [
+                Event(title="Future", category_id=1, starts_at=now + timedelta(days=1)),
+                Event(
+                    title="Ongoing",
+                    category_id=1,
+                    starts_at=now - timedelta(hours=1),
+                    ends_at=now + timedelta(hours=1),
+                ),
+            ]
+        )
+        session.commit()
+    other = client.get(
+        "/api/admin/articles/opportunities?group=other_events&limit=1"
+    ).json()
+    assert other["total"] == 1
+    assert [item["event_id"] for item in other["other_events"]] == [1]
+    assert other["team_matches"] == []
+    games = client.get(
+        "/api/admin/articles/opportunities?group=team_matches&limit=1"
+    ).json()
+    assert games["total"] == 1
+    assert [item["event_id"] for item in games["team_matches"]] == [match_event_id]
+    assert games["other_events"] == []
+    with Session(engine) as session:
+        session.get(Event, match_event_id).starts_at = now + timedelta(days=2)
+        session.commit()
+    assert (
+        client.get("/api/admin/articles/opportunities?group=team_matches").json()[
+            "total"
+        ]
+        == 0
+    )
+    assert (
+        client.get("/api/admin/articles/opportunities?group=other_events").json()[
+            "total"
+        ]
+        == 1
+    )
+
+
 def form(**changes):
     return (
         dict(title="Bericht", slug="bericht", teaser="Teaser", content="Inhalt")

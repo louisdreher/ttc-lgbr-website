@@ -46,6 +46,7 @@ export interface Opportunities {
   offset: number;
   limit: number;
 }
+export type OpportunityGroup = 'team_matches' | 'other_events';
 export interface PreparedArticle {
   article_id: number | null;
   event_id: number;

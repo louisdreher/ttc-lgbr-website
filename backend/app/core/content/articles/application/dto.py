@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Literal
 
 from app.core.competition.public import MatchDetails
@@ -148,6 +148,8 @@ class OpportunityQuery:
     actor: ArticleActor
     offset: int = 0
     limit: int = 50
+    group: Literal["team_matches", "other_events"] | None = None
+    as_of: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass(frozen=True, kw_only=True)

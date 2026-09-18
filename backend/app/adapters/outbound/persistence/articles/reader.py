@@ -113,8 +113,14 @@ class SqlArticleReader:
         base = (
             select(Event, Article.id)
             .outerjoin(Article, Article.event_id == Event.id)
-            .where(eligible)
+            .where(
+                eligible, func.coalesce(Event.ends_at, Event.starts_at) < query.as_of
+            )
         )
+        if query.group == "team_matches":
+            base = base.where(Event.team_match_id.is_not(None))
+        elif query.group == "other_events":
+            base = base.where(Event.team_match_id.is_(None))
         total = self.session.exec(
             select(func.count()).select_from(base.subquery())
         ).one()

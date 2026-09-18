@@ -7,6 +7,7 @@ import {
   ArticleVisibility,
   ArticleWrite,
   Opportunities,
+  OpportunityGroup,
   Page,
   PreparedArticle,
   PublicArticle,
@@ -29,9 +30,9 @@ export class ArticleApiService {
     if (updatedSince) params = params.set('updated_since', updatedSince);
     return this.http.get<Page<Article>>(this.cms, { params });
   }
-  opportunities(offset = 0) {
+  opportunities(offset = 0, group?: OpportunityGroup) {
     return this.http.get<Opportunities>(this.cms + '/opportunities', {
-      params: { offset, limit: 20 },
+      params: { offset, limit: 20, ...(group ? { group } : {}) },
     });
   }
   prepare(eventId: number) {
