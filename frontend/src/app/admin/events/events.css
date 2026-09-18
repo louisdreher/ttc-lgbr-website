@@ -298,17 +298,48 @@ td {
   justify-content: center;
   gap: 0.35rem;
   margin-top: 1.25rem;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+}
+.year-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+}
+.year-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.year-picker select {
+  min-height: 44px;
+  padding: 0.5rem;
+  border: 1px solid #87919c;
+  border-radius: 0.35rem;
+  background: white;
+  color: var(--color-text);
 }
 .pagination button {
-  padding: 0.5rem 0.7rem;
+  min-height: 44px;
+  padding: 0.5rem;
   border: 1px solid var(--color-border);
   border-radius: 0.35rem;
   background: white;
   cursor: pointer;
 }
 .pagination .active {
-  background: var(--club-primary-dark);
+  background: #226487;
   color: white;
+}
+.pagination button:disabled {
+  color: #69717a;
+  cursor: default;
+}
+.pagination :is(button, select):focus-visible {
+  outline: 3px solid #17587b;
+  outline-offset: 2px;
 }
 .visually-hidden {
   position: absolute;

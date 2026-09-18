@@ -254,15 +254,43 @@
 
 @if (years().length > 1) {
   <nav class="pagination" aria-label="Event-Jahre">
-    @for (year of years(); track year) {
+    <div class="year-navigation">
       <button
         type="button"
-        [class.active]="year === selectedYear()"
-        [attr.aria-current]="year === selectedYear() ? 'page' : null"
-        (click)="selectYear(year)"
+        aria-label="Neueres Veranstaltungsjahr"
+        [disabled]="selectedYearIndex() <= 0"
+        (click)="moveYear(-1)"
       >
-        {{ year }}
+        ←
       </button>
+      @for (year of visibleYears(); track year) {
+        <button
+          type="button"
+          [class.active]="year === selectedYear()"
+          [attr.aria-current]="year === selectedYear() ? 'page' : null"
+          (click)="selectYear(year)"
+        >
+          {{ year }}
+        </button>
+      }
+      <button
+        type="button"
+        aria-label="Älteres Veranstaltungsjahr"
+        [disabled]="selectedYearIndex() >= years().length - 1"
+        (click)="moveYear(1)"
+      >
+        →
+      </button>
+    </div>
+    @if (years().length > 5) {
+      <label class="year-picker" for="event-year"
+        >Jahr auswählen
+        <select id="event-year" [value]="selectedYear()" (change)="selectYearFromList($event)">
+          @for (year of years(); track year) {
+            <option [value]="year">{{ year }}</option>
+          }
+        </select>
+      </label>
     }
   </nav>
 }

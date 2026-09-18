@@ -35,6 +35,12 @@ export class AdminEvents {
   readonly categories = signal<EventCategory[]>([]);
   readonly years = signal<number[]>([]);
   readonly selectedYear = signal<number | null>(null);
+  readonly selectedYearIndex = computed(() => this.years().indexOf(this.selectedYear() ?? -1));
+  readonly visibleYears = computed(() => {
+    const years = this.years();
+    const start = Math.max(0, Math.min(this.selectedYearIndex() - 2, years.length - 5));
+    return years.slice(start, start + 5);
+  });
   readonly selectedCategoryIds = signal<Set<number>>(new Set());
   readonly selectedVisibilities = signal<Set<EventVisibility>>(
     new Set(['PUBLIC', 'MEMBERS_ONLY', 'HIDDEN']),
@@ -87,7 +93,7 @@ export class AdminEvents {
       next: ({ categories, years }) => {
         const current = new Date().getFullYear();
         this.categories.set(categories);
-        this.years.set(years);
+        this.years.set([...years].sort((a, b) => b - a));
         this.selectedYear.set(years.includes(current) ? current : (years[0] ?? null));
         this.selectedCategoryIds.set(
           new Set(
@@ -133,8 +139,16 @@ export class AdminEvents {
   }
 
   selectYear(year: number): void {
+    if (!this.years().includes(year) || year === this.selectedYear()) return;
     this.selectedYear.set(year);
     this.loadEvents();
+  }
+  moveYear(direction: number): void {
+    const year = this.years()[this.selectedYearIndex() + direction];
+    if (year !== undefined) this.selectYear(year);
+  }
+  selectYearFromList(event: Event): void {
+    this.selectYear(Number((event.target as HTMLSelectElement).value));
   }
   toggleCategory(id: number, checked: boolean): void {
     this.selectedCategoryIds.update((ids) => {
