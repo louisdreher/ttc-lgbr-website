@@ -1,0 +1,153 @@
+<header class="heading">
+  <a routerLink="/admin/users">← Zur Benutzerübersicht</a>
+  <h1>{{ id ? 'Benutzer bearbeiten' : 'Benutzer anlegen' }}</h1>
+  <p class="muted">
+    Zugang und Mitgliedsdaten gemeinsam verwalten. Pflichtfelder sind mit * markiert.
+  </p>
+</header>
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+@if (loading()) {
+  <p role="status">Formulardaten werden geladen …</p>
+} @else if (!loadFailed()) {
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <fieldset class="form-body" [disabled]="saving()">
+      <section class="panel" aria-labelledby="account-title">
+        <h2 id="account-title">Benutzerkonto</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="account-name">Anzeigename *</label
+            ><input
+              id="account-name"
+              formControlName="name"
+              required
+              maxlength="200"
+              autocomplete="off"
+              [attr.aria-invalid]="form.controls.name.touched && form.controls.name.invalid"
+            /><small>Wird beispielsweise bei verfassten Beiträgen angezeigt.</small>
+          </div>
+          <div class="field">
+            <label for="account-email">Anmelde-E-Mail *</label
+            ><input
+              id="account-email"
+              type="email"
+              formControlName="email"
+              required
+              autocomplete="off"
+              [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid"
+            /><small>Adresse für Anmeldung und Passwort-Links.</small>
+          </div>
+        </div>
+        <label class="check"
+          ><input type="checkbox" formControlName="is_active" />Zugang aktiviert</label
+        >
+        <fieldset class="role-options" formGroupName="roles">
+          <legend>Rollen</legend>
+          @for (role of roles; track role.value) {
+            <label class="check"
+              ><input type="checkbox" [formControlName]="role.value" />{{ role.label }}</label
+            >
+          }
+        </fieldset>
+        <p class="muted">Ohne CMS-Rolle ist nur der interne Mitgliederbereich zugänglich.</p>
+        @if (!id) {
+          <label class="check"
+            ><input type="checkbox" formControlName="sendInvitation" />Nach dem Anlegen einen
+            Einladungslink per E-Mail senden</label
+          >
+          <p class="muted">
+            Der Empfänger legt sein Passwort selbst fest. Einladungen werden nur für aktivierte
+            Konten versendet.
+          </p>
+        }
+      </section>
+      <section class="panel" aria-labelledby="member-title">
+        <h2 id="member-title">Mitglied zuordnen</h2>
+        <div class="field">
+          <label for="member-mode">Zuordnung</label
+          ><select id="member-mode" formControlName="memberMode">
+            <option value="new">Neues Mitglied erfassen</option>
+            <option value="existing">Vorhandenes Mitglied auswählen</option>
+            <option value="none">Ohne Mitgliedszuordnung</option>
+          </select>
+        </div>
+        @if (mode() === 'existing') {
+          <div class="field">
+            <label for="member-select">Mitglied *</label
+            ><select
+              id="member-select"
+              formControlName="memberId"
+              [attr.aria-invalid]="submitted() && !memberReady()"
+            >
+              <option value="">Bitte auswählen</option>
+              @for (member of options(); track member.id) {
+                <option
+                  [value]="member.id"
+                  [disabled]="member.user_id !== null && member.user_id !== id"
+                >
+                  {{ member.last_name }}, {{ member.first_name }} · #{{ member.id
+                  }}{{
+                    member.user_id !== null && member.user_id !== id ? ' (bereits zugeordnet)' : ''
+                  }}
+                </option>
+              }
+            </select>
+          </div>
+        }
+        @if (id) {
+          <p class="muted">Ein Wechsel der Zuordnung löscht das bisherige Mitglied nicht.</p>
+        }
+        @if (memberLoading()) {
+          <p role="status">Mitgliedsdaten werden geladen …</p>
+        }
+      </section>
+      @if (mode() !== 'none' && memberReady() && !memberLoading()) {
+        <section class="panel" formGroupName="member" aria-labelledby="details-title">
+          <h2 id="details-title">Mitgliedsdaten</h2>
+          <div class="grid">
+            @for (field of textFields; track field.key) {
+              <div class="field">
+                <label [for]="'member-' + field.key"
+                  >{{ field.label }}{{ field.required ? ' *' : '' }}</label
+                ><input
+                  [id]="'member-' + field.key"
+                  [type]="field.type"
+                  [formControlName]="field.key"
+                  [required]="field.required"
+                  maxlength="200"
+                  [attr.aria-invalid]="
+                    memberForm.controls[field.key].touched && memberForm.controls[field.key].invalid
+                  "
+                />
+              </div>
+            }
+            @for (field of dateFields; track field.key) {
+              <div class="field">
+                <label [for]="'member-' + field.key">{{ field.label }}</label
+                ><input
+                  [id]="'member-' + field.key"
+                  type="date"
+                  [formControlName]="field.key"
+                  [max]="field.key === 'birth_date' ? today : '9999-12-31'"
+                />
+              </div>
+            }
+          </div>
+          <label class="check"
+            ><input type="checkbox" formControlName="is_active" />Aktive
+            Vereinsmitgliedschaft</label
+          >
+          <p class="muted">
+            Ohne Häkchen: passive Mitgliedschaft. Diese Auswahl ist unabhängig vom Website-Zugang.
+          </p>
+        </section>
+      }
+      <div class="actions">
+        <button class="primary" type="submit" [disabled]="saving() || memberLoading()">
+          {{ saving() ? 'Wird gespeichert …' : 'Benutzer speichern' }}</button
+        ><a routerLink="/admin/users">Abbrechen</a>
+      </div>
+    </fieldset>
+  </form>
+}

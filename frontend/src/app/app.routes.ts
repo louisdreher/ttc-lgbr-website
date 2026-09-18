@@ -20,7 +20,7 @@ import { articleLeaveGuard } from './admin/articles/editor/article-leave.guard';
 import { AdminTeams } from './admin/teams/teams';
 import { AdminEvents } from './admin/events/events';
 import { EventForm } from './admin/events/form/event-form';
-import { AdminUsers } from './admin/users/users';
+import { userFormLeaveGuard } from './admin/users/form/user-form.guard';
 
 import { Login } from './auth/login/login';
 
@@ -67,6 +67,11 @@ export const routes: Routes = [
       {
         path: 'login',
         component: Login,
+      },
+      {
+        path: 'passwort-festlegen',
+        loadComponent: () => import('./auth/set-password/set-password').then((m) => m.SetPassword),
+        title: 'Passwort festlegen | TTC',
       },
     ],
   },
@@ -206,8 +211,27 @@ export const routes: Routes = [
       },
       {
         path: 'users',
-        component: AdminUsers,
         canActivate: [roleGuard('ADMIN')],
+        canActivateChild: [roleGuard('ADMIN')],
+        children: [
+          {
+            path: '',
+            loadComponent: () => import('./admin/users/users').then((m) => m.AdminUsers),
+            title: 'Benutzer | TTC',
+          },
+          {
+            path: 'new',
+            loadComponent: () => import('./admin/users/form/user-form').then((m) => m.UserForm),
+            canDeactivate: [userFormLeaveGuard],
+            title: 'Benutzer anlegen | TTC',
+          },
+          {
+            path: ':id/edit',
+            loadComponent: () => import('./admin/users/form/user-form').then((m) => m.UserForm),
+            canDeactivate: [userFormLeaveGuard],
+            title: 'Benutzer bearbeiten | TTC',
+          },
+        ],
       },
     ],
   },

@@ -112,5 +112,6 @@ function isAuthRequest(url: string): boolean {
     url.endsWith('/auth/login') ||
     url.endsWith('/auth/refresh') ||
     url.endsWith('/auth/logout')
+    || url.endsWith('/auth/set-password')
   );
 }

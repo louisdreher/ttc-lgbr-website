@@ -1,1 +1,141 @@
-<p>users works!</p>
+<header class="toolbar">
+  <div>
+    <span class="eyebrow">Vereinsverwaltung</span>
+    <h1>Benutzer</h1>
+    <p class="muted">Zugänge, Rollen und Mitgliedsdaten verwalten.</p>
+  </div>
+  <a class="button primary" routerLink="/admin/users/new">Benutzer anlegen</a>
+</header>
+@if (api.notice()) {
+  <p class="notice" role="status">{{ api.notice() }}</p>
+}
+@if (error()) {
+  <div class="error" role="alert">
+    {{ error() }} <button type="button" (click)="retry()">Erneut laden</button>
+  </div>
+}
+<form class="panel filters" [formGroup]="filters" (ngSubmit)="search()">
+  <div>
+    <label for="user-search">Name oder E-Mail</label
+    ><input
+      id="user-search"
+      type="search"
+      formControlName="search"
+      maxlength="200"
+      placeholder="Benutzer suchen"
+    />
+  </div>
+  <div>
+    <label for="user-role">Rolle</label
+    ><select id="user-role" formControlName="role">
+      <option value="">Alle Rollen</option>
+      @for (role of roles; track role.value) {
+        <option [value]="role.value">{{ role.label }}</option>
+      }
+    </select>
+  </div>
+  <div>
+    <label for="user-status">Kontostatus</label
+    ><select id="user-status" formControlName="active">
+      <option value="">Alle Konten</option>
+      <option value="true">Aktiv</option>
+      <option value="false">Deaktiviert</option>
+    </select>
+  </div>
+  <button type="submit" [disabled]="busy()">Filtern</button>
+</form>
+<p class="muted" role="status">{{ total() }} Benutzer gefunden</p>
+@if (loading()) {
+  <p role="status">Benutzer werden geladen …</p>
+} @else if (!error() || users().length) {
+  <div class="table-wrap" [attr.aria-busy]="busy()">
+    <table>
+      <caption class="sr-only">
+        Benutzerkonten und Verwaltungsaktionen
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Benutzer</th>
+          <th scope="col">Mitglied</th>
+          <th scope="col">Status</th>
+          <th scope="col">Rollen</th>
+          <th scope="col">Aktionen</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (user of users(); track user.id) {
+          <tr>
+            <th scope="row">
+              <a [routerLink]="['/admin/users', user.id, 'edit']">{{ user.name }}</a
+              ><span class="email">{{ user.email }}</span>
+            </th>
+            <td data-label="Mitglied">
+              {{
+                user.member
+                  ? user.member.first_name + ' ' + user.member.last_name
+                  : 'Nicht zugeordnet'
+              }}
+            </td>
+            <td data-label="Kontostatus">
+              <span class="badge" [class.published]="user.is_active">{{
+                user.is_active ? 'Aktiv' : 'Deaktiviert'
+              }}</span>
+            </td>
+            <td data-label="Rollen">
+              <span class="role-summary" [class.muted]="!user.roles.length">{{
+                roleSummary(user)
+              }}</span>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a
+                  class="button"
+                  [routerLink]="['/admin/users', user.id, 'edit']"
+                  [attr.aria-label]="user.name + ' bearbeiten'"
+                  >Bearbeiten</a
+                >
+                <button
+                  type="button"
+                  [disabled]="busy() || !user.is_active"
+                  (click)="sendLink(user)"
+                  [attr.aria-label]="'Passwort für ' + user.name + ' zurücksetzen'"
+                >
+                  Passwort zurücksetzen
+                </button>
+                <button type="button" [disabled]="busy()" (click)="toggleActive(user)">
+                  {{ user.is_active ? 'Deaktivieren' : 'Aktivieren' }}
+                </button>
+                <button
+                  type="button"
+                  class="danger"
+                  [disabled]="busy()"
+                  (click)="delete(user)"
+                  [attr.aria-label]="user.name + ' löschen'"
+                >
+                  Löschen
+                </button>
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="5" class="empty">Keine Benutzer für diese Auswahl gefunden.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+<nav class="pagination" aria-label="Benutzerseiten">
+  <button type="button" [disabled]="loading() || busy() || offset() === 0" (click)="page(-25)">
+    Zurück
+  </button>
+  <span>Seite {{ offset() / 25 + 1 }}</span>
+  <button
+    type="button"
+    [disabled]="loading() || busy() || offset() + 25 >= total()"
+    (click)="page(25)"
+  >
+    Weiter
+  </button>
+</nav>
