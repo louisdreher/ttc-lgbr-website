@@ -1,9 +1,11 @@
-from sqlmodel import Session
-
+from app.adapters.outbound.persistence.auth.account_sessions import SqlAccountSessions
+from app.adapters.outbound.persistence.members.repository import SqlMembers
+from app.adapters.outbound.persistence.users.password_links import SqlPasswordLinks
 from app.adapters.outbound.persistence.users.repository import (
     SqlRoleRepository,
     SqlUserRepository,
 )
+from sqlmodel import Session
 
 
 class SqlUserUnitOfWork:
@@ -11,6 +13,9 @@ class SqlUserUnitOfWork:
         self.session = session
         self.users = SqlUserRepository(session)
         self.roles = SqlRoleRepository(session)
+        self.members = SqlMembers(session)
+        self.links = SqlPasswordLinks(session)
+        self.sessions = SqlAccountSessions(session)
         self._committed = False
 
     def __enter__(self):

@@ -1,8 +1,7 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-
 from app.adapters.inbound.http.auth.permissions import require_role
+from app.adapters.inbound.http.users.admin_router import user_errors
 from app.adapters.inbound.http.users.dependencies import (
     provide_add_user_role,
     provide_create_user,
@@ -17,6 +16,7 @@ from app.core.users.application.errors import (
     UserNotFoundError,
 )
 from app.core.users.public import RoleName, UserDetails
+from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 user_admin = require_role(RoleName.ADMIN)
@@ -42,7 +42,10 @@ def add_role(
     use_case: Annotated[AddUserRole, Depends(provide_add_user_role)],
 ):
     try:
-        use_case.execute(ChangeUserRoleCommand(user_id=user_id, role_name=role_name))
+        with user_errors():
+            use_case.execute(
+                ChangeUserRoleCommand(user_id=user_id, role_name=role_name)
+            )
     except (UserNotFoundError, RoleNotFoundError) as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     return {"message": f"Rolle {role_name.value} wurde dem User zugewiesen."}
@@ -56,7 +59,10 @@ def remove_role(
     use_case: Annotated[RemoveUserRole, Depends(provide_remove_user_role)],
 ):
     try:
-        use_case.execute(ChangeUserRoleCommand(user_id=user_id, role_name=role_name))
+        with user_errors():
+            use_case.execute(
+                ChangeUserRoleCommand(user_id=user_id, role_name=role_name)
+            )
     except (UserNotFoundError, RoleNotFoundError) as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     return {"message": f"Rolle {role_name.value} wurde vom User entfernt."}

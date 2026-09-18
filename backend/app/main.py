@@ -17,6 +17,8 @@ from app.adapters.inbound.http.competition.automation_router import (
 from app.adapters.inbound.http.competition.router import router as competition_router
 from app.adapters.inbound.http.events.admin_router import router as event_admin_router
 from app.adapters.inbound.http.events.public_router import router as event_public_router
+from app.adapters.inbound.http.users.admin_router import password_router
+from app.adapters.inbound.http.users.admin_router import router as user_admin_router
 from app.adapters.inbound.http.users.router import router as user_router
 from app.bootstrap.logging import configure_logging
 from app.bootstrap.settings import settings
@@ -57,6 +59,8 @@ app.add_middleware(
 app.include_router(competition_router)
 app.include_router(automation_router)
 app.include_router(user_router)
+app.include_router(user_admin_router)
+app.include_router(password_router)
 app.include_router(article_admin_router)
 app.include_router(article_public_router)
 app.include_router(article_member_router)

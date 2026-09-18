@@ -18,4 +18,8 @@ class GetCurrentUser:
             raise AuthenticationError("Benutzer nicht gefunden")
         if not user.is_active or user.is_system:
             raise AuthenticationError("Benutzer ist deaktiviert")
+        if user.auth_invalid_before and not self.tokens.issued_after(
+            query.access_token, user.auth_invalid_before
+        ):
+            raise AuthenticationError("Bitte erneut anmelden.")
         return user

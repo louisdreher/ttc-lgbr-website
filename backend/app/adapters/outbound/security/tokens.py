@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import jwt
 
@@ -13,7 +13,11 @@ class JwtTokens:
 
     def issue_access(self, user_id: int, now: datetime) -> str:
         return jwt.encode(
-            {"sub": str(user_id), "exp": now + self.access_lifetime},
+            {
+                "sub": str(user_id),
+                "exp": now + self.access_lifetime,
+                "iat": now.timestamp(),
+            },
             self.secret,
             algorithm=self.algorithm,
         )
@@ -32,6 +36,16 @@ class JwtTokens:
 
     def new_refresh(self) -> str:
         return secrets.token_urlsafe(32)
+
+    def issued_after(self, token: str, cutoff: datetime) -> bool:
+        try:
+            payload = jwt.decode(token, self.secret, algorithms=[self.algorithm])
+            cutoff = (
+                cutoff.replace(tzinfo=timezone.utc) if cutoff.tzinfo is None else cutoff
+            )
+            return float(payload.get("iat", 0)) > cutoff.timestamp()
+        except (jwt.InvalidTokenError, ValueError, TypeError):
+            return False
 
     def hash_refresh(self, token: str) -> str:
         return hashlib.sha256(token.encode("utf-8")).hexdigest()

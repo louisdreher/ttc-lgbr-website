@@ -29,6 +29,7 @@ class User:
     system_key: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     member_id: int | None = None
+    auth_invalid_before: datetime | None = None
     roles: list[Role] = field(default_factory=list)
 
     @classmethod
@@ -43,3 +44,12 @@ class User:
 
     def remove_role(self, role: Role) -> None:
         self.roles = [existing for existing in self.roles if existing.id != role.id]
+
+    def ensure_manageable(self) -> None:
+        if self.system_key is not None:
+            raise ValueError("Technische Systemkonten können nicht verwaltet werden.")
+
+    def is_admin(self) -> bool:
+        return self.is_active and any(
+            role.name == RoleName.ADMIN for role in self.roles
+        )

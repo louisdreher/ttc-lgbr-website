@@ -8,3 +8,15 @@ class UserNotFoundError(ValueError):
 
 class RoleNotFoundError(ValueError):
     pass
+
+
+class UserConflictError(ValueError):
+    pass
+
+
+class InvalidPasswordLinkError(ValueError):
+    pass
+
+
+class MailDeliveryError(RuntimeError):
+    pass

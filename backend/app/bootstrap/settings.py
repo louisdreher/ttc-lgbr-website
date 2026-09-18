@@ -12,6 +12,14 @@ class Settings(BaseSettings):
 
     # Anwendung
     environment: str = "development"
+    public_frontend_url: str = "http://localhost:4200"
+    password_link_minutes: int = Field(default=60, ge=5, le=1440)
+    smtp_host: str = ""
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str = ""
+    smtp_password: str = Field(default="", repr=False)
+    smtp_sender: str = ""
+    smtp_starttls: bool = True
 
     # Compatibility with existing .env files; scheduling now lives in the database.
     competition_sync_interval_seconds: int = Field(default=3600, ge=60)

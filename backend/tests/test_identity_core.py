@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-
 from app.core.auth.application.commands import Login
 from app.core.auth.application.dto import LoginCommand
 from app.core.auth.domain.session import (
@@ -112,8 +111,13 @@ def test_identity_core_dependency_boundaries():
                 for name in imports:
                     assert not name.startswith(forbidden), (path, name)
                     if name.startswith("app.core."):
-                        assert name.startswith(f"app.core.{component}.") or (
-                            component == "auth" and name == "app.core.users.public"
+                        assert (
+                            name.startswith(f"app.core.{component}.")
+                            or (component == "auth" and name == "app.core.users.public")
+                            or (
+                                component == "users"
+                                and name == "app.core.members.public"
+                            )
                         ), (path, name)
                     if "domain" in path.parts:
                         assert ".application" not in name, (path, name)

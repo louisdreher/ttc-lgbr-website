@@ -19,6 +19,7 @@ class SqlUserReader:
             is_active=user.is_active,
             roles=[role.name for role in user.roles],
             is_system=user.system_key is not None,
+            auth_invalid_before=user.auth_invalid_before,
         )
 
     def get_credentials(self, email: str) -> UserCredentials | None:

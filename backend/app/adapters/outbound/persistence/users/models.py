@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import Column, DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -18,6 +19,9 @@ class User(SQLModel, table=True):
     password_hash: str
 
     is_active: bool = True
+    auth_invalid_before: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
     system_key: str | None = Field(default=None, unique=True)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -37,3 +41,12 @@ class Role(SQLModel, table=True):
     name: str = Field(unique=True, index=True)
 
     users: list["User"] = Relationship(back_populates="roles", link_model=UserRoleLink)
+
+
+class PasswordLink(SQLModel, table=True):
+    __tablename__ = "password_link"
+    user_id: int = Field(foreign_key="user.id", primary_key=True)
+    token_hash: str = Field(unique=True, index=True)
+    expires_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )

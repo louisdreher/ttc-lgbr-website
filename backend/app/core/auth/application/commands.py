@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.auth.application.dto import (
     IssuedTokens,
@@ -35,6 +35,8 @@ class Login:
 
     def execute(self, command: LoginCommand) -> IssuedTokens:
         with self.uow:
+            # A reset racing password verification must invalidate this login too.
+            now = self.clock()
             user = self.users.get_credentials(command.email)
             if (
                 user is None
@@ -43,7 +45,6 @@ class Login:
                 or not self.passwords.verify(command.password, user.password_hash)
             ):
                 raise AuthenticationError("E-Mail oder Passwort ist falsch")
-            now = self.clock()
             refresh_token = self.tokens.new_refresh()
             session = RefreshSession(
                 user_id=user.user_id,
@@ -97,6 +98,19 @@ class RefreshAccess:
                     raise AuthenticationError(
                         "Benutzer ist deaktiviert oder nicht vorhanden"
                     )
+                if user.auth_invalid_before:
+                    cutoff = (
+                        user.auth_invalid_before.replace(tzinfo=timezone.utc)
+                        if user.auth_invalid_before.tzinfo is None
+                        else user.auth_invalid_before
+                    )
+                    created = (
+                        session.created_at.replace(tzinfo=timezone.utc)
+                        if session.created_at.tzinfo is None
+                        else session.created_at
+                    )
+                    if created <= cutoff:
+                        raise AuthenticationError("Bitte erneut anmelden.")
                 refresh_token = self.tokens.new_refresh()
                 self.uow.sessions.save(session)
                 self.uow.sessions.save(
