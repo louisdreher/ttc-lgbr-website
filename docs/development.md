@@ -213,6 +213,54 @@ checks use the same disposable-database fixture and `TTC_TEST_POSTGRES_URL` as t
 outbox tests; they cover upgrades, cascading job deletion, concurrent requests and
 competing workers without contacting myTischtennis.
 
+## Benutzer-CMS und E-Mail-Versand
+
+Die Benutzerverwaltung benötigt Migration `d4f26a41b735`. `alembic upgrade head`
+ergänzt die Passwort-Link-Tabelle und einen nullable Zeitstempel zur Invalidierung
+von Sitzungen; bestehende Konten und Mitgliedsdaten bleiben erhalten.
+
+In der lokalen, nicht versionierten `backend/.env` werden für den Versand
+folgende Werte benötigt (siehe `.env.example`):
+
+```dotenv
+PUBLIC_FRONTEND_URL=http://localhost:4200
+PASSWORD_LINK_MINUTES=60
+SMTP_HOST=smtp.example.org
+SMTP_PORT=587
+SMTP_USERNAME=YOUR_USERNAME
+SMTP_PASSWORD=YOUR_PASSWORD
+SMTP_SENDER=verein@example.org
+SMTP_STARTTLS=true
+```
+
+Für die veröffentlichte Anwendung muss `PUBLIC_FRONTEND_URL` die HTTPS-Adresse
+der Website enthalten. Der Adapter verwendet SMTP mit STARTTLS; Zugangsdaten
+werden nur genutzt, wenn ein Benutzername konfiguriert ist. Für einen separaten
+lokalen Mail-Testserver kann STARTTLS deaktiviert werden. Kein Mailserver und
+keine echten Versandzugangsdaten werden durch das Repository eingerichtet.
+Nach Änderungen an den Einstellungen das Backend neu starten.
+
+Ohne SMTP lässt sich ein Konto vollständig anlegen und bearbeiten. Das Formular
+meldet dann, dass die Einladung nicht versendet wurde; alternativ kann die
+Einladungsoption beim Anlegen deaktiviert werden. Der Benutzer kann sich erst
+anmelden, nachdem er über einen zugestellten Link sein Passwort festgelegt hat.
+
+Zusätzliche Prüfungen:
+
+```powershell
+# Im backend-Verzeichnis; PostgreSQL-Variable wie oben beschrieben
+python -m pytest tests/test_user_administration.py tests/test_users_postgres.py
+# Im frontend-Verzeichnis, mit Angular auf Port 4202
+node scripts/check-users.cjs
+```
+
+Der Browsercheck arbeitet mit simulierten API-Antworten, versendet keine E-Mails
+und verändert keine Konten. Er prüft Rollen, Sperren, Anlegen mit bestehendem
+Mitglied, Einladungen, Suche, Löschen und Passwortfestlegung sowie WCAG-AA-Regeln
+im Inhaltsbereich bei Desktop-/Mobilgrößen. Screenshots liegen unter dem
+ignorierten `frontend/tmp/user-checks`. `USERS_TEST_URL` und `BROWSER_CHANNEL`
+überschreiben Vorschauadresse und Browser (Standard: Microsoft Edge).
+
 ## Suggested learning workflow with Codex
 
 Prefix a task with the kind of collaboration you want:

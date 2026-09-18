@@ -127,8 +127,9 @@ See [the article architecture walkthrough](articles-architecture.md).
 The existing backend workflows now use component-oriented Ports and Adapters.
 All SQLModel tables reside in outbound persistence adapters. The core is free
 of framework and infrastructure imports; a project-wide test enforces this
-boundary. Members and Media currently contain persistence structures rather
-than standalone management workflows. Their future use cases remain planned.
+boundary. Members exposes a framework-free member object and public persistence
+port for atomic account/member administration in the Users CMS. Standalone member
+management and Media workflows remain planned.
 
 New backend functionality and code selected explicitly for refactoring should
 move toward a component-oriented Ports and Adapters architecture. Events now
@@ -305,8 +306,9 @@ new locations. Table names, foreign keys, indexes, and migrations are unchanged.
 The match-to-event backfill also uses an application class, an injected unit
 of work, and the existing outgoing Events contract. HTTP dependencies may
 still supply SQL sessions as composition code; controllers and the core do
-not issue SQL queries. Members administration and media upload/gallery use
-cases remain planned; no unused application classes were added for them.
+not issue SQL queries. The Users CMS now edits member data through an explicit
+Members contract in the same transaction as the account. Standalone member
+administration and media upload/gallery use cases remain planned.
 
 ## Database and migrations
 

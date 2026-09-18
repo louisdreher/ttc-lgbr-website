@@ -76,3 +76,86 @@ Usecase; `build_ensure_default_roles` verdrahtet ihn. Er wird nicht automatisch
 beim Start ausgeführt. Ein Einrichtungsablauf für den ersten Administrator bleibt
 geplant. Die später ergänzte Competition-Domain und die verschobenen Members-/Media-
 Persistenzmodelle sind in [der Architekturübersicht](architecture.md) beschrieben.
+
+## Benutzerverwaltung im CMS
+
+`/admin/users` ist ausschließlich für ADMIN zugänglich. Die Übersicht bietet
+Suche, Rollen-/Statusfilter, Seiten mit jeweils 25 Konten, eine kompakte Anzeige der vergebenen Rollen,
+Passwort-Link-Versand, Aktivierung/Deaktivierung und Löschen.
+Rollen werden im Benutzerformular bearbeitet; Konten ohne Rollen zeigen „Keine CMS-Rolle“.
+Technische Systemkonten sind aus der Liste ausgeschlossen und vor Änderungen geschützt.
+`/admin/users/new` und `/admin/users/:id/edit` verwenden ein gemeinsames Formular
+mit Schutz vor dem Verlassen ungespeicherter Änderungen.
+
+Benutzerkonto und Vereinsmitglied bleiben getrennte Datensätze. Das Formular
+kann ein neues Mitglied erfassen, ein vorhandenes Mitglied zuordnen oder ein
+Konto ohne Mitglied erstellen. Ein Mitglied kann nur einem Konto zugeordnet
+werden. Kontostatus und aktive/passive Mitgliedschaft sind unabhängig.
+Spielerkennungen und QTTR-Verläufe werden durch dieses Formular nicht verändert.
+
+`SaveManagedUser` speichert Konto, Rollen und Mitgliedsdaten atomar über die
+Users-Unit-of-Work. Der öffentliche Vertrag `core/members/public.py` enthält
+das frameworkfreie Mitgliedsobjekt und den Mitglieder-Port; der SQL-Adapter
+nutzt dieselbe Session. Die neue Members-Domain enthält die Felder des bereits
+vorhandenen Persistenzmodells. Eigenständige Mitgliederverwaltung bleibt geplant.
+Lese-Usecases verwenden einen separaten Reader mit sicheren Projektionen.
+
+Die Verwaltungs-API liegt unter `/api/admin/users`:
+
+| Methode / Pfad | Funktion |
+| --- | --- |
+| GET / | Suche, Rollen-/Statusfilter, limit/offset |
+| POST / | Konto mit Rollen und optionalem Mitglied anlegen; liefert die ID |
+| GET /{id} | Konto einschließlich zugeordnetem Mitglied lesen |
+| PUT /{id} | Vollständige Formulardaten speichern |
+| PATCH /{id}/active | Zugang aktivieren oder deaktivieren |
+| DELETE /{id} | Konto löschen, Mitglied erhalten |
+| POST /{id}/password-link | Einladungs-/Passwort-Link per SMTP senden |
+| GET /members | Auswahl mit bestehender Kontozuordnung |
+| GET /members/{id} | Mitgliedsdaten für das Formular |
+
+Die bestehenden `/api/users`-Endpunkte bleiben kompatibel. Auch die bisherigen
+Rollen-Endpunkte erzwingen die neuen Schutzregeln. Alle verwaltenden Änderungen
+und das Einlösen von Passwort-Links serialisieren auf der ADMIN-Rollenzeile.
+Damit kann der letzte aktive Administrator auch bei konkurrierenden Anfragen
+nicht gelöscht, deaktiviert oder seiner Rolle beraubt werden. Dieses bewusst
+einfache Sperrkonzept passt zur kleinen Vereinsverwaltung.
+
+Beim Löschen prüft der SQL-Adapter alle registrierten Fremdschlüssel auf die
+Benutzertabelle, einschließlich `ON DELETE SET NULL`. Vorhandene Inhaltsbezüge
+blockieren das Löschen mit HTTP 409; Deaktivieren bleibt möglich. Rollenlinks,
+Passwort-Links und Refresh-Sessions werden zusammen mit dem Konto entfernt.
+Mitglied, Spielerdaten und Inhalte bleiben erhalten. Datenbank-Fremdschlüssel
+sichern zusätzlich gegen konkurrierende restriktive Referenzen ab.
+
+## Einladungen und Passwort-Links
+
+Neue CMS-Konten haben zunächst einen ungültigen Passwort-Hash (`!`). Das
+Frontend sendet bei aktivierter Einladungsoption nach erfolgreichem Speichern
+eine separate Versand-Anfrage. Ein SMTP-Fehler wird ausdrücklich gemeldet;
+das gespeicherte Konto bleibt erhalten. Der Administrator kann den Versand über
+„Passwort zurücksetzen“ erneut auslösen. Es gibt keinen automatischen Versand
+beim Start und keinen öffentlichen Endpunkt zum Anfordern von E-Mails.
+
+`SendPasswordLink` erstellt ein zufälliges 256-Bit-Token. Gespeichert wird nur
+dessen SHA-256-Hash in `password_link`, mit einem Link pro Konto und standardmäßig
+60 Minuten Gültigkeit. Ein erneuter Versand ersetzt den vorherigen Link. Die
+Transaktion wird vor SMTP abgeschlossen; ein Versandfehler erfordert einen
+expliziten Wiederholungsversuch. Fehlende SMTP-Konfiguration wird vor dem
+Erzeugen eines Links geprüft.
+
+Die E-Mail enthält `/passwort-festlegen#token=...`. Das Fragment erreicht weder
+den Webserver noch Referrer-Header und wird beim Laden aus der Browseradresse
+entfernt. Die öffentliche Seite sendet Token und Passwort an
+`POST /api/auth/set-password`. Erfolgreiches Einlösen löscht den Link atomar,
+speichert einen Argon2-Hash und widerruft bestehende Refresh-Sessions.
+Passwörter müssen 12 bis 128 Zeichen lang sein; der Link ist nur einmal nutzbar.
+
+Migration `d4f26a41b735` ergänzt die Link-Tabelle und `user.auth_invalid_before`.
+Access-Tokens enthalten jetzt `iat`; Auth prüft den Ausgabezeitpunkt gegen diesen
+Zeitstempel. Alte Tokens werden nach Passwortwechsel, E-Mail-Änderung oder
+Deaktivierung sofort abgelehnt, auch nach späterer Reaktivierung. Bestehende
+Tokens ohne `iat` bleiben nur für Konten ohne Sperrzeitstempel bis zum Ablauf gültig.
+Öffentliche Benutzerantworten enthalten den internen Sperrzeitstempel nicht.
+
+SMTP-Konfiguration und Prüfbefehle stehen im [Entwicklungsleitfaden](development.md).
