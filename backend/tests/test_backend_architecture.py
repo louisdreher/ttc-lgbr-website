@@ -23,6 +23,7 @@ def test_core_has_no_infrastructure_imports(path):
         "httpx",
         "jwt",
         "pwdlib",
+        "PIL",
         "app.adapters",
         "app.bootstrap",
         "app.model_registry",
