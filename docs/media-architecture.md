@@ -39,14 +39,37 @@ and controlled by the application, not writable by untrusted local processes.
 Process crashes or cleanup failures can still leave orphan files; reconciliation
 remains a future concern.
 
+## Upload application use case
+
+`UploadImage.execute(UploadImageCommand)` now coordinates processing, storage and
+metadata insertion. The command carries input bytes, the original filename and
+the authenticated uploader's ID. The filename is descriptive metadata only; it
+never becomes a filesystem path. The result contains the assigned media ID,
+output MIME type, byte size and dimensions, without exposing local paths.
+
+The use case depends on `ImageProcessor`, `MediaStorage` and `MediaUnitOfWork`.
+It writes a framework-free domain `MediaAsset` through `MediaRepository`.
+`SqlMediaRepository` maps it to the existing SQLModel table and flushes to obtain
+the ID without committing. `SqlMediaUnitOfWork` commits or rolls back; the caller
+owns a dedicated session and its lifetime. No schema migration is needed.
+`bootstrap/media.py:build_upload_image` composes the adapters with an explicitly
+provided media directory.
+
+On a database failure, the use case attempts to delete the saved file. If cleanup
+also fails, it logs the storage key and preserves the original exception with a
+cleanup note. It does not remove files after an acknowledged successful commit.
+This is best-effort compensation, not an atomic filesystem/database transaction:
+a process crash can leave an orphan, and a lost database connection during commit
+can leave the commit outcome uncertain. Durable reconciliation is not implemented.
+
 ## Planned integration
 
-The integrated upload workflow, HTTP endpoints and content associations remain planned.
+HTTP upload, authorization, image retrieval and content associations remain planned.
 
 ## Verification
 
 From `backend/`, in the `ttc-backend` environment:
 
 ```powershell
-python -m pytest tests/test_image_processor.py tests/test_media_storage.py tests/test_backend_architecture.py
+python -m pytest tests/test_image_processor.py tests/test_media_storage.py tests/test_media_upload.py tests/test_backend_architecture.py
 ```
