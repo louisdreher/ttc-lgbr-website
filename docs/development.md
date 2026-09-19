@@ -75,6 +75,13 @@ revision but does not modify tables.
 
 ## Start FastAPI
 
+Media uploads use `MEDIA_DIRECTORY` (default `output/media`, relative to
+`backend/`) and `MEDIA_MAX_UPLOAD_BYTES` (default 20971520). Use a persistent
+directory or mounted volume in deployment. The directory is not publicly served.
+`POST /api/admin/media/images` accepts a multipart `file` from authenticated
+ADMIN, EDITOR or TEAM_REPORTER users. The response contains the new media ID;
+image retrieval and associations are separate, planned steps.
+
 From `backend/` with the Conda environment active:
 
 ```powershell

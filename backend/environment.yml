@@ -16,3 +16,4 @@ dependencies:
       - httpx
       - pytest
       - Pillow
+      - python-multipart

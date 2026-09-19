@@ -62,14 +62,56 @@ This is best-effort compensation, not an atomic filesystem/database transaction:
 a process crash can leave an orphan, and a lost database connection during commit
 can leave the commit outcome uncertain. Durable reconciliation is not implemented.
 
+## HTTP upload
+
+`POST /api/admin/media/images` accepts exactly one multipart file named `file`.
+ADMIN, EDITOR and TEAM_REPORTER may upload; the uploader ID is taken from the
+authenticated user, not from form data. Extra form fields and additional files
+are rejected. A successful request returns 201 with `id`, `mime_type`, `file_size`,
+`width` and `height`. It creates an unassigned media asset; article, gallery and
+player associations are not changed.
+
+The endpoint authenticates before parsing multipart data. It counts streamed
+request bytes, including requests without Content-Length, allowing the configured
+file limit plus 64 KiB for multipart overhead. It then reads at most the file
+limit plus one byte from the spooled file. The same file limit is passed to the
+image processor. Processing and synchronous database work run in a thread pool.
+The upload uses a separate session from authentication.
+
+Responses: 401 for missing authentication, 403 for insufficient role, 400 for
+malformed multipart or wrong fields, 413 for excessive request/file bytes, 415 for
+non-multipart requests, 422 for rejected images (including pixel limits), and 500
+for storage/database failures. Internal persistence details are logged, not
+returned in the response.
+
+`MEDIA_DIRECTORY` defaults to `output/media`, resolved against `backend/`
+independently of the current working directory. It may be an absolute path to
+persistent storage. `MEDIA_MAX_UPLOAD_BYTES` defaults to 20971520 (20 MiB).
+The local default is covered by the existing `backend/output/` Git ignore rule.
+No static mount exposes this directory. `python-multipart` is an explicit backend
+dependency; FastAPI's multipart schema also exposes the upload in API docs.
+
 ## Planned integration
 
-HTTP upload, authorization, image retrieval and content associations remain planned.
+Protected image retrieval, the media picker and additional image sizes are not yet
+implemented. The upload permission does not grant permission to change a report,
+gallery or player-photo assignment; those operations require their own checks.
+The intended storage policy keeps the reduced master rather than the camera
+original; the image processor itself neither writes nor deletes any files.
+Gallery, article and historical player-photo associations remain
+separate from image processing.
 
 ## Verification
 
 From `backend/`, in the `ttc-backend` environment:
 
 ```powershell
-python -m pytest tests/test_image_processor.py tests/test_media_storage.py tests/test_media_upload.py tests/test_backend_architecture.py
+python -m pytest tests/test_image_processor.py tests/test_media_storage.py tests/test_media_upload.py tests/test_media_http.py tests/test_backend_architecture.py
 ```
+
+Pillow is listed in `environment.yml`. For an existing environment, install it
+with `python -m pip install Pillow`.
+
+Upload tests use doubles for failure paths and real Pillow/local storage with a
+temporary directory and SQLite with foreign keys enabled. They do not access the
+application database. PostgreSQL-specific transaction behavior is not covered.

@@ -12,6 +12,8 @@ class Settings(BaseSettings):
 
     # Anwendung
     environment: str = "development"
+    media_directory: str = "output/media"
+    media_max_upload_bytes: int = Field(default=20 * 1024 * 1024, ge=1)
     public_frontend_url: str = "http://localhost:4200"
     password_link_minutes: int = Field(default=60, ge=5, le=1440)
     smtp_host: str = ""
