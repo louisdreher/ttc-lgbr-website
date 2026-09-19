@@ -22,6 +22,23 @@ also remain enabled. These defaults are initial values for evaluation, not a
 guarantee of output file size. Quality and dimensions need visual review with
 representative photos.
 
+## Local storage
+
+`MediaStorage` defines `save(ProcessedImage) -> str` and `delete(storage_key)`.
+`adapters/outbound/media/local_storage.py` implements this port using a directory
+passed to `LocalMediaStorage` at construction. It creates the directory on the
+first save and stores the processor's WebP bytes under `images/<uuid>.webp`.
+Only the relative key is returned; server paths are not part of the core contract.
+Decoding remains the processor's responsibility.
+
+Files are created exclusively, so an existing asset is never overwritten.
+Failed writes attempt to remove partial files. Deletion is idempotent for missing
+files. Invalid keys and paths escaping the resolved storage root are rejected;
+I/O errors become `MediaStorageError`. The configured directory must be private
+and controlled by the application, not writable by untrusted local processes.
+Process crashes or cleanup failures can still leave orphan files; reconciliation
+remains a future concern.
+
 ## Planned integration
 
 The integrated upload workflow, HTTP endpoints and content associations remain planned.
@@ -31,5 +48,5 @@ The integrated upload workflow, HTTP endpoints and content associations remain p
 From `backend/`, in the `ttc-backend` environment:
 
 ```powershell
-python -m pytest tests/test_image_processor.py tests/test_backend_architecture.py
+python -m pytest tests/test_image_processor.py tests/test_media_storage.py tests/test_backend_architecture.py
 ```
