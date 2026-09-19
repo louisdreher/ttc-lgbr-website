@@ -5,6 +5,7 @@ from uuid import uuid4
 from app.core.content.media.application.dto import ProcessedImage
 from app.core.content.media.application.errors import (
     InvalidImage,
+    ImageNotFound,
     InvalidStorageKey,
     MediaStorageError,
 )
@@ -52,3 +53,11 @@ class LocalMediaStorage:
             self._path(storage_key).unlink(missing_ok=True)
         except OSError as exc:
             raise MediaStorageError("Could not delete media image.") from exc
+
+    def read(self, storage_key: str) -> bytes:
+        try:
+            return self._path(storage_key).read_bytes()
+        except FileNotFoundError as exc:
+            raise ImageNotFound() from exc
+        except OSError as exc:
+            raise MediaStorageError("Could not read media image.") from exc

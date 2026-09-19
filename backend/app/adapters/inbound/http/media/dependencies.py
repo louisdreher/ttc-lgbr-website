@@ -4,8 +4,14 @@ from fastapi import Depends
 from sqlmodel import Session
 
 from app.adapters.outbound.persistence.database import get_session
-from app.bootstrap.media import build_upload_image, configured_media_directory
+from app.bootstrap.media import build_get_image, build_upload_image, configured_media_directory
 from app.bootstrap.settings import settings
+
+
+def provide_get_image(session: Annotated[Session, Depends(get_session)]):
+    return build_get_image(
+        session, media_directory=configured_media_directory(settings.media_directory)
+    )
 
 
 def provide_upload_image(

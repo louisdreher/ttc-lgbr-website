@@ -6,6 +6,12 @@ from app.adapters.outbound.media.image_processor import PillowImageProcessor
 from app.adapters.outbound.media.local_storage import LocalMediaStorage
 from app.adapters.outbound.persistence.media.unit_of_work import SqlMediaUnitOfWork
 from app.core.content.media.application.commands import UploadImage
+from app.core.content.media.application.queries import GetImage
+from app.adapters.outbound.persistence.media.reader import SqlMediaReader
+
+
+def build_get_image(session: Session, *, media_directory: str | Path) -> GetImage:
+    return GetImage(SqlMediaReader(session), LocalMediaStorage(media_directory))
 
 
 def build_upload_image(

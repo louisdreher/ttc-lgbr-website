@@ -8,3 +8,7 @@ class InvalidStorageKey(ValueError):
 
 class MediaStorageError(Exception):
     """The media storage could not complete an operation."""
+
+
+class ImageNotFound(Exception):
+    """The image is missing or unavailable to this user."""

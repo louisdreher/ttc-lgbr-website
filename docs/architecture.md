@@ -94,8 +94,8 @@ root available explicitly.
 Content concerns include events, articles, and media; media currently has
 persistence models and an UploadImage application use case combining a Pillow
 processor, local file storage and a SQL repository/unit of work. A role-protected
-HTTP upload endpoint is implemented; protected retrieval and gallery workflows
-remain planned.
+HTTP upload endpoint and owner/editor-protected preview retrieval are implemented;
+gallery workflows and public media delivery remain planned.
 See [Media processing](media-architecture.md). `Event`
 acts as the shared editorial context and calendar entry. It may reference a
 `TeamMatch`, but the competition domain remains the owner of match data and
@@ -133,7 +133,7 @@ All SQLModel tables reside in outbound persistence adapters. The core is free
 of framework and infrastructure imports; a project-wide test enforces this
 boundary. Members exposes a framework-free member object and public persistence
 port for atomic account/member administration in the Users CMS. Standalone member
-management and Media HTTP/gallery workflows remain planned.
+management and Media gallery/public-delivery workflows remain planned.
 
 New backend functionality and code selected explicitly for refactoring should
 move toward a component-oriented Ports and Adapters architecture. Events now
@@ -312,7 +312,7 @@ of work, and the existing outgoing Events contract. HTTP dependencies may
 still supply SQL sessions as composition code; controllers and the core do
 not issue SQL queries. The Users CMS now edits member data through an explicit
 Members contract in the same transaction as the account. Standalone member
-administration and media HTTP upload/gallery workflows remain planned.
+administration and media gallery/public-delivery workflows remain planned.
 
 ## Database and migrations
 

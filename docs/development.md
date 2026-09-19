@@ -80,7 +80,9 @@ Media uploads use `MEDIA_DIRECTORY` (default `output/media`, relative to
 directory or mounted volume in deployment. The directory is not publicly served.
 `POST /api/admin/media/images` accepts a multipart `file` from authenticated
 ADMIN, EDITOR or TEAM_REPORTER users. The response contains the new media ID;
-image retrieval and associations are separate, planned steps.
+`GET /api/admin/media/images/{id}` retrieves the WebP master for its uploader,
+EDITOR or ADMIN using bearer authentication. Responses disable caching.
+Frontend previews and content associations remain planned.
 
 From `backend/` with the Conda environment active:
 

@@ -91,9 +91,32 @@ The local default is covered by the existing `backend/output/` Git ignore rule.
 No static mount exposes this directory. `python-multipart` is an explicit backend
 dependency; FastAPI's multipart schema also exposes the upload in API docs.
 
+## Protected preview retrieval
+
+`GET /api/admin/media/images/{media_id}` returns the stored WebP master, not a
+separately generated thumbnail. Authentication is required. The uploader may
+read their own image even if their upload role has since changed; EDITOR and
+ADMIN may read all images. Other authenticated users receive the same 404 as
+for an unknown media ID. A missing backing file also returns 404. Storage or
+database failures return a generic 500 without server paths.
+
+`GetImage` checks ownership/management permission before calling storage.
+`SqlMediaReader` returns a small projection containing the key and uploader ID;
+only WebP assets from the current processing workflow are supported. The local
+adapter validates the key using the same path containment checks as writes and
+reads the image bytes. No public static directory is mounted. Responses use
+`Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`.
+
+This first implementation reads the master into memory; streaming and smaller
+preview variants remain possible later. The Angular preview must request a Blob
+with the bearer token, create an object URL and revoke it when no longer needed.
+A plain image element URL does not attach the application's bearer token.
+This route does not define access for published articles or galleries; their
+public/member visibility rules will need a separate delivery workflow.
+
 ## Planned integration
 
-Protected image retrieval, the media picker and additional image sizes are not yet
+The media picker and additional image sizes are not yet
 implemented. The upload permission does not grant permission to change a report,
 gallery or player-photo assignment; those operations require their own checks.
 The intended storage policy keeps the reduced master rather than the camera
@@ -106,7 +129,7 @@ separate from image processing.
 From `backend/`, in the `ttc-backend` environment:
 
 ```powershell
-python -m pytest tests/test_image_processor.py tests/test_media_storage.py tests/test_media_upload.py tests/test_media_http.py tests/test_backend_architecture.py
+python -m pytest tests/test_image_processor.py tests/test_media_storage.py tests/test_media_upload.py tests/test_media_http.py tests/test_media_retrieval.py tests/test_backend_architecture.py
 ```
 
 Pillow is listed in `environment.yml`. For an existing environment, install it

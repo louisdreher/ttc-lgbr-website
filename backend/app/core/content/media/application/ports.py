@@ -1,6 +1,6 @@
 from typing import Protocol, Self
 
-from app.core.content.media.application.dto import ProcessedImage
+from app.core.content.media.application.dto import ImageReference, ProcessedImage
 from app.core.content.media.domain.asset import MediaAsset
 
 
@@ -25,16 +25,23 @@ class ImageProcessor(Protocol):
 
 
 class MediaStorage(Protocol):
+    def read(self, storage_key: str) -> bytes:
+        """Read image bytes; raise ImageNotFound or MediaStorageError on failure."""
+        ...
+
     def save(self, image: ProcessedImage) -> str:
         """Store a processed WebP image and return an opaque relative key.
 
         Raise MediaStorageError on storage failure; never overwrite an asset.
         """
         ...
-
     def delete(self, storage_key: str) -> None:
         """Remove a stored image; a missing file is already deleted.
 
         Raise InvalidStorageKey for invalid keys, MediaStorageError on I/O failure.
         """
         ...
+
+
+class MediaReader(Protocol):
+    def get_image(self, media_id: int) -> ImageReference | None: ...
