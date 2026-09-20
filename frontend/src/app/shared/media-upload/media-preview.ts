@@ -8,7 +8,7 @@ import { MediaApiService } from '../../core/media/media-api.service';
     @if (url()) { <img [src]="url()" alt="Ausgewähltes Titelbild" /> }
     @else { <p role="status">{{ failed() ? 'Die Bildvorschau ist nicht verfügbar.' : 'Bildvorschau wird geladen …' }}</p> }
   `,
-  styles: `img { display: block; width: 100%; max-width: 420px; max-height: 260px; object-fit: contain; margin: 1rem 0; border-radius: 8px; }`,
+  styles: `:host { display: block; } img { display: block; width: 100%; max-width: 420px; max-height: 260px; object-fit: contain; margin: 1rem auto; border-radius: 8px; }`,
 })
 export class MediaPreview {
   readonly mediaId = input.required<number>();
