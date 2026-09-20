@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import sqlalchemy as sa
 from sqlmodel import Field, SQLModel
@@ -62,6 +62,8 @@ class Gallery(SQLModel, table=True):
         index=True,
     )
     title: str
+    gallery_date: date = Field(index=True)
+    show_date: bool = Field(default=True)
     slug: str | None = Field(default=None, unique=True, index=True)
     description: str | None = None
     visibility: Visibility = Field(
