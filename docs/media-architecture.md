@@ -310,6 +310,40 @@ factory. No gallery read/edit routes or frontend changes are included yet.
 capabilities, forbidden client permission fields, error responses and real SQL
 creation through the HTTP route.
 
+## Gallery event selection
+
+`GET /api/admin/media/galleries/opportunities` supplies the planned CMS selection
+page. It requires ADMIN, EDITOR or TEAM_REPORTER, just like image uploads.
+Query parameters are `group=other_events|team_matches` (default `other_events`),
+`offset` (default 0) and `limit` (default 20, maximum 100).
+The response contains `items`, `total`, `offset` and `limit`; each item has
+`event_id`, `title`, `starts_at`, `ends_at` and nullable `team_match_id`.
+
+Only events with `report_expected=true`, no associated gallery and an end
+strictly before the server's current time are included. If no end is recorded,
+the start is used. Existing articles, including published reports, do not remove
+an event from this selection. There is no additional age cutoff. Results sort
+by start descending, then event ID descending for stable pagination.
+Group and eligibility filters apply before counting and pagination, allowing
+independent lists: Veranstaltungen first, Mannschaftsspiele below.
+
+`ListGalleryOpportunities` uses a dedicated media reader port. Its SQL adapter
+joins galleries against the public infrastructure projection
+`persistence/events/public.py:past_report_events`, so event table details remain
+in Events. The SQL projection is only used between persistence adapters; core
+DTOs and ports remain free of SQLAlchemy. The query reads no article data and
+does not lock or modify records. Responses are private and not cacheable.
+
+Selection does not grant write access. The existing create-gallery use case
+still checks report ownership/status for ordinary writers, and requires editor
+rights without an editable report. The frontend must account for those existing
+write rules; this step does not widen them. Concurrent creation is still handled
+by the POST endpoint's event lock and uniqueness protection.
+
+`test_gallery_opportunities.py` verifies time boundaries, report expectation,
+existing galleries/reports, group counts and pagination, authorization and HTTP
+validation. The CMS selection page itself is still planned.
+
 ## Planned integration
 
 The existing-media picker, gallery integration and additional image sizes are not yet

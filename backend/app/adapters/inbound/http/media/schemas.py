@@ -1,7 +1,22 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated
 
 from pydantic import BaseModel, Field, ConfigDict, StrictBool
+
+
+class GalleryOpportunityResponse(BaseModel):
+    event_id: int
+    title: str
+    starts_at: datetime
+    ends_at: datetime | None
+    team_match_id: int | None
+
+
+class GalleryOpportunityPageResponse(BaseModel):
+    items: list[GalleryOpportunityResponse]
+    total: int
+    offset: int
+    limit: int
 
 
 class CreateGalleryRequest(BaseModel):

@@ -1,7 +1,7 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 from python_multipart.exceptions import MultipartParseError
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
@@ -27,10 +27,36 @@ from app.adapters.inbound.http.media.schemas import CreateGalleryRequest, Create
 from app.core.content.media.application.dto import CreateGalleryCommand
 from app.core.content.media.application.errors import GalleryAccessDenied, EventGalleryAlreadyExists
 from app.core.content.media.domain.gallery import GalleryError
+from app.adapters.inbound.http.media.dependencies import provide_gallery_opportunities
+from app.adapters.inbound.http.media.schemas import GalleryOpportunityPageResponse
+from app.core.content.media.application.dto import GalleryOpportunitiesQuery
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/media", tags=["Admin - Media"])
 media_uploader = require_any_role(RoleName.ADMIN, RoleName.EDITOR, RoleName.TEAM_REPORTER)
+
+
+@router.get("/galleries/opportunities", response_model=GalleryOpportunityPageResponse)
+def gallery_opportunities(
+    current_user: Annotated[UserDetails, Depends(media_uploader)],
+    response: Response,
+    group: Literal["other_events", "team_matches"] = "other_events",
+    offset: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    use_case=Depends(provide_gallery_opportunities),
+):
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        return use_case.execute(GalleryOpportunitiesQuery(
+            user_id=current_user.id, can_upload=True, group=group, offset=offset, limit=limit,
+        ))
+    except GalleryAccessDenied as error:
+        raise HTTPException(403, str(error)) from error
+    except GalleryError as error:
+        raise HTTPException(422, str(error)) from error
+    except SQLAlchemyError as error:
+        logger.exception("Could not read gallery opportunities")
+        raise HTTPException(500, "Galerieauswahl konnte nicht geladen werden.") from error
 
 
 @router.post("/galleries", response_model=CreatedGalleryResponse, status_code=201)

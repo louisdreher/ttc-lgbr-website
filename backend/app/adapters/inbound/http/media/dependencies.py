@@ -8,6 +8,11 @@ from app.bootstrap.media import build_get_image, build_upload_image, configured_
 from app.bootstrap.settings import settings
 from app.bootstrap.media import build_get_caption, build_update_caption
 from app.bootstrap.media import build_create_gallery
+from app.bootstrap.media import build_gallery_opportunities
+
+
+def provide_gallery_opportunities(session: Annotated[Session, Depends(get_session)]):
+    return build_gallery_opportunities(session)
 
 
 def provide_create_gallery(session: Annotated[Session, Depends(get_session, use_cache=False)]):

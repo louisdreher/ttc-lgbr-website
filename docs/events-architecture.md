@@ -84,6 +84,13 @@ event = use_case.execute(
 
 ## Infrastruktur und Verdrahtung
 
+Die öffentliche SQL-Projektion `persistence/events/public.py:past_report_events`
+liefert vergangene Events mit Berichtserwartung für die Galerieauswahl. Sie ist
+ein reiner Infrastrukturvertrag: Der Media-Leseadapter kann bestehende Galerien
+per Join ausschließen und anschließend gruppiert zählen und paginieren, ohne
+Event-Tabellenmodelle direkt zu importieren. Application und Domain verwenden
+weiterhin ausschließlich frameworkfreie Ports und DTOs.
+
 Für das Anlegen von Galerien stellt `events/public.py` zusätzlich den Vertrag
 `GalleryEventReader` bereit. Der SQL-Adapter `events/gallery_reader.py` sperrt
 das Event bis zum Transaktionsende und liefert dessen Beginn. Die Galerie-

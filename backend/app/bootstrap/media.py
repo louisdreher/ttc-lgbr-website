@@ -8,6 +8,12 @@ from app.adapters.outbound.persistence.media.unit_of_work import SqlMediaUnitOfW
 from app.core.content.media.application.commands import UpdateCaption, UploadImage
 from app.core.content.media.application.queries import GetCaption, GetImage
 from app.adapters.outbound.persistence.media.reader import SqlMediaReader
+from app.adapters.outbound.persistence.media.opportunity_reader import SqlGalleryOpportunityReader
+from app.core.content.media.application.queries import ListGalleryOpportunities
+
+
+def build_gallery_opportunities(session: Session) -> ListGalleryOpportunities:
+    return ListGalleryOpportunities(SqlGalleryOpportunityReader(session))
 
 
 def build_create_gallery(session: Session):

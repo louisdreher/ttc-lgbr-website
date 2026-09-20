@@ -1,5 +1,33 @@
-from dataclasses import dataclass
-from datetime import date
+from dataclasses import dataclass, field
+from datetime import date, datetime, timezone
+from typing import Literal
+
+
+@dataclass(frozen=True, kw_only=True)
+class GalleryOpportunitiesQuery:
+    user_id: int
+    can_upload: bool
+    group: Literal["other_events", "team_matches"] = "other_events"
+    offset: int = 0
+    limit: int = 20
+    as_of: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@dataclass(frozen=True)
+class GalleryOpportunity:
+    event_id: int
+    title: str
+    starts_at: datetime
+    ends_at: datetime | None
+    team_match_id: int | None
+
+
+@dataclass(frozen=True)
+class GalleryOpportunityPage:
+    items: tuple[GalleryOpportunity, ...]
+    total: int
+    offset: int
+    limit: int
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -6,6 +6,11 @@ from app.core.content.media.application.dto import ImageReference, ProcessedImag
 from app.core.content.media.domain.asset import MediaAsset
 from app.core.content.media.domain.gallery import Gallery
 from app.core.content.media.application.dto import GalleryEventContext
+from app.core.content.media.application.dto import GalleryOpportunitiesQuery, GalleryOpportunityPage
+
+
+class GalleryOpportunityReader(Protocol):
+    def opportunities(self, query: GalleryOpportunitiesQuery) -> GalleryOpportunityPage: ...
 
 
 class GalleryRepository(Protocol):
