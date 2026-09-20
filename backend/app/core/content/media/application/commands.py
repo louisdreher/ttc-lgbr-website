@@ -1,6 +1,6 @@
 import logging
 
-from app.core.content.media.application.dto import UploadImageCommand, UploadedImage
+from app.core.content.media.application.dto import UploadedImage, UploadImageCommand
 from app.core.content.media.application.ports import (
     ImageProcessor,
     MediaStorage,
@@ -28,15 +28,17 @@ class UploadImage:
         committed = False
         try:
             with self.uow:
-                asset = self.uow.media.save(MediaAsset(
-                    storage_key=key,
-                    original_filename=command.original_filename,
-                    mime_type=image.mime_type,
-                    file_size=image.file_size,
-                    width=image.width,
-                    height=image.height,
-                    uploaded_by_user_id=command.uploaded_by_user_id,
-                ))
+                asset = self.uow.media.save(
+                    MediaAsset(
+                        storage_key=key,
+                        original_filename=command.original_filename,
+                        mime_type=image.mime_type,
+                        file_size=image.file_size,
+                        width=image.width,
+                        height=image.height,
+                        uploaded_by_user_id=command.uploaded_by_user_id,
+                    )
+                )
                 if asset.id is None:
                     raise RuntimeError("Saved media asset has no ID.")
                 result = UploadedImage(
