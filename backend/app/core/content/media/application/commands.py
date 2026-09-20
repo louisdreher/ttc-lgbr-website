@@ -1,16 +1,81 @@
 import logging
 
-from app.core.content.media.application.dto import UploadedImage, UploadImageCommand
+from app.core.content.media.application.dto import (
+    CreateGalleryCommand,
+    CreatedGallery,
+    UpdateCaptionCommand,
+    UploadedImage,
+    UploadImageCommand,
+)
+from app.core.content.media.application.errors import (
+    EventGalleryAlreadyExists,
+    GalleryAccessDenied,
+    ImageNotFound,
+)
 from app.core.content.media.application.ports import (
+    GalleryUnitOfWork,
     ImageProcessor,
     MediaStorage,
     MediaUnitOfWork,
 )
 from app.core.content.media.domain.asset import MediaAsset, normalize_caption
-from app.core.content.media.application.dto import UpdateCaptionCommand
-from app.core.content.media.application.errors import ImageNotFound
+from app.core.content.media.domain.gallery import Gallery, GalleryError
 
 logger = logging.getLogger(__name__)
+
+
+class CreateGallery:
+    def __init__(self, uow: GalleryUnitOfWork) -> None:
+        self.uow = uow
+
+    def execute(self, command: CreateGalleryCommand) -> CreatedGallery:
+        if command.user_id <= 0 or not command.can_upload:
+            raise GalleryAccessDenied("Keine Berechtigung zum Anlegen einer Galerie.")
+        with self.uow:
+            cover = None
+            gallery_date = command.gallery_date
+            if command.event_id is not None:
+                if command.event_id <= 0:
+                    raise GalleryError("Ungültige Event-ID.")
+                context = self.uow.events.for_creation(command.event_id, command.user_id)
+                if context is None or not (command.can_manage_media or context.can_edit_report):
+                    raise GalleryAccessDenied("Event nicht verfügbar oder nicht bearbeitbar.")
+                if self.uow.galleries.exists_for_event(command.event_id):
+                    raise EventGalleryAlreadyExists("Für dieses Event existiert bereits eine Galerie.")
+                cover = context.report_cover_image_id
+                if gallery_date is None:
+                    gallery_date = context.event_date
+            elif not command.can_manage_media:
+                raise GalleryAccessDenied("Galerien ohne Event erfordern Redaktionsrechte.")
+
+            if gallery_date is None:
+                raise GalleryError("Bitte ein Galeriedatum angeben.")
+            gallery = Gallery(
+                title=command.title, event_id=command.event_id, media_ids=command.media_ids,
+                gallery_date=gallery_date,
+                show_date=(
+                    command.event_id is not None
+                    if command.show_date is None else command.show_date
+                ),
+            )
+            if cover is not None:
+                gallery = gallery.add_image(cover).set_cover(cover)
+            for media_id in gallery.media_ids:
+                image = self.uow.media.get(media_id)
+                # The report's existing cover is authorized through report access;
+                # newly selected images must be owned by the actor or an editor.
+                if image is None or (
+                    media_id != cover
+                    and not command.can_manage_media
+                    and image.uploaded_by_user_id != command.user_id
+                ):
+                    raise ImageNotFound()
+            saved = self.uow.galleries.save(gallery, created_by_user_id=command.user_id)
+            if saved.id is None:
+                raise RuntimeError("Gespeicherte Galerie besitzt keine ID.")
+            result = CreatedGallery(saved.id, saved.cover_image_id, saved.gallery_date, saved.show_date)
+            self.uow.commit()
+            return result
 
 
 class UploadImage:

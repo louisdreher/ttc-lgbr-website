@@ -12,3 +12,11 @@ class MediaStorageError(Exception):
 
 class ImageNotFound(Exception):
     """The image is missing or unavailable to this user."""
+
+
+class GalleryAccessDenied(Exception):
+    pass
+
+
+class EventGalleryAlreadyExists(Exception):
+    pass

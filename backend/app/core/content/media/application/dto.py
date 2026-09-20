@@ -1,4 +1,32 @@
 from dataclasses import dataclass
+from datetime import date
+
+
+@dataclass(frozen=True, kw_only=True)
+class CreateGalleryCommand:
+    title: str
+    user_id: int
+    can_upload: bool
+    can_manage_media: bool = False
+    event_id: int | None = None
+    media_ids: tuple[int, ...] = ()
+    gallery_date: date | None = None
+    show_date: bool | None = None
+
+
+@dataclass(frozen=True)
+class GalleryEventContext:
+    can_edit_report: bool
+    report_cover_image_id: int | None = None
+    event_date: date | None = None
+
+
+@dataclass(frozen=True)
+class CreatedGallery:
+    id: int
+    cover_image_id: int | None
+    gallery_date: date
+    show_date: bool
 
 
 @dataclass(frozen=True)

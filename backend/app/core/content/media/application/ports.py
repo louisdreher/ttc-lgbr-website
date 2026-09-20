@@ -1,7 +1,38 @@
+from __future__ import annotations
+
 from typing import Protocol, Self
 
 from app.core.content.media.application.dto import ImageReference, ProcessedImage
 from app.core.content.media.domain.asset import MediaAsset
+from app.core.content.media.domain.gallery import Gallery
+from app.core.content.media.application.dto import GalleryEventContext
+
+
+class GalleryRepository(Protocol):
+    def exists_for_event(self, event_id: int) -> bool: ...
+    def save(self, gallery: Gallery, *, created_by_user_id: int) -> Gallery:
+        """Insert without committing; enforce one gallery per event in persistence."""
+        ...
+
+
+class GalleryEvents(Protocol):
+    def for_creation(self, event_id: int, user_id: int) -> GalleryEventContext | None:
+        """Read event/report through public contracts in the creation transaction.
+
+        None means the event is missing. The adapter must coordinate concurrent
+        gallery creation and report-cover changes before returning this context.
+        """
+        ...
+
+
+class GalleryUnitOfWork(Protocol):
+    galleries: GalleryRepository
+    media: MediaRepository
+    events: GalleryEvents
+
+    def __enter__(self) -> Self: ...
+    def __exit__(self, exc_type, exc_value, traceback) -> None: ...
+    def commit(self) -> None: ...
 
 
 class MediaRepository(Protocol):
