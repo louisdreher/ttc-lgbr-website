@@ -60,6 +60,13 @@ Rich-Text-Format und dessen sichere Darstellung sind noch nicht festgelegt.
 
 ## Gebündelte Use Cases
 
+Für Galerien stellt `articles/public.py` einen kleinen Berichtskontext bereit:
+Titelbild und Bearbeitbarkeit für den jeweiligen Schreiber. Der SQL-Adapter
+`articles/gallery_reader.py` lädt und sperrt den Bericht, nachdem das Event
+gesperrt wurde. Eigene Entwürfe und eingereichte Berichte sowie übernehmbare
+Systementwürfe sind für Schreiber zulässig. Die Galerieanlage übernimmt keinen
+Systembericht und synchronisiert spätere Titelbildänderungen noch nicht.
+
 | Use Case | Aufgabe |
 | --- | --- |
 | `ListArticleOpportunities` | Schreibanlässe gruppiert und paginiert laden |

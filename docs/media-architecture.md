@@ -156,6 +156,123 @@ retain the input for retry. This is asset-wide metadata: editing it affects ever
 future use of the same image. Per-article overrides and inline images within
 article text remain planned, as does public caption rendering.
 
+## Gallery domain foundation
+
+`core/content/media/domain/gallery.py` implements the first framework-free gallery
+model. It holds a title, optional gallery/event IDs, an ordered tuple of media IDs
+and a cover ID. Operations return a new immutable gallery, matching the existing
+MediaAsset style; callers must use the returned instance.
+
+Images are appended in order; adding an existing image or removing an absent
+image is a no-op. The first image becomes the initial cover. A cover must belong
+to the gallery. Removing it chooses the first remaining image in the current
+order, or clears the cover when empty. Reordering requires every existing image
+exactly once and preserves the selected cover. Initial state is validated too.
+Removal only changes references and never touches media files.
+
+The SQL insert adapter below can persist this model. HTTP,
+additional editorial metadata and synchronization after report-title-image
+changes remain future steps.
+Run `python -m pytest tests/test_gallery_domain.py tests/test_backend_architecture.py`
+from `backend/` to verify this foundation.
+
+## Create-gallery application foundation
+
+`CreateGallery.execute(CreateGalleryCommand)` coordinates explicit gallery
+creation through `GalleryUnitOfWork`. It requires upload permission. Editors may
+create standalone galleries; other writers need an event whose report they may
+edit. Identity and permission flags must come from trusted composition, not
+unvalidated client input. `GalleryEvents.for_creation` provides event existence,
+report editability and the saved report cover through an explicit port.
+
+The use case rejects an existing event gallery, validates selected media, adds
+the report cover without duplication and uses it as the gallery cover. Other
+selected images must belong to the actor unless they have editorial rights.
+An existing report cover is authorized through access to the report itself.
+It saves the domain gallery with its creator ID and commits through the unit of
+work. Creating a gallery does not upload or delete image files.
+
+`bootstrap/media.py:build_create_gallery(session)` now composes the real SQL
+adapters with one shared session. `EventGalleryContext` consumes public contracts
+from Events and Articles, without importing their persistence implementations.
+The event reader locks the event and supplies its start; the report reader then
+locks the existing article and supplies its current cover and ownership/status.
+This follows the event-before-article lock order used by article saving and also
+serializes creation when no gallery or report exists yet. Reads refresh any
+previously loaded ORM state. Locks remain held until commit or rollback.
+
+Writers can use their own DRAFT/IN_REVIEW reports and take-over-ready system
+DRAFTs. A missing report does not grant writer access; editors may create the
+event gallery without a report. Published, archived and foreign human reports
+remain unavailable to ordinary writers. The gallery operation does not claim
+ownership of a system report.
+
+`SqlGalleryUnitOfWork` commits gallery and membership inserts together and rolls
+back on failure or exit without commit. The caller owns the session lifetime.
+The unique event index remains the final database safeguard; its PostgreSQL
+constraint error is translated to `EventGalleryAlreadyExists` after rollback.
+HTTP integration is still planned. Later changes to a report cover do not yet
+synchronize an existing gallery; the current guarantee is a consistent snapshot
+at gallery creation, not ongoing synchronization.
+
+`test_gallery_creation_sql.py` covers composition, permissions, date/cover
+adoption and rollback after insert/commit failures. The opt-in
+`test_gallery_creation_postgres.py` uses temporary databases to verify concurrent
+creation, row locks, refreshed cover reads and unique-conflict recovery.
+
+## Gallery SQL insert adapter
+
+`persistence/media/gallery_repository.py:SqlGalleryRepository` implements
+`exists_for_event` and insertion through `save`. It maps title, event, cover and
+creator to the existing `gallery` table and writes ordered `gallery_media` rows
+with zero-based `sort_order`. It flushes to obtain the gallery ID and validate
+memberships, returning a new domain instance with that ID. Existing gallery IDs
+are rejected; editing persistence will be a separate step.
+
+The repository neither commits nor rolls back. The caller must roll back after
+an insertion failure. The repository propagates integrity errors; the gallery
+unit of work translates PostgreSQL event conflicts after rollback. The existing
+unique event constraint prevents duplicate non-null event associations; multiple
+standalone galleries remain possible.
+Other metadata retains existing table defaults, including PUBLIC visibility;
+explicit visibility editing and public delivery are not implemented here.
+
+Tests use an isolated SQLite database with foreign keys enabled to check stored
+metadata, ordering, cover, empty galleries, event uniqueness and rollback of both
+gallery and memberships without deleting media. They do not use application data
+or verify PostgreSQL concurrency. Run
+`python -m pytest tests/test_gallery_repository.py` from `backend/`.
+
+Run `python -m pytest tests/test_create_gallery.py tests/test_gallery_domain.py
+tests/test_backend_architecture.py` from `backend/`.
+
+## Gallery dates
+
+Every gallery has its own required `gallery_date` (calendar date) and a
+`show_date` preference. On creation it defaults to true for event galleries and
+false for standalone galleries; an explicit choice overrides this default.
+Hiding the date affects its future
+public display only; the date remains available for sorting and grouping by year.
+Image timestamps are not used to determine a gallery's date.
+
+`CreateGallery` accepts an explicit date. Without one, an event gallery takes
+`GalleryEventContext.event_date`; a standalone gallery requires an explicit date.
+The event bridge supplies the event's calendar date in Europe/Berlin.
+The date is saved independently, so later event changes do not change it.
+The repository stores both date fields alongside the other gallery metadata.
+HTTP and CMS form integration are still planned.
+
+Migration `e5a37b62c846` adds both required columns and a date index. Existing
+event galleries receive the event date in Europe/Berlin. Existing standalone
+galleries use their creation date in that timezone and start with `show_date=false`.
+This fallback is not a verified historical date: its year may require manual
+correction before an archive is published. Downgrading removes both new fields.
+
+`tests/test_gallery_date_postgres.py` verifies the full migration chain on an
+empty PostgreSQL database, backfilling, timezone boundaries and downgrade/upgrade.
+Like the outbox PostgreSQL tests, it requires `TTC_TEST_POSTGRES_URL` and creates
+and removes isolated temporary databases; it does not migrate application data.
+
 ## Planned integration
 
 The existing-media picker, gallery integration and additional image sizes are not yet

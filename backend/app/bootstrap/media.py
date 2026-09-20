@@ -10,6 +10,20 @@ from app.core.content.media.application.queries import GetCaption, GetImage
 from app.adapters.outbound.persistence.media.reader import SqlMediaReader
 
 
+def build_create_gallery(session: Session):
+    from app.adapters.outbound.media.gallery_events import EventGalleryContext
+    from app.adapters.outbound.persistence.events.gallery_reader import SqlGalleryEventReader
+    from app.adapters.outbound.persistence.articles.gallery_reader import SqlGalleryReportReader
+    from app.adapters.outbound.persistence.users.reader import SqlUserReader
+    from app.adapters.outbound.persistence.media.gallery_unit_of_work import SqlGalleryUnitOfWork
+    from app.core.content.media.application.commands import CreateGallery
+
+    events = EventGalleryContext(
+        SqlGalleryEventReader(session), SqlGalleryReportReader(session, SqlUserReader(session)),
+    )
+    return CreateGallery(SqlGalleryUnitOfWork(session, events))
+
+
 def build_get_caption(session: Session) -> GetCaption:
     return GetCaption(SqlMediaReader(session))
 

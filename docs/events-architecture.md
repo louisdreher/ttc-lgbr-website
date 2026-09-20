@@ -84,6 +84,11 @@ event = use_case.execute(
 
 ## Infrastruktur und Verdrahtung
 
+Für das Anlegen von Galerien stellt `events/public.py` zusätzlich den Vertrag
+`GalleryEventReader` bereit. Der SQL-Adapter `events/gallery_reader.py` sperrt
+das Event bis zum Transaktionsende und liefert dessen Beginn. Die Galerie-
+Verdrahtung nutzt dieselbe Session für Event, Bericht und Galerie.
+
 `bootstrap/events.py` ist die Composition Root für Events. Beispielsweise baut
 `build_create_event(session)` eine `SqlEventUnitOfWork` mit ihren Repositories
 und übergibt sie an `CreateEvent`. Die Factory enthält kein FastAPI-`Depends`.
