@@ -87,6 +87,7 @@
         <section class="panel" aria-label="Titelbild">
           <h2>Titelbild</h2>
           @if (coverImageId(); as id) { <app-media-preview [mediaId]="id" /> }
+          @if (coverImageId(); as id) { <app-media-caption [mediaId]="id" /> }
           <div class="actions">
             <button type="button" (click)="uploadOpen.set(true)">{{ coverImageId() ? 'Bild ersetzen' : 'Bild hochladen' }}</button>
             @if (coverImageId()) { <button type="button" (click)="removeCover()">Titelbild entfernen</button> }

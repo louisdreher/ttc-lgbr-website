@@ -296,7 +296,13 @@ const initial = (id, changes = {}) => ({
     assert.equal(await page.locator('.article-controls > details[open]').count(), 0);
     await visit('/admin/articles/write', 'app-article-editor', 'editor-mobile');
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
+    let imageCaption = null;
     await context.route('**/api/admin/media/images**', async route => {
+      if (route.request().url().endsWith('/caption')) {
+        if (route.request().method() === 'PATCH') imageCaption = route.request().postDataJSON().caption;
+        await route.fulfill({ json: { caption: imageCaption } });
+        return;
+      }
       if (route.request().method() === 'POST') {
         await route.fulfill({ json: { id: 42, width: 1, height: 1, mime_type: 'image/webp', file_size: png.length } });
       } else {
@@ -319,6 +325,7 @@ const initial = (id, changes = {}) => ({
       el.querySelector('.drop-zone').dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: transfer }));
     }, [...png]);
     await dialog.getByRole('button', { name: 'drop.png entfernen' }).waitFor();
+    assert.equal(await dialog.getByLabel('Bildunterschrift (optional)').count(), 0);
     const uploadViolations = await page.evaluate(async () => (await axe.run(document.querySelector('dialog'), {
       runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] },
     })).violations.map(v => v.id));
@@ -328,6 +335,12 @@ const initial = (id, changes = {}) => ({
     await page.locator('app-media-preview img').waitFor();
     await page.getByRole('dialog').waitFor({ state: 'detached' });
     assert.equal(await page.getByRole('dialog').count(), 0);
+    await page.locator('app-media-caption textarea:not(:disabled)').waitFor();
+    assert.equal(await page.locator('app-media-caption textarea').inputValue(), '');
+    await page.locator('app-media-caption textarea').fill('Kreismeisterschaften 2026');
+    await page.getByRole('button', { name: 'Bildunterschrift speichern', exact: true }).click();
+    await page.getByRole('status').filter({ hasText: 'Bildunterschrift gespeichert.' }).waitFor();
+    assert.equal(imageCaption, 'Kreismeisterschaften 2026');
     await page.getByRole('button', { name: 'Bild ersetzen' }).click();
     await page.locator('dialog[open]').waitFor();
     await page.keyboard.press('Escape');

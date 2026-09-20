@@ -30,7 +30,7 @@ describe('Article editor workflow', () => {
     TestBed.configureTestingModule({
       imports: [ArticleEditor],
       providers: [
-        { provide: MediaApiService, useValue: { image: () => of(new Blob()) } },
+        { provide: MediaApiService, useValue: { image: () => of(new Blob()), caption: () => of({ caption: null }) } },
         provideRouter([]),
         {
           provide: ActivatedRoute,

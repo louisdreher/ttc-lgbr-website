@@ -1,6 +1,7 @@
 import { ArticleFocus } from '../../../core/articles/article-focus';
 import { MediaUpload } from '../../../shared/media-upload/media-upload';
 import { MediaPreview } from '../../../shared/media-upload/media-preview';
+import { MediaCaption } from '../../../shared/media-upload/media-caption';
 import { UploadedImage } from '../../../core/media/media-api.service';
 import {
   ChangeDetectionStrategy,
@@ -31,7 +32,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-article-editor',
-  imports: [ReactiveFormsModule, RouterLink, DatePipe, ArticleFocus, MediaUpload, MediaPreview],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, ArticleFocus, MediaUpload, MediaPreview, MediaCaption],
   templateUrl: './article-editor.html',
   styleUrls: ['../cms.css', './article-editor.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -12,13 +12,20 @@ export interface UploadedImage {
 @Injectable({ providedIn: 'root' })
 export class MediaApiService {
   private readonly http = inject(HttpClient);
-  upload(file: File) {
+  upload(file: File, caption = '') {
     const body = new FormData();
     body.append('file', file);
+    if (caption.trim()) body.append('caption', caption.trim());
     return this.http.post<UploadedImage>('/api/admin/media/images', body);
   }
   image(id: number) {
     return this.http.get(`/api/admin/media/images/${id}`, { responseType: 'blob' });
+  }
+  caption(id: number) {
+    return this.http.get<{ caption: string | null }>(`/api/admin/media/images/${id}/caption`);
+  }
+  updateCaption(id: number, caption: string) {
+    return this.http.patch<{ caption: string | null }>(`/api/admin/media/images/${id}/caption`, { caption });
   }
 }
 

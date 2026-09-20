@@ -65,8 +65,9 @@ can leave the commit outcome uncertain. Durable reconciliation is not implemente
 ## HTTP upload
 
 `POST /api/admin/media/images` accepts exactly one multipart file named `file`.
-ADMIN, EDITOR and TEAM_REPORTER may upload; the uploader ID is taken from the
-authenticated user, not from form data. Extra form fields and additional files
+An optional `caption` text field stores the image caption. No other text fields
+are accepted. ADMIN, EDITOR and TEAM_REPORTER may upload; the uploader ID is taken from the
+authenticated user, not from form data. Unknown form fields and additional files
 are rejected. A successful request returns 201 with `id`, `mime_type`, `file_size`,
 `width` and `height`. It creates an unassigned media asset; article, gallery and
 player associations are not changed.
@@ -131,6 +132,29 @@ attaches the bearer token. Article cover selection marks the form dirty and is
 persisted only when saving the article. Removing a cover removes its association,
 not the stored media file. Changed cover assignments require ownership or editor
 rights on the backend; unchanged existing associations can be retained.
+
+## Image captions
+
+The CMS exposes one optional **Bildunterschrift** field, stored in the existing
+`media_asset.caption` column. It is limited to 1,000 characters, trimmed, and
+stored as null when empty. There is no additional alternative-text or photographer
+input in this workflow and no schema migration.
+
+The upload dialog only selects and uploads files. Caption editing appears in the
+article form below the selected title image, including when creating a new article.
+The upload API still accepts an optional caption for other clients.
+
+`GET /api/admin/media/images/{id}/caption` reads the caption with the same access
+rules as protected image retrieval. `PATCH` on that URL accepts `{ "caption":
+"..." }` (or null) and requires upload roles plus ownership or editor rights.
+Updates touch only the caption, not the image file or other metadata. Reads and
+writes use framework-free application cases and SQL ports/adapters.
+
+The article editor displays an editable caption below its selected title image.
+**Bildunterschrift speichern** saves it separately from the article. Failed saves
+retain the input for retry. This is asset-wide metadata: editing it affects every
+future use of the same image. Per-article overrides and inline images within
+article text remain planned, as does public caption rendering.
 
 ## Planned integration
 
