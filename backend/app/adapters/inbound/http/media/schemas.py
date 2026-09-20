@@ -1,4 +1,24 @@
-from pydantic import BaseModel, Field, ConfigDict
+from datetime import date
+from typing import Annotated
+
+from pydantic import BaseModel, Field, ConfigDict, StrictBool
+
+
+class CreateGalleryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    title: str = Field(min_length=1)
+    event_id: Annotated[int, Field(gt=0, strict=True)] | None = None
+    gallery_date: date | None = None
+    show_date: StrictBool | None = None
+    media_ids: list[Annotated[int, Field(gt=0, strict=True)]] = Field(default_factory=list)
+
+
+class CreatedGalleryResponse(BaseModel):
+    id: int
+    cover_image_id: int | None
+    gallery_date: date
+    show_date: bool
 
 
 class CaptionRequest(BaseModel):

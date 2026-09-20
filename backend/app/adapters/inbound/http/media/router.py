@@ -22,10 +22,42 @@ from app.core.content.media.application.errors import (
     ImageNotFound, InvalidImage, InvalidStorageKey, MediaStorageError,
 )
 from app.core.users.public import RoleName, UserDetails
+from app.adapters.inbound.http.media.dependencies import provide_create_gallery
+from app.adapters.inbound.http.media.schemas import CreateGalleryRequest, CreatedGalleryResponse
+from app.core.content.media.application.dto import CreateGalleryCommand
+from app.core.content.media.application.errors import GalleryAccessDenied, EventGalleryAlreadyExists
+from app.core.content.media.domain.gallery import GalleryError
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/media", tags=["Admin - Media"])
 media_uploader = require_any_role(RoleName.ADMIN, RoleName.EDITOR, RoleName.TEAM_REPORTER)
+
+
+@router.post("/galleries", response_model=CreatedGalleryResponse, status_code=201)
+def create_gallery(
+    request: CreateGalleryRequest,
+    current_user: Annotated[UserDetails, Depends(media_uploader)],
+    use_case=Depends(provide_create_gallery),
+):
+    try:
+        return use_case.execute(CreateGalleryCommand(
+            title=request.title, event_id=request.event_id,
+            gallery_date=request.gallery_date, show_date=request.show_date,
+            media_ids=tuple(request.media_ids), user_id=current_user.id,
+            can_upload=True,
+            can_manage_media=bool({"ADMIN", "EDITOR"}.intersection(current_user.roles)),
+        ))
+    except GalleryAccessDenied as error:
+        raise HTTPException(403, str(error)) from error
+    except EventGalleryAlreadyExists as error:
+        raise HTTPException(409, str(error)) from error
+    except ImageNotFound as error:
+        raise HTTPException(404, "Bild nicht gefunden.") from error
+    except GalleryError as error:
+        raise HTTPException(422, str(error)) from error
+    except SQLAlchemyError as error:
+        logger.exception("Could not create gallery")
+        raise HTTPException(500, "Galerie konnte nicht gespeichert werden.") from error
 
 
 @router.get("/images/{media_id}/caption", response_model=CaptionResponse)

@@ -170,7 +170,7 @@ order, or clears the cover when empty. Reordering requires every existing image
 exactly once and preserves the selected cover. Initial state is validated too.
 Removal only changes references and never touches media files.
 
-The SQL insert adapter below can persist this model. HTTP,
+The SQL insert adapter below can persist this model. Gallery editing,
 additional editorial metadata and synchronization after report-title-image
 changes remain future steps.
 Run `python -m pytest tests/test_gallery_domain.py tests/test_backend_architecture.py`
@@ -211,7 +211,7 @@ ownership of a system report.
 back on failure or exit without commit. The caller owns the session lifetime.
 The unique event index remains the final database safeguard; its PostgreSQL
 constraint error is translated to `EventGalleryAlreadyExists` after rollback.
-HTTP integration is still planned. Later changes to a report cover do not yet
+The HTTP creation endpoint is implemented below. Later changes to a report cover do not yet
 synchronize an existing gallery; the current guarantee is a consistent snapshot
 at gallery creation, not ongoing synchronization.
 
@@ -260,7 +260,7 @@ Image timestamps are not used to determine a gallery's date.
 The event bridge supplies the event's calendar date in Europe/Berlin.
 The date is saved independently, so later event changes do not change it.
 The repository stores both date fields alongside the other gallery metadata.
-HTTP and CMS form integration are still planned.
+CMS form integration is still planned.
 
 Migration `e5a37b62c846` adds both required columns and a date index. Existing
 event galleries receive the event date in Europe/Berlin. Existing standalone
@@ -272,6 +272,43 @@ correction before an archive is published. Downgrading removes both new fields.
 empty PostgreSQL database, backfilling, timezone boundaries and downgrade/upgrade.
 Like the outbox PostgreSQL tests, it requires `TTC_TEST_POSTGRES_URL` and creates
 and removes isolated temporary databases; it does not migrate application data.
+
+## Gallery creation API
+
+`POST /api/admin/media/galleries` creates a gallery and returns HTTP 201 with
+`id`, `cover_image_id` (nullable), `gallery_date` and `show_date`.
+ADMIN, EDITOR and TEAM_REPORTER may call it; the use case additionally enforces
+report access and restricts standalone galleries to editors/admins.
+Identity and capabilities come from authentication, never from request fields.
+
+Example request using already uploaded media:
+
+```json
+{
+  "title": "Kreismeisterschaften",
+  "event_id": 7,
+  "media_ids": [11, 42]
+}
+```
+
+`title` is required and must not be blank. `event_id`, `gallery_date` (YYYY-MM-DD)
+and `show_date` are optional. `media_ids` defaults to an empty list. Missing/null
+date and display values use the creation rules above; standalone galleries need
+an explicit date. Explicit true/false values override the display default.
+IDs must be positive integers, duplicate selected images are rejected and
+unknown fields are forbidden. Files are uploaded separately through the existing
+image endpoint; gallery creation only stores their associations.
+
+Errors: 401 without authentication, 403 for insufficient access (including an
+unavailable event), 404 for a missing/unavailable selected image, 409 for an
+existing event gallery, and 422 for invalid input or a missing standalone date.
+Persistence failures return a generic 500 without database details.
+The FastAPI dependency uses a separate write session and the existing bootstrap
+factory. No gallery read/edit routes or frontend changes are included yet.
+
+`tests/test_gallery_http.py` covers request/response mapping, authenticated
+capabilities, forbidden client permission fields, error responses and real SQL
+creation through the HTTP route.
 
 ## Planned integration
 

@@ -7,6 +7,11 @@ from app.adapters.outbound.persistence.database import get_session
 from app.bootstrap.media import build_get_image, build_upload_image, configured_media_directory
 from app.bootstrap.settings import settings
 from app.bootstrap.media import build_get_caption, build_update_caption
+from app.bootstrap.media import build_create_gallery
+
+
+def provide_create_gallery(session: Annotated[Session, Depends(get_session, use_cache=False)]):
+    return build_create_gallery(session)
 
 
 def provide_get_caption(session: Annotated[Session, Depends(get_session)]):
