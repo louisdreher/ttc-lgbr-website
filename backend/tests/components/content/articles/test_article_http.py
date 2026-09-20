@@ -78,6 +78,30 @@ def payload(**changes):
     return data | changes
 
 
+@pytest.mark.parametrize("role, owner, expected", [
+    ("TEAM_REPORTER", 1, 200), ("TEAM_REPORTER", 2, 422), ("EDITOR", 2, 200),
+])
+def test_cover_assignment_requires_ownership_or_editor_role(client, article_database, role, owner, expected):
+    from app.adapters.outbound.persistence.media.models import MediaAsset
+
+    with Session(article_database) as session:
+        session.add(MediaAsset(
+            id=42, storage_key="images/test.webp", original_filename="test.png",
+            mime_type="image/webp", file_size=100, width=10, height=10,
+            uploaded_by_user_id=owner,
+        ))
+        session.commit()
+    client.app.dependency_overrides[article_editor] = lambda: UserDetails(
+        id=1, email="editor@example.org", name="Editor", is_active=True, roles=[role],
+    )
+    response = client.post("/api/admin/articles/save", json=payload(slug="turnier", cover_image_id=42))
+    assert response.status_code == expected, response.text
+    if expected == 422:
+        assert response.json()["detail"] == "Titelbild nicht gefunden."
+    else:
+        assert response.json()["cover_image_id"] == 42
+
+
 def test_http_creates_draft_and_uses_authenticated_author(client, article_database):
     response = client.post(
         "/api/admin/articles", json=payload(author_id=999, status="PUBLISHED")

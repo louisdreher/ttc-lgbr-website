@@ -244,7 +244,12 @@ class SaveArticle:
                     created_at=now,
                     updated_at=now,
                 )
-            self.uow.articles.validate_cover(command.cover_image_id)
+            if command.cover_image_id != article.cover_image_id:
+                self.uow.articles.validate_cover(
+                    command.cover_image_id,
+                    user_id=command.actor.user_id,
+                    can_edit_all=command.actor.can_edit_all,
+                )
             article.revise(
                 title=command.title,
                 slug=slug,

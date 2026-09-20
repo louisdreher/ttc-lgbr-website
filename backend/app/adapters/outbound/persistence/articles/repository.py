@@ -98,11 +98,13 @@ class SQLModelArticleRepository:
         ).first()
         return self._to_domain(row) if row else None
 
-    def validate_cover(self, cover_image_id: int | None) -> None:
-        if (
-            cover_image_id is not None
-            and self.session.get(MediaAsset, cover_image_id) is None
-        ):
+    def validate_cover(
+        self, cover_image_id: int | None, *, user_id: int, can_edit_all: bool
+    ) -> None:
+        if cover_image_id is None:
+            return
+        image = self.session.get(MediaAsset, cover_image_id)
+        if image is None or (image.uploaded_by_user_id != user_id and not can_edit_all):
             raise ArticleDomainError("Titelbild nicht gefunden.")
 
     def delete(self, article: Article) -> None:
