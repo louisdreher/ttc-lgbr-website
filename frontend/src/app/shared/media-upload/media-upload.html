@@ -1,0 +1,32 @@
+<dialog #dialog aria-labelledby="upload-title" aria-describedby="upload-help" (cancel)="cancel($event)">
+  <h2 id="upload-title">{{ maxFiles() === 1 ? 'Bild hochladen' : 'Bilder hochladen' }}</h2>
+  <p id="upload-help">JPEG, PNG oder WebP auswählen. Die Bilder werden erst beim Bestätigen hochgeladen.</p>
+  <div class="drop-zone" [class.dragging]="dragging()" (dragover)="drag($event)" (dragleave)="dragging.set(false)" (drop)="drop($event)">
+    <p>{{ maxFiles() === 1 ? 'Bild hierher ziehen' : 'Bilder hierher ziehen' }}</p>
+    <span>oder</span>
+    <button type="button" autofocus (click)="picker.click()" [disabled]="busy()">{{ maxFiles() === 1 ? 'Datei auswählen' : 'Dateien auswählen' }}</button>
+    <input #picker type="file" hidden accept="image/jpeg,image/png,image/webp" [multiple]="maxFiles() !== 1" (change)="choose($event)" />
+  </div>
+  @if (message()) { <p role="alert" class="error">{{ message() }}</p> }
+  <ul class="previews">
+    @for (item of items(); track item.key) {
+      <li>
+        <img [src]="item.url" alt="" />
+        <button class="remove" type="button" [attr.aria-label]="item.file.name + ' entfernen'" [disabled]="busy()" (click)="remove(item.key)">×</button>
+        <p class="filename">{{ item.file.name }}</p>
+        @if (item.uploading) { <p>Wird hochgeladen …</p> }
+        @if (item.result) { <p>Hochgeladen</p> }
+        @if (item.error) { <p class="error">{{ item.error }}</p> }
+      </li>
+    }
+  </ul>
+  <p role="status">{{ items().length }} ausgewählt · {{ successful() }} hochgeladen{{ busy() ? ' · Upload läuft …' : '' }}</p>
+  @if (successful() && pending()) { <p>Bereits hochgeladene Bilder bleiben gespeichert, auch beim Abbrechen oder Entfernen.</p> }
+  <footer>
+    <button type="button" [disabled]="busy()" (click)="cancel()">Abbrechen</button>
+    @if (successful() && pending()) { <button type="button" [disabled]="busy()" (click)="finish()">Hochgeladene übernehmen</button> }
+    <button class="primary" type="button" [disabled]="busy() || !items().length" (click)="pending() ? upload() : finish()">
+      {{ busy() ? 'Wird hochgeladen …' : !pending() && successful() ? 'Auswahl übernehmen' : maxFiles() === 1 || pending() === 1 ? 'Bild hochladen' : 'Bilder hochladen' }}
+    </button>
+  </footer>
+</dialog>
