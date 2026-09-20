@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { ArticleEditor } from './article-editor';
+import { MediaApiService } from '../../../core/media/media-api.service';
 import { ArticleApiService } from '../../../core/articles/article-api.service';
 import { PublicEventApiService } from '../../../pages/events/public-event-api.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -29,6 +30,7 @@ describe('Article editor workflow', () => {
     TestBed.configureTestingModule({
       imports: [ArticleEditor],
       providers: [
+        { provide: MediaApiService, useValue: { image: () => of(new Blob()) } },
         provideRouter([]),
         {
           provide: ActivatedRoute,
@@ -47,6 +49,16 @@ describe('Article editor workflow', () => {
     fixture.detectChanges();
     return { fixture, component: fixture.componentInstance, api };
   }
+  it('keeps uploaded cover selection dirty until saving and supports removal', () => {
+    const { component, api } = setup(articleFixture());
+    component.selectCover([{ id: 42, width: 10, height: 10, file_size: 20, mime_type: 'image/webp' }]);
+    expect(component.form.dirty).toBe(true);
+    component.save('save');
+    expect(api.save).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ cover_image_id: 42 }), false);
+    component.removeCover();
+    expect(component.coverImageId()).toBeNull();
+    expect(component.form.dirty).toBe(true);
+  });
   it('loads a system draft without claiming and locks its match type', () => {
     const { component, api } = setup(articleFixture(), true);
     expect(api.prepare).toHaveBeenCalledWith(9);

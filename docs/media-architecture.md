@@ -114,9 +114,27 @@ A plain image element URL does not attach the application's bearer token.
 This route does not define access for published articles or galleries; their
 public/member visibility rules will need a separate delivery workflow.
 
+## Reusable frontend upload
+
+`shared/media-upload/MediaUpload` provides a native modal dialog with file picker,
+drag-and-drop and removable local preview URLs. `maxFiles` selects single-image
+or batch behavior (default batch limit 20); the article editor uses one image.
+No request is sent until confirmation. Requests run sequentially through the
+existing single-file endpoint; successful results survive partial failures and
+are excluded from retries. Users can also accept only completed uploads.
+Closing/removing after partial success does not delete server assets.
+
+The dialog blocks cancellation/removal during uploads. Object URLs are revoked
+when previews are removed or components destroyed. `MediaPreview` retrieves a
+protected Blob through HttpClient so the existing authentication interceptor
+attaches the bearer token. Article cover selection marks the form dirty and is
+persisted only when saving the article. Removing a cover removes its association,
+not the stored media file. Changed cover assignments require ownership or editor
+rights on the backend; unchanged existing associations can be retained.
+
 ## Planned integration
 
-The media picker and additional image sizes are not yet
+The existing-media picker, gallery integration and additional image sizes are not yet
 implemented. The upload permission does not grant permission to change a report,
 gallery or player-photo assignment; those operations require their own checks.
 The intended storage policy keeps the reduced master rather than the camera

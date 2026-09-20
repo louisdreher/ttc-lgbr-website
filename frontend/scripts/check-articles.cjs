@@ -295,6 +295,44 @@ const initial = (id, changes = {}) => ({
     assert.equal(await visibilityTrigger.evaluate((el) => el === document.activeElement), true);
     assert.equal(await page.locator('.article-controls > details[open]').count(), 0);
     await visit('/admin/articles/write', 'app-article-editor', 'editor-mobile');
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64');
+    await context.route('**/api/admin/media/images**', async route => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({ json: { id: 42, width: 1, height: 1, mime_type: 'image/webp', file_size: png.length } });
+      } else {
+        assert.ok(route.request().headers()['authorization']);
+        await route.fulfill({ contentType: 'image/png', body: png });
+      }
+    });
+    const uploadTrigger = page.getByRole('button', { name: 'Bild hochladen', exact: true });
+    await uploadTrigger.click();
+    const dialog = page.getByRole('dialog');
+    await dialog.waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Datei auswählen' }).evaluate(el => el === document.activeElement), true);
+    await dialog.locator('input[type=file]').setInputFiles({ name: 'team.png', mimeType: 'image/png', buffer: png });
+    await dialog.getByRole('button', { name: 'team.png entfernen' }).click();
+    await dialog.locator('img').waitFor({ state: 'detached' });
+    assert.equal(await dialog.locator('img').count(), 0);
+    await dialog.evaluate((el, bytes) => {
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([new Uint8Array(bytes)], 'drop.png', { type: 'image/png' }));
+      el.querySelector('.drop-zone').dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: transfer }));
+    }, [...png]);
+    await dialog.getByRole('button', { name: 'drop.png entfernen' }).waitFor();
+    const uploadViolations = await page.evaluate(async () => (await axe.run(document.querySelector('dialog'), {
+      runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] },
+    })).violations.map(v => v.id));
+    assert.deepEqual(uploadViolations, []);
+    await page.screenshot({ path: path.join(output, 'media-upload-mobile.png'), fullPage: true });
+    await dialog.getByRole('button', { name: 'Bild hochladen', exact: true }).click();
+    await page.locator('app-media-preview img').waitFor();
+    await page.getByRole('dialog').waitFor({ state: 'detached' });
+    assert.equal(await page.getByRole('dialog').count(), 0);
+    await page.getByRole('button', { name: 'Bild ersetzen' }).click();
+    await page.locator('dialog[open]').waitFor();
+    await page.keyboard.press('Escape');
+    await page.getByRole('dialog').waitFor({ state: 'detached' });
+    assert.equal(await page.getByRole('button', { name: 'Bild ersetzen' }).evaluate(el => el === document.activeElement), true);
     await page.getByLabel('Zusätzlich einen Event anlegen').check();
     await page.getByLabel('Kategorie', { exact: true }).selectOption({ label: 'Verein' });
     await page.screenshot({ path: path.join(output, 'optional-event-mobile.png'), fullPage: true });

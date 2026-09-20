@@ -84,6 +84,15 @@
             ><textarea id="article-content" rows="16" formControlName="content"></textarea>
           </div>
         </section>
+        <section class="panel" aria-label="Titelbild">
+          <h2>Titelbild</h2>
+          @if (coverImageId(); as id) { <app-media-preview [mediaId]="id" /> }
+          <div class="actions">
+            <button type="button" (click)="uploadOpen.set(true)">{{ coverImageId() ? 'Bild ersetzen' : 'Bild hochladen' }}</button>
+            @if (coverImageId()) { <button type="button" (click)="removeCover()">Titelbild entfernen</button> }
+          </div>
+          <p class="muted">Die Titelbild-Auswahl wird mit dem Beitrag gespeichert.</p>
+        </section>
         <section class="panel" aria-label="Beitragseinstellungen">
           <h2>Beitragseinstellungen</h2>
           <div class="grid">
@@ -209,5 +218,8 @@
         </div>
       </fieldset>
     </form>
+    @if (uploadOpen()) {
+      <app-media-upload [maxFiles]="1" (completed)="selectCover($event)" (cancelled)="uploadOpen.set(false)" />
+    }
   }
 }

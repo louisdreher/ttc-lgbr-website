@@ -1,4 +1,7 @@
 import { ArticleFocus } from '../../../core/articles/article-focus';
+import { MediaUpload } from '../../../shared/media-upload/media-upload';
+import { MediaPreview } from '../../../shared/media-upload/media-preview';
+import { UploadedImage } from '../../../core/media/media-api.service';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -28,7 +31,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-article-editor',
-  imports: [ReactiveFormsModule, RouterLink, DatePipe, ArticleFocus],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, ArticleFocus, MediaUpload, MediaPreview],
   templateUrl: './article-editor.html',
   styleUrls: ['../cms.css', './article-editor.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -64,7 +67,20 @@ export class ArticleEditor {
     this.article() ? this.article()!.allowed_actions.includes('submit') : true,
   );
   readonly types = ARTICLE_TYPES;
-  private coverImageId: number | null = null;
+  readonly coverImageId = signal<number | null>(null);
+  readonly uploadOpen = signal(false);
+
+  selectCover(images: UploadedImage[]): void {
+    this.uploadOpen.set(false);
+    if (images[0]) {
+      this.coverImageId.set(images[0].id);
+      this.form.markAsDirty();
+    }
+  }
+  removeCover(): void {
+    this.coverImageId.set(null);
+    this.form.markAsDirty();
+  }
   private request?: Subscription;
   readonly loaded = signal(false);
 
@@ -103,6 +119,8 @@ export class ArticleEditor {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
   load(): void {
+    this.coverImageId.set(null);
+    this.uploadOpen.set(false);
     this.request?.unsubscribe();
     this.loaded.set(false);
     this.error.set('');
@@ -130,7 +148,7 @@ export class ArticleEditor {
         if (data) {
           this.form.patchValue({ ...data, tags: data.tags.join(', ') });
           this.eventId.set(data.event_id);
-          this.coverImageId = data.cover_image_id;
+          this.coverImageId.set(data.cover_image_id);
           if ('id' in data) this.accept(data);
           else {
             this.articleId.set(data.article_id);
@@ -162,7 +180,7 @@ export class ArticleEditor {
     this.article.set(article);
     this.articleId.set(article.id);
     this.eventId.set(article.event_id);
-    this.coverImageId = article.cover_image_id;
+    this.coverImageId.set(article.cover_image_id);
     this.form.patchValue({ ...article, tags: article.tags.join(', ') });
     this.form.markAsPristine();
     this.eventForm.markAsPristine();
@@ -228,7 +246,7 @@ export class ArticleEditor {
       ...raw,
       tags,
       event_id: this.eventId(),
-      cover_image_id: this.coverImageId,
+      cover_image_id: this.coverImageId(),
       new_event: null,
     };
     if (this.creatingEvent()) {
