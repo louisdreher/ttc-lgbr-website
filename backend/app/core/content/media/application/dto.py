@@ -5,6 +5,7 @@ from dataclasses import dataclass
 class ImageReference:
     storage_key: str
     uploaded_by_user_id: int
+    caption: str | None = None
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,15 @@ class UploadImageCommand:
     data: bytes
     original_filename: str
     uploaded_by_user_id: int
+    caption: str | None = None
+
+
+@dataclass(frozen=True)
+class UpdateCaptionCommand:
+    media_id: int
+    user_id: int
+    caption: str | None
+    can_manage_media: bool = False
 
 
 @dataclass(frozen=True)

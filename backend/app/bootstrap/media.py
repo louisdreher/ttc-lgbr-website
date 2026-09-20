@@ -5,9 +5,17 @@ from sqlmodel import Session
 from app.adapters.outbound.media.image_processor import PillowImageProcessor
 from app.adapters.outbound.media.local_storage import LocalMediaStorage
 from app.adapters.outbound.persistence.media.unit_of_work import SqlMediaUnitOfWork
-from app.core.content.media.application.commands import UploadImage
-from app.core.content.media.application.queries import GetImage
+from app.core.content.media.application.commands import UpdateCaption, UploadImage
+from app.core.content.media.application.queries import GetCaption, GetImage
 from app.adapters.outbound.persistence.media.reader import SqlMediaReader
+
+
+def build_get_caption(session: Session) -> GetCaption:
+    return GetCaption(SqlMediaReader(session))
+
+
+def build_update_caption(session: Session) -> UpdateCaption:
+    return UpdateCaption(SqlMediaUnitOfWork(session))
 
 
 def build_get_image(session: Session, *, media_directory: str | Path) -> GetImage:

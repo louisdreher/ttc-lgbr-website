@@ -5,6 +5,9 @@ from app.core.content.media.domain.asset import MediaAsset
 
 
 class MediaRepository(Protocol):
+    def get(self, media_id: int) -> MediaAsset | None: ...
+    def update_caption(self, asset: MediaAsset) -> None: ...
+
     def save(self, asset: MediaAsset) -> MediaAsset:
         """Insert a new asset and return its assigned ID; do not commit."""
         ...

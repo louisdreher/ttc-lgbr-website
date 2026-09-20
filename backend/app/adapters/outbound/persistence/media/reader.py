@@ -10,7 +10,7 @@ class SqlMediaReader:
 
     def get_image(self, media_id: int) -> ImageReference | None:
         row = self.session.exec(
-            select(MediaAsset.storage_key, MediaAsset.uploaded_by_user_id).where(
+            select(MediaAsset.storage_key, MediaAsset.uploaded_by_user_id, MediaAsset.caption).where(
                 MediaAsset.id == media_id, MediaAsset.mime_type == "image/webp"
             )
         ).first()

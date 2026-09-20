@@ -67,7 +67,8 @@ def uploaded(tmp_path, monkeypatch):
         with Image.new("RGB", (80, 40), "red") as image, BytesIO() as output:
             image.save(output, format="PNG")
             response = client.post(
-                "/api/admin/media/images", files={"file": ("team.png", output.getvalue())}
+                "/api/admin/media/images", files={"file": ("team.png", output.getvalue())},
+                data={"caption": "  Mannschaftsfoto  "},
             )
         assert response.status_code == 201
         media_id = response.json()["id"]
@@ -119,3 +120,41 @@ def test_invalid_stored_key_does_not_expose_server_paths(uploaded):
     response = client.get(f"/api/admin/media/images/{media_id}")
     assert response.status_code == 500
     assert "private.webp" not in response.text
+
+
+def test_caption_upload_edit_and_clear(uploaded):
+    client, app, identity, media_id, path, engine = uploaded
+    url = f"/api/admin/media/images/{media_id}/caption"
+    assert client.get(url).json() == {"caption": "Mannschaftsfoto"}
+    original_bytes = path.read_bytes()
+    assert client.patch(url, json={"caption": "  Kreismeisterschaften 2026  "}).json() == {"caption": "Kreismeisterschaften 2026"}
+    with Session(engine) as session:
+        assert session.get(MediaAsset, media_id).caption == "Kreismeisterschaften 2026"
+    assert client.patch(url, json={"caption": "  "}).json() == {"caption": None}
+    assert client.get(url).json() == {"caption": None}
+    assert path.read_bytes() == original_bytes
+
+
+@pytest.mark.parametrize("role, expected", [("TEAM_REPORTER", 404), ("EDITOR", 200), ("ADMIN", 200), ("MEMBER", 403)])
+def test_caption_update_permissions(uploaded, role, expected):
+    client, app, identity, media_id, path, engine = uploaded
+    identity(2, role)
+    url = f"/api/admin/media/images/{media_id}/caption"
+    response = client.patch(url, json={"caption": "Changed"})
+    assert response.status_code == expected
+    with Session(engine) as session:
+        assert session.get(MediaAsset, media_id).caption == ("Changed" if expected == 200 else "Mannschaftsfoto")
+    if role == "TEAM_REPORTER":
+        assert client.get(url).status_code == 404
+
+
+def test_caption_length_and_request_validation(uploaded):
+    client, app, identity, media_id, path, engine = uploaded
+    url = f"/api/admin/media/images/{media_id}/caption"
+    assert client.patch(url, json={"caption": "x" * 1001}).status_code == 422
+    assert client.patch(url, json={}).status_code == 422
+    assert client.patch(url, json={"caption": "okay", "user_id": 2}).status_code == 422
+    response = client.post("/api/admin/media/images", files={"file": ("team.png", b"bad")}, data={"caption": "x" * 1001})
+    assert response.status_code == 422
+    assert "1000" in response.json()["detail"]
+    assert client.get(url).json() == {"caption": "Mannschaftsfoto"}

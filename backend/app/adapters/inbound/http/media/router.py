@@ -12,6 +12,10 @@ from app.adapters.inbound.http.auth.permissions import require_any_role
 from app.adapters.inbound.http.media.dependencies import provide_get_image, provide_upload_image
 from app.adapters.inbound.http.auth.dependencies import get_current_user
 from app.adapters.inbound.http.media.schemas import UploadedImageResponse
+from app.adapters.inbound.http.media.schemas import CaptionRequest, CaptionResponse
+from app.adapters.inbound.http.media.dependencies import provide_get_caption, provide_update_caption
+from app.core.content.media.application.dto import UpdateCaptionCommand
+from app.core.content.media.domain.asset import InvalidCaption
 from app.bootstrap.settings import settings
 from app.core.content.media.application.dto import GetImageQuery, UploadImageCommand
 from app.core.content.media.application.errors import (
@@ -22,6 +26,48 @@ from app.core.users.public import RoleName, UserDetails
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/media", tags=["Admin - Media"])
 media_uploader = require_any_role(RoleName.ADMIN, RoleName.EDITOR, RoleName.TEAM_REPORTER)
+
+
+@router.get("/images/{media_id}/caption", response_model=CaptionResponse)
+def get_caption(
+    media_id: Annotated[int, Path(gt=0)],
+    current_user: Annotated[UserDetails, Depends(get_current_user)],
+    response: Response,
+    use_case=Depends(provide_get_caption),
+):
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        caption = use_case.execute(GetImageQuery(
+            media_id, current_user.id, bool({"ADMIN", "EDITOR"}.intersection(current_user.roles))
+        ))
+        return CaptionResponse(caption=caption)
+    except ImageNotFound as error:
+        raise HTTPException(404, "Bild nicht gefunden.") from error
+    except SQLAlchemyError as error:
+        logger.exception("Could not read image caption")
+        raise HTTPException(500, "Bildunterschrift konnte nicht geladen werden.") from error
+
+
+@router.patch("/images/{media_id}/caption", response_model=CaptionResponse)
+def update_caption(
+    media_id: Annotated[int, Path(gt=0)],
+    request: CaptionRequest,
+    current_user: Annotated[UserDetails, Depends(media_uploader)],
+    use_case=Depends(provide_update_caption),
+):
+    try:
+        caption = use_case.execute(UpdateCaptionCommand(
+            media_id, current_user.id, request.caption,
+            bool({"ADMIN", "EDITOR"}.intersection(current_user.roles)),
+        ))
+        return CaptionResponse(caption=caption)
+    except ImageNotFound as error:
+        raise HTTPException(404, "Bild nicht gefunden.") from error
+    except InvalidCaption as error:
+        raise HTTPException(422, str(error)) from error
+    except SQLAlchemyError as error:
+        logger.exception("Could not update image caption")
+        raise HTTPException(500, "Bildunterschrift konnte nicht gespeichert werden.") from error
 
 
 @router.get(
@@ -59,7 +105,10 @@ class UploadTooLarge(MultiPartException):
     openapi_extra={"requestBody": {"required": True, "content": {
         "multipart/form-data": {"schema": {
             "type": "object", "required": ["file"],
-            "properties": {"file": {"type": "string", "format": "binary"}},
+            "properties": {
+                "file": {"type": "string", "format": "binary"},
+                "caption": {"type": "string", "maxLength": 1000},
+            },
         }},
     }}},
 )
@@ -83,13 +132,18 @@ async def upload_image(
 
     try:
         form = await MultiPartParser(
-            request.headers, limited_stream(), max_files=1, max_fields=0
+            request.headers, limited_stream(), max_files=1, max_fields=1
         ).parse()
     except UploadTooLarge as error:
         raise HTTPException(413, "Upload ist zu groß.") from error
     except (MultiPartException, MultipartParseError) as error:
         raise HTTPException(400, "Ungültiger Upload; genau eine Datei ist erforderlich.") from error
     try:
+        if any(key not in {"file", "caption"} for key in form):
+            raise HTTPException(400, "Unbekanntes Upload-Feld.")
+        caption = form.get("caption")
+        if caption is not None and not isinstance(caption, str):
+            raise HTTPException(400, "Die Bildunterschrift muss Text sein.")
         file = form.get("file")
         if not isinstance(file, UploadFile) or not file.filename or not file.filename.strip():
             raise HTTPException(400, "Eine Datei im Feld 'file' ist erforderlich.")
@@ -99,8 +153,10 @@ async def upload_image(
         try:
             return await run_in_threadpool(
                 use_case.execute,
-                UploadImageCommand(data, file.filename, current_user.id),
+                UploadImageCommand(data, file.filename, current_user.id, caption),
             )
+        except InvalidCaption as error:
+            raise HTTPException(422, str(error)) from error
         except InvalidImage as error:
             raise HTTPException(422, "Ungültiges, nicht unterstütztes oder zu großes Bild.") from error
         except (MediaStorageError, SQLAlchemyError) as error:

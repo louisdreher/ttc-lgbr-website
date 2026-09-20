@@ -6,7 +6,9 @@ from app.core.content.media.application.ports import (
     MediaStorage,
     MediaUnitOfWork,
 )
-from app.core.content.media.domain.asset import MediaAsset
+from app.core.content.media.domain.asset import MediaAsset, normalize_caption
+from app.core.content.media.application.dto import UpdateCaptionCommand
+from app.core.content.media.application.errors import ImageNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ class UploadImage:
         # Identity and authorization must come from the trusted inbound adapter.
         if not command.original_filename.strip() or command.uploaded_by_user_id <= 0:
             raise ValueError("Filename and a positive uploader ID are required.")
+        caption = normalize_caption(command.caption)
         image = self.processor.process(command.data)
         key = self.storage.save(image)
         committed = False
@@ -37,6 +40,7 @@ class UploadImage:
                         width=image.width,
                         height=image.height,
                         uploaded_by_user_id=command.uploaded_by_user_id,
+                        caption=caption,
                     )
                 )
                 if asset.id is None:
@@ -59,3 +63,20 @@ class UploadImage:
                     logger.exception("Could not clean up media file %s", key)
                     error.add_note(f"Media cleanup failed for storage key {key}.")
             raise
+
+
+class UpdateCaption:
+    def __init__(self, uow: MediaUnitOfWork) -> None:
+        self.uow = uow
+
+    def execute(self, command: UpdateCaptionCommand) -> str | None:
+        with self.uow:
+            asset = self.uow.media.get(command.media_id)
+            if asset is None or (
+                asset.uploaded_by_user_id != command.user_id and not command.can_manage_media
+            ):
+                raise ImageNotFound()
+            asset = asset.with_caption(command.caption)
+            self.uow.media.update_caption(asset)
+            self.uow.commit()
+            return asset.caption

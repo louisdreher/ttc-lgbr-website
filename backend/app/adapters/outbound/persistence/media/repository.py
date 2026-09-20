@@ -21,7 +21,25 @@ class SqlMediaRepository:
             width=asset.width,
             height=asset.height,
             uploaded_by_user_id=asset.uploaded_by_user_id,
+            caption=asset.caption,
         )
         self.session.add(row)
         self.session.flush()
         return replace(asset, id=row.id)
+
+    def get(self, media_id: int) -> MediaAsset | None:
+        row = self.session.get(MediaAssetRow, media_id)
+        if row is None or row.mime_type != "image/webp":
+            return None
+        return MediaAsset(
+            id=row.id, storage_key=row.storage_key, original_filename=row.original_filename,
+            mime_type=row.mime_type, file_size=row.file_size, width=row.width,
+            height=row.height, uploaded_by_user_id=row.uploaded_by_user_id, caption=row.caption,
+        )
+
+    def update_caption(self, asset: MediaAsset) -> None:
+        from sqlalchemy import update
+
+        self.session.execute(
+            update(MediaAssetRow).where(MediaAssetRow.id == asset.id).values(caption=asset.caption)
+        )
