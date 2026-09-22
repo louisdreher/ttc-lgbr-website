@@ -59,11 +59,12 @@
     </a>
 
     <!-- Mannschaften -->
-    @if (authService.hasAnyRole('ADMIN', 'EDITOR')) {
+    @if (authService.hasAnyRole('ADMIN')) {
       <a routerLink="/admin/teams" routerLinkActive="active" (click)="onNavigate()">
         Mannschaften
       </a>
-
+    }
+    @if (authService.hasAnyRole('ADMIN', 'EDITOR')) {
       <!-- Veranstaltungen -->
 
       <a routerLink="/admin/events" routerLinkActive="active" (click)="onNavigate()">

@@ -1,0 +1,34 @@
+<dialog #dialog aria-labelledby="player-picker-title" aria-describedby="player-picker-hint"
+  (cancel)="close($event)" (keydown.escape)="close($event)">
+  <header>
+    <h2 id="player-picker-title">Spieler auswählen</h2>
+    <button type="button" (click)="close()" [disabled]="busy()" aria-label="Spielerauswahl schließen">Schließen</button>
+  </header>
+  <p id="player-picker-hint">Verfügbare Spieler dieser Halbserie und Kategorie, nach Meldeposition sortiert.</p>
+  <label for="player-search">Name oder Meldeposition suchen</label>
+  <input #searchInput id="player-search" type="search" [formControl]="search" autocomplete="off" />
+  @if (loading()) { <p role="status">Spieler werden geladen …</p> }
+  @if (error()) {
+    <p role="alert">{{ error() }}</p>
+    <button type="button" (click)="retry.emit()">Erneut laden</button>
+  }
+  @if (saveError()) { <p role="alert">{{ saveError() }}</p> }
+  @if (busy()) { <p role="status">Spieler wird hinzugefügt …</p> }
+  @if (!loading() && !error()) {
+    @if (candidates().length) {
+      <p class="count" role="status">{{ filteredCandidates().length }} Spieler verfügbar</p>
+      <ul aria-label="Verfügbare Spieler">
+        @for (player of filteredCandidates(); track player.player_id) {
+          <li>
+            <div><span class="rank">{{ player.team_number }}.{{ player.rank }}</span>
+              <strong>{{ player.first_name }} {{ player.last_name }}</strong></div>
+            <button type="button" [disabled]="busy()" (click)="choose(player.player_id)"
+              [attr.aria-label]="player.first_name + ' ' + player.last_name + ' hinzufügen'">Hinzufügen</button>
+          </li>
+        } @empty { <li>Keine Spieler für diese Suche gefunden.</li> }
+      </ul>
+    } @else {
+      <p>Keine weiteren eindeutig gemeldeten Spieler verfügbar. Bitte die Meldedaten dieser Halbserie prüfen.</p>
+    }
+  }
+</dialog>

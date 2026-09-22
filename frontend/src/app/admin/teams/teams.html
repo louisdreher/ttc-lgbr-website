@@ -1,1 +1,41 @@
-<p>teams works!</p>
+<header class="heading">
+  <p class="eyebrow">Vereinsverwaltung</p>
+  <h1 #heading tabindex="-1">Mannschaften</h1>
+  <p class="muted">Mannschaften nach Saison auswählen und ihre Aufstellung ansehen.</p>
+</header>
+@if (seasonsLoading()) { <p role="status">Saisons werden geladen …</p> }
+@if (seasonError()) {
+  <p role="alert">{{ seasonError() }}</p>
+  <button type="button" (click)="retrySeasons()">Erneut laden</button>
+}
+@if (seasons().length) {
+  <div class="toolbar">
+    <label for="team-season">Saison und Halbserie</label>
+    <select id="team-season" #season (change)="selectSeason(+season.value)">
+      @for (item of seasons(); track item.id) {
+        <option [value]="item.id" [selected]="item.id === seasonId()">{{ item.start_year }}/{{ item.end_year }} · {{ item.half === 'vr' ? 'Vorrunde' : 'Rückrunde' }}</option>
+      }
+    </select>
+  </div>
+} @else if (!seasonsLoading() && !seasonError()) { <p>Noch keine Saisons vorhanden.</p> }
+@if (teamsLoading()) { <p role="status">Mannschaften werden geladen …</p> }
+@if (teamError()) {
+  <p role="alert">{{ teamError() }}</p>
+  <button type="button" (click)="retryTeams()">Mannschaften erneut laden</button>
+}
+@if (teams().length) {
+  <section class="panel" aria-label="Mannschaftsliste">
+    <ul class="rows">
+      @for (team of teams(); track team.id) {
+        <li class="team-row">
+          <div class="team-summary">
+            <h2><a [routerLink]="['/admin/teams', team.id]" [queryParams]="{ season: seasonId() }">{{ team.name }}</a></h2>
+            <p class="muted">Kategorie: {{ team.category || 'Nicht angegeben' }}</p>
+          </div>
+          <a class="button icon-button" title="Bearbeiten" [routerLink]="['/admin/teams', team.id]" [queryParams]="{ season: seasonId() }"
+            [attr.aria-label]="team.name + ' bearbeiten'"><span aria-hidden="true">✎</span></a>
+        </li>
+      }
+    </ul>
+  </section>
+} @else if (seasonId() && !teamsLoading() && !teamError()) { <p>Keine Mannschaften in dieser Halbserie.</p> }

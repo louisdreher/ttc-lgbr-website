@@ -18,7 +18,6 @@ import { AdminDashboard } from './admin/dashboard/dashboard';
 
 import { articleLeaveGuard } from './admin/articles/editor/article-leave.guard';
 
-import { AdminTeams } from './admin/teams/teams';
 import { AdminEvents } from './admin/events/events';
 import { EventForm } from './admin/events/form/event-form';
 import { userFormLeaveGuard } from './admin/users/form/user-form.guard';
@@ -192,9 +191,16 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'teams/:teamId',
+        loadComponent: () => import('./admin/teams/team-detail').then((module) => module.TeamDetail),
+        canActivate: [roleGuard('ADMIN')],
+        title: 'Mannschaft einrichten | TTC',
+      },
+      {
         path: 'teams',
-        component: AdminTeams,
-        canActivate: [roleGuard('ADMIN', 'EDITOR')],
+        loadComponent: () => import('./admin/teams/teams').then((module) => module.AdminTeams),
+        canActivate: [roleGuard('ADMIN')],
+        title: 'Mannschaften | TTC',
       },
       {
         path: 'galleries/new',
