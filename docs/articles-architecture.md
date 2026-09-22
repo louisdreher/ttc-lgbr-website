@@ -165,8 +165,21 @@ Reads nutzen Projektionen über einen Reader-Port, keine schreibende Unit of Wor
 Writes ändern Domain-Objekte und bestätigen erst anschließend die Transaktion.
 `SubmitArticle` verwendet denselben Speicherablauf wie `SaveArticle`, einschließlich
 Übernahme und optionalem Event. Die Event-Komponente stellt dafür über `events.public`
-`CreateHiddenArticleEvent` bereit: validieren und speichern, aber kein eigenes Commit.
+`CreateHiddenEditorialEvent` bereit: validieren und speichern, aber kein eigenes Commit.
 Ein Fehler rollt Event, Artikel und Tagzuordnungen gemeinsam zurück.
+
+Die optionale Eventerstellung im Berichtsformular verwendet die gemeinsame
+Frontend-Komponente `shared/editorial-event/EditorialEvent`. Sie enthält Checkbox,
+Eventfelder und das Laden der Kategorien einschließlich Fehleranzeige und Retry.
+Der aufrufende Editor besitzt die FormGroup sowie den Aktivierungszustand und
+übernimmt Speichern und den Schutz ungespeicherter Änderungen. Die gemeinsame
+Formularhilfe validiert Titel, Kategorie und Zeitraum und konvertiert lokale
+Datumswerte für den API-Request. Der Datentyp liegt unter `core/events`.
+
+Der neutrale Backend-Vertrag liegt in `events/application/editorial_events.py`
+und wird über `events.public` bereitgestellt. Er setzt weiterhin HIDDEN und
+`report_expected=true`. Das Galerieformular verwendet dieselbe Komponente;
+die Galerie-Transaktion bindet denselben Event-Anwendungsfall ein.
 
 Pro Event ist höchstens ein Artikel erlaubt. Die Migration `c9e15f30a624` ergänzt
 `uq_article_event_id`; freie Artikel mit NULL bleiben mehrfach möglich. Sie löscht
@@ -211,3 +224,22 @@ Text ausgegeben. Medienupload und ein Rich-Text-Editor bleiben geplant.
 Angular-Tests prüfen API-Verträge, Listen und Editorabläufe. Zusätzlich prüft
 `frontend/scripts/check-articles.cjs` mit Playwright und Axe Desktop-/Mobilansichten
 und zentrale Aktionen gegen eine simulierte API, ohne Anwendungsdaten zu ändern.
+
+
+### Selecting report covers from an event gallery
+
+The editor now embeds a gallery action beside the upload button. Saved reports
+can create their event gallery with the shared multi-image uploader or select
+an existing gallery image. Unsaved report changes must be saved before gallery
+creation so the current stored cover can be adopted. Picking an image only
+changes the form; the normal report save validates and persists the selection.
+The media component grants contextual preview/caption reads for editable
+reports without extending gallery editing rights. The article repository uses
+the public media persistence contract to validate foreign uploads against the
+actual, immutable event association. Changed, non-empty report covers are adopted
+into an existing event gallery through the `ArticleGalleryCovers` port in the
+same unit of work: append once, then set as gallery cover. The SQL bridge calls
+media's public contract, preserving the event/report/gallery lock order. Failure
+rolls back both changes; updated gallery versions reject stale forms. No gallery
+is created implicitly, and removing the report cover does not remove gallery
+images or its cover. See `media-architecture.md` for details.

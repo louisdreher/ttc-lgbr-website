@@ -170,9 +170,8 @@ order, or clears the cover when empty. Reordering requires every existing image
 exactly once and preserves the selected cover. Initial state is validated too.
 Removal only changes references and never touches media files.
 
-The SQL insert adapter below can persist this model. Gallery editing,
-additional editorial metadata and synchronization after report-title-image
-changes remain future steps.
+The SQL adapter below persists this model. Report-cover synchronization uses
+these same domain operations through the public media persistence contract.
 Run `python -m pytest tests/test_gallery_domain.py tests/test_backend_architecture.py`
 from `backend/` to verify this foundation.
 
@@ -211,9 +210,8 @@ ownership of a system report.
 back on failure or exit without commit. The caller owns the session lifetime.
 The unique event index remains the final database safeguard; its PostgreSQL
 constraint error is translated to `EventGalleryAlreadyExists` after rollback.
-The HTTP creation endpoint is implemented below. Later changes to a report cover do not yet
-synchronize an existing gallery; the current guarantee is a consistent snapshot
-at gallery creation, not ongoing synchronization.
+The HTTP creation endpoint is implemented below. Later report-cover changes
+also update an existing gallery atomically, as described below.
 
 `test_gallery_creation_sql.py` covers composition, permissions, date/cover
 adoption and rollback after insert/commit failures. The opt-in
@@ -227,7 +225,7 @@ creation, row locks, refreshed cover reads and unique-conflict recovery.
 creator to the existing `gallery` table and writes ordered `gallery_media` rows
 with zero-based `sort_order`. It flushes to obtain the gallery ID and validate
 memberships, returning a new domain instance with that ID. Existing gallery IDs
-are rejected; editing persistence will be a separate step.
+are rejected by `save`; editing uses the separate `get_for_update`/`update` methods.
 
 The repository neither commits nor rolls back. The caller must roll back after
 an insertion failure. The repository propagates integrity errors; the gallery
@@ -260,7 +258,7 @@ Image timestamps are not used to determine a gallery's date.
 The event bridge supplies the event's calendar date in Europe/Berlin.
 The date is saved independently, so later event changes do not change it.
 The repository stores both date fields alongside the other gallery metadata.
-CMS form integration is still planned.
+The CMS creation form exposes both date fields.
 
 Migration `e5a37b62c846` adds both required columns and a date index. Existing
 event galleries receive the event date in Europe/Berlin. Existing standalone
@@ -304,7 +302,7 @@ unavailable event), 404 for a missing/unavailable selected image, 409 for an
 existing event gallery, and 422 for invalid input or a missing standalone date.
 Persistence failures return a generic 500 without database details.
 The FastAPI dependency uses a separate write session and the existing bootstrap
-factory. No gallery read/edit routes or frontend changes are included yet.
+factory. Existing-gallery read/edit routes are described below.
 
 `tests/test_gallery_http.py` covers request/response mapping, authenticated
 capabilities, forbidden client permission fields, error responses and real SQL
@@ -312,7 +310,7 @@ creation through the HTTP route.
 
 ## Gallery event selection
 
-`GET /api/admin/media/galleries/opportunities` supplies the planned CMS selection
+`GET /api/admin/media/galleries/opportunities` supplies the CMS selection
 page. It requires ADMIN, EDITOR or TEAM_REPORTER, just like image uploads.
 Query parameters are `group=other_events|team_matches` (default `other_events`),
 `offset` (default 0) and `limit` (default 20, maximum 100).
@@ -342,12 +340,134 @@ by the POST endpoint's event lock and uniqueness protection.
 
 `test_gallery_opportunities.py` verifies time boundaries, report expectation,
 existing galleries/reports, group counts and pagination, authorization and HTTP
-validation. The CMS selection page itself is still planned.
+validation.
+
+The CMS selection page is available at `/admin/galleries`, linked as
+"Bildergalerien" in the sidebar and lazy-loaded under the existing CMS role
+guard. `GalleryApiService` supplies two independent, paginated lists:
+Veranstaltungen first and Mannschaftsspiele below. Each list handles loading,
+errors, retry and empty results separately. A failed page request retains the
+previous results and retries the requested offset. If concurrent creation empties
+the last page, selection returns to the last available page.
+
+The selection actions now open the creation form: `/admin/galleries/new` for
+ADMIN/EDITOR, or `/admin/galleries/event/:eventId` for an event gallery. Event
+title and Europe/Berlin date are editable suggestions carried in query parameters;
+the backend remains authoritative for event existence, permissions and cover
+adoption. A direct event link without suggestions allows manual title/date input
+and uses the event date if the date is left empty.
+
+The form supports title, date, date display, multiple uploads with the shared
+upload dialog, previews and removal from the pending selection. Removed or
+cancelled uploads are not deleted from storage. A saved report cover is adopted
+by the backend at creation. Without one, the first selected image becomes the
+cover. Existing galleries support explicit cover selection and image ordering.
+
+Free galleries can optionally use the shared editorial-event checkbox. The POST
+accepts `new_event` (title, timezone-aware starts_at, category_id, optional ends_at,
+location and description), mutually exclusive with `event_id`. Creating a new
+event with a gallery requires ADMIN/EDITOR. The event bridge invokes
+`CreateHiddenEditorialEvent` in the gallery transaction: visibility HIDDEN,
+report_expected true, no separate commit. Failure rolls back the event and gallery
+together. An omitted gallery date uses the new event's Europe/Berlin date.
+
+Unsaved edits are protected by a leave guard. Failed saves retain all input and
+selected media; pending or successful submissions cannot be sent twice from the
+same form. Success shows confirmation and a link back to event selection.
+Tests cover date defaults, shared event input, rollback, request mapping, upload
+selection and conflict recovery, plus accessibility checks in jsdom (excluding
+layout-dependent contrast checks).
+
+## Managing existing galleries
+
+`/admin/galleries` now lists saved galleries, newest gallery date first, with
+protected cover previews, image counts and a year filter. Years and counts are
+limited to galleries the actor can access. `/admin/galleries/create` retains
+the grouped event selection; `/admin/galleries/:id/edit` reuses the creation form
+for title, date, date display and ordered image membership. Event associations
+remain fixed. Images can be uploaded, removed from the gallery, moved with
+keyboard-accessible buttons and selected as cover. Removing the current cover
+selects the first remaining image; an empty gallery has no cover.
+
+New API operations (all require an upload-capable authenticated user):
+
+- `GET /api/admin/media/galleries?year=2007&offset=0&limit=20`: paginated summaries
+  and available years; omit year to show all years.
+- `GET /api/admin/media/galleries/{id}`: metadata, ordered media IDs and updated_at.
+- `PUT /api/admin/media/galleries/{id}`: title, gallery_date, show_date, media_ids,
+  cover_image_id and the previously loaded updated_at; returns 204.
+- `GET /api/admin/media/galleries/{id}/images/{media_id}`: a protected image preview
+  after gallery access and membership checks. It also supports adopted report
+  images uploaded by another person, without granting generic access to their uploads.
+
+ADMIN/EDITOR manage all galleries; other writers manage only galleries they
+created. This ownership rule applies consistently to list, detail, update and
+scoped previews. Unknown/inaccessible galleries return 404. Only newly added
+images require uploader ownership for ordinary writers; existing memberships
+can be retained and reordered. All read responses use private/no-store.
+
+Updates lock the gallery row, compare the loaded UTC updated_at and reject stale
+forms with 409. The frontend keeps input and offers explicit reload guarded by
+an unsaved-changes confirmation. Metadata, cover and memberships update in one
+transaction. Kept memberships retain caption overrides; removed memberships do
+not delete media or change articles. Report-cover changes update the gallery
+through a separate, transaction-local port. No new migration is needed: the existing updated_at column
+acts as the optimistic concurrency token.
+
+Tests cover SQL metadata/membership updates, rollback, permissions, foreign-image
+rejection, gallery-scoped previews, HTTP contracts, year filtering and stale
+writes. An opt-in PostgreSQL test checks that two concurrent updates from the
+same snapshot result in one success and one conflict. Frontend tests cover list
+filtering, edit loading, reorder/cover payloads and conflict recovery.
+
+## Gallery selection in reports
+
+The report form offers “Galerie anlegen” for an event without a gallery and
+“Aus Galerie” for an existing gallery. A report must be saved first. Creation
+also requires saving pending report changes, so the existing creation use case
+can adopt the persisted cover. The shared multi-image upload remains in the
+form; uploaded IDs are retained for retry if gallery creation fails. Discarding
+this pending association does not delete uploaded assets. Gallery creation is
+saved independently of the report. Selecting a gallery image changes only the
+report draft; the usual report save persists its cover ID.
+
+`GET /api/admin/media/galleries/events/{event_id}` returns gallery details or
+null. Matching `/images/{media_id}` and `/images/{media_id}/caption` endpoints
+check current membership. Access requires ADMIN/EDITOR or an editable report
+for that event (including an available system draft). These read permissions
+do not grant gallery management rights. The existing event/report context
+coordinates reads with report changes; request-scoped sessions release locks.
+Captions expose `can_edit`; only the uploader or an editor may change the
+asset-wide caption through the existing endpoint.
+
+Report saving accepts another uploader's image only when it belongs to the
+report's actual event gallery. A public media persistence contract checks that
+membership under the gallery lock, after the existing event/report locks.
+Images from unrelated galleries remain inaccessible.
+
+When saving or submitting a changed, non-empty report cover, `SaveArticle` calls
+its `ArticleGalleryCovers` port inside the article unit of work. The SQL bridge
+uses media's public `adopt_report_cover` contract and domain operations to append
+the image once and select it as cover of the existing event gallery. No gallery
+is created implicitly. Lock order is event, report, gallery; concurrent explicit
+gallery creation therefore sees the new cover or is updated by the report save.
+All changes commit or roll back together. Actual gallery changes advance
+`updated_at`, so stale gallery forms receive 409 instead of overwriting them.
+
+Previous report images stay in the gallery. Removing the report cover leaves
+the gallery and its cover intact. An unchanged report cover causes no gallery
+write; manual gallery changes are not overridden by unrelated report edits.
+This is one-way synchronization on report-cover changes, not a permanent
+constraint preventing manual gallery edits. The report picker reloads after a
+saved cover changes. No migration is needed.
+
+Tests in `test_report_cover_sync.py` cover replacement, deduplication, removal,
+later gallery creation, rollback and stale gallery forms. The opt-in PostgreSQL
+test covers concurrent report saving and gallery creation in a disposable database.
 
 ## Planned integration
 
-The existing-media picker, gallery integration and additional image sizes are not yet
-implemented. The upload permission does not grant permission to change a report,
+A general media library picker and additional image sizes are not yet implemented. The upload permission does not grant permission to change a report,
 gallery or player-photo assignment; those operations require their own checks.
 The intended storage policy keeps the reduced master rather than the camera
 original; the image processor itself neither writes nor deletes any files.
