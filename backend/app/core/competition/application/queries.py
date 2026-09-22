@@ -1,3 +1,6 @@
+from dataclasses import replace
+
+from app.core.members.public import GetPlayerImages, GetPlayerImagesQuery
 from app.core.competition.application.dto import (
     GetMatchDetailsQuery,
     GetScheduleQuery,
@@ -16,6 +19,8 @@ from app.core.competition.application.errors import (
     TeamNotFoundError,
 )
 from app.core.competition.application.ports import CompetitionReader
+from app.core.competition.application.dto import PlayerCandidate
+from app.core.competition.domain.teams import RegistrationPosition, eligible_registration
 
 
 class ListTeams:
@@ -56,14 +61,24 @@ class GetMatchDetails:
 
 
 class GetTeamLineup:
-    def __init__(self, reader: CompetitionReader):
+    def __init__(self, reader: CompetitionReader, images: GetPlayerImages):
         self.reader = reader
+        self.images = images
 
     def execute(self, query: GetTeamLineupQuery) -> TeamLineup:
         result = self.reader.get_team_lineup(query)
         if result is None:
             raise TeamNotFoundError(query.team_id)
-        return result
+        if not result.players:
+            return result
+        season = next(item for item in self.reader.list_seasons() if item.id == result.season_id)
+        images = self.images.execute(GetPlayerImagesQuery(
+            frozenset(player.player_id for player in result.players),
+            season.start_year, season.half.value,
+        ))
+        return replace(result, players=[
+            replace(player, media_id=images[player.player_id]) for player in result.players
+        ])
 
 
 class ListSeasons:
@@ -72,3 +87,22 @@ class ListSeasons:
 
     def execute(self) -> list[SeasonSummary]:
         return self.reader.list_seasons()
+
+
+class GetTeamCandidates:
+    def __init__(self, reader: CompetitionReader):
+        self.reader = reader
+
+    def execute(self, query: GetTeamLineupQuery) -> list[PlayerCandidate]:
+        pool = self.reader.get_team_candidates(query.team_id)
+        if pool is None:
+            raise TeamNotFoundError(query.team_id)
+        if not pool.category:
+            return []
+        ranks = eligible_registration(pool.team_number, [
+            RegistrationPosition(item.player_id, item.team_number, item.rank)
+            for item in pool.players
+        ])
+        candidates = {item.player_id: item for item in pool.players
+                      if item.player_id in ranks and item.player_id not in pool.assigned_ids}
+        return sorted(candidates.values(), key=lambda item: ranks[item.player_id])

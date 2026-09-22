@@ -154,6 +154,7 @@ class TeamLineupEntry:
     last_name: str
     position: int | None
     status: str | None
+    media_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -177,3 +178,20 @@ class SeasonSummary:
     start_year: int
     end_year: int
     half: SeasonHalf
+
+
+@dataclass(frozen=True)
+class PlayerCandidate:
+    player_id: int
+    first_name: str
+    last_name: str
+    team_number: int | None
+    rank: str | None
+
+
+@dataclass(frozen=True)
+class TeamCandidatePool:
+    team_number: int | None
+    category: str | None
+    assigned_ids: frozenset[int]
+    players: list[PlayerCandidate]

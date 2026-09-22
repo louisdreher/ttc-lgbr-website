@@ -109,6 +109,7 @@ class TeamLineupEntryRead(ReadModel):
     last_name: str
     position: int | None
     status: str | None
+    media_id: int | None = None
 
 
 class TeamLineupRead(ReadModel):
@@ -124,3 +125,16 @@ class SeasonSummaryRead(ReadModel):
     start_year: int
     end_year: int
     half: Literal["vr", "rr"]
+
+
+class PlayerCandidateRead(ReadModel):
+    player_id: int
+    first_name: str
+    last_name: str
+    team_number: int | None
+    rank: str | None
+
+
+class PlayerImageWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    media_id: int = Field(gt=0, strict=True)

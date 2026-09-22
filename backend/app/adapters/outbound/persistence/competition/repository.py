@@ -173,8 +173,11 @@ class SqlCompetitionRepository:
             for member, number in rows
         ]
 
-    def get_team(self, team_id: int) -> domain_teams.Team | None:
-        row = self.session.get(teams.Team, team_id)
+    def get_team(self, team_id: int, *, for_update: bool = False) -> domain_teams.Team | None:
+        statement = select(teams.Team).where(teams.Team.id == team_id)
+        if for_update:
+            statement = statement.with_for_update().execution_options(populate_existing=True)
+        row = self.session.exec(statement).first()
         return self._team(row) if row is not None else None
 
     def find_team_match(self, external_id: int) -> domain_matches.TeamMatch | None:

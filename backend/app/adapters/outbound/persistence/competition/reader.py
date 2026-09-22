@@ -18,7 +18,8 @@ from app.adapters.outbound.persistence.competition.seasons import Season
 from app.adapters.outbound.persistence.competition.seasons import (
     SeasonHalf as StoredSeasonHalf,
 )
-from app.adapters.outbound.persistence.competition.teams import Team, TeamAssignment
+from app.adapters.outbound.persistence.competition.teams import Team, TeamAssignment, TeamMembership
+from app.core.competition.application.dto import PlayerCandidate, TeamCandidatePool
 from app.core.competition.application.dto import (
     GetMatchDetailsQuery,
     GetScheduleQuery,
@@ -393,6 +394,28 @@ class SqlCompetitionReader:
                 for item in assignments
             )
             return result
+
+    def get_team_candidates(self, team_id: int) -> TeamCandidatePool | None:
+        with self.session_factory() as session:
+            team = session.get(Team, team_id)
+            if team is None:
+                return None
+            assigned = frozenset(session.exec(select(TeamAssignment.player_id).where(
+                TeamAssignment.team_id == team.id
+            )).all())
+            rows = session.exec(select(TeamMembership, Team.team_number)
+                .join(Team, Team.id == TeamMembership.team_id)
+                .where(Team.season_id == team.season_id, Team.category == team.category)).all()
+            if not rows or not team.category:
+                return TeamCandidatePool(team.team_number, team.category, assigned, [])
+            if self.players is None:
+                raise RuntimeError("Spieler-Reader wurde nicht verdrahtet.")
+            names = self.players.read_players({member.player_id for member, _ in rows})
+            return TeamCandidatePool(team.team_number, team.category, assigned, [
+                PlayerCandidate(member.player_id, names[member.player_id].first_name,
+                                names[member.player_id].last_name, number, member.rank)
+                for member, number in rows
+            ])
 
     def list_seasons(self) -> list[SeasonSummary]:
         statement = select(

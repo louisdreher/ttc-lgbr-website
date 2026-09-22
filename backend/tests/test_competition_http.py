@@ -36,6 +36,10 @@ def api():
         "get_team_standings",
         "get_match_details",
         "get_team_lineup",
+        "get_team_candidates",
+        "assign_player",
+        "remove_player",
+        "assign_player_image",
     ):
         case = Mock()
         case.execute.return_value = []
@@ -179,3 +183,62 @@ def test_routes_registered_in_main():
         "matches/{match_id}",
     ):
         assert "get" in paths["/api/competition/" + path]
+
+
+@pytest.mark.parametrize("method,path,case", [
+    ("get", "/api/competition/teams/2/candidates", "get_team_candidates"),
+    ("put", "/api/competition/teams/2/lineup/8", "assign_player"),
+    ("delete", "/api/competition/teams/2/lineup/8", "remove_player"),
+])
+def test_team_management_requires_admin(api, method, path, case):
+    client, app, cases = api
+    assert getattr(client, method)(path).status_code == 401
+    for role in ("EDITOR", "TEAM_REPORTER"):
+        app.dependency_overrides[get_current_user] = lambda: UserDetails(
+            id=1, email="user@example.test", name="User", is_active=True, roles=[role]
+        )
+        assert getattr(client, method)(path).status_code == 403
+    cases[case].execute.assert_not_called()
+    app.dependency_overrides[get_current_user] = lambda: UserDetails(
+        id=1, email="admin@example.test", name="Admin", is_active=True, roles=["ADMIN"]
+    )
+    assert getattr(client, method)(path).status_code == (200 if method == "get" else 204)
+    cases[case].execute.assert_called_once()
+
+
+def test_assignment_http_validates_and_maps_errors(api):
+    from app.core.competition.domain.teams import AssignmentRankingError
+    from app.core.competition.application.errors import PlayerNotFoundError
+
+    client, app, cases = api
+    app.dependency_overrides[get_current_user] = lambda: UserDetails(
+        id=1, email="admin@example.test", name="Admin", is_active=True, roles=["ADMIN"]
+    )
+    assert client.put('/api/competition/teams/0/lineup/8').status_code == 422
+    cases['assign_player'].execute.assert_not_called()
+    for error, status in [(AssignmentRankingError('Not eligible'), 422),
+                          (TeamNotFoundError(2), 404), (PlayerNotFoundError(8), 404)]:
+        cases['assign_player'].execute.side_effect = error
+        response = client.put('/api/competition/teams/2/lineup/8')
+        assert response.status_code == status
+        assert response.json()['detail'] == str(error)
+    cases['assign_player'].execute.assert_called_with(dto.AssignPlayerToTeamCommand(2, 8))
+    cases['remove_player'].execute.side_effect = TeamNotFoundError(2)
+    assert client.delete('/api/competition/teams/2/lineup/8').status_code == 404
+
+
+def test_player_image_http_permissions_validation_and_errors(api):
+    from app.core.members.public import AssignPlayerImageCommand, PlayerImageAssignmentNotFound, PlayerImageMediaNotFound
+    client, app, cases = api
+    path = '/api/competition/teams/2/lineup/8/image'
+    assert client.put(path, json={'media_id': 5}).status_code == 401
+    for role in ('EDITOR', 'TEAM_REPORTER', 'ADMIN'):
+        app.dependency_overrides[get_current_user] = lambda: UserDetails(
+            id=1, email='image@example.test', name='Admin', is_active=True, roles=[role])
+        assert client.put(path, json={'media_id': 5}).status_code == (204 if role == 'ADMIN' else 403)
+    cases['assign_player_image'].execute.assert_called_once_with(AssignPlayerImageCommand(2, 8, 5, can_manage=True))
+    for body in ({'media_id': 0}, {'media_id': True}, {'media_id': 5, 'season_start_year': 2009}):
+        assert client.put(path, json=body).status_code == 422
+    for error in (PlayerImageAssignmentNotFound('Missing assignment'), PlayerImageMediaNotFound('Missing image')):
+        cases['assign_player_image'].execute.side_effect = error
+        assert client.put(path, json={'media_id': 5}).status_code == 404

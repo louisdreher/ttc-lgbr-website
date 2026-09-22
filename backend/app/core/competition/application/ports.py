@@ -13,12 +13,13 @@ from app.core.competition.application.dto import (
     StandingSummary,
     TeamLineup,
     TeamSummary,
+    TeamCandidatePool,
 )
 from app.core.competition.domain.teams import RegistrationPosition, Team
 
 
 class CompetitionRepository(Protocol):
-    def get_team(self, team_id: int) -> Team | None: ...
+    def get_team(self, team_id: int, *, for_update: bool = False) -> Team | None: ...
     def registration_for_category(
         self, season_id: int, category: str
     ) -> list[RegistrationPosition]: ...
@@ -26,6 +27,8 @@ class CompetitionRepository(Protocol):
 
 
 class CompetitionReader(Protocol):
+    def get_team_candidates(self, team_id: int) -> TeamCandidatePool | None: ...
+
     def list_seasons(self) -> list[SeasonSummary]: ...
 
     def get_team_lineup(self, query: GetTeamLineupQuery) -> TeamLineup | None: ...

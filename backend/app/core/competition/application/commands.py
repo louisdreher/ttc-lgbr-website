@@ -10,6 +10,7 @@ from app.core.competition.application.ports import (
     CompetitionUnitOfWork,
     PlayerLookup,
 )
+from app.core.competition.domain.teams import AssignmentRankingError, eligible_registration
 
 
 class AssignPlayerToTeam:
@@ -20,7 +21,7 @@ class AssignPlayerToTeam:
 
     def execute(self, command: AssignPlayerToTeamCommand) -> None:
         with self.uow:
-            team = self.uow.repository.get_team(command.team_id)
+            team = self.uow.repository.get_team(command.team_id, for_update=True)
 
             if team is None:
                 raise TeamNotFoundError(command.team_id)
@@ -33,6 +34,10 @@ class AssignPlayerToTeam:
                 registration = self.uow.repository.registration_for_category(
                     team.season_id, team.category
                 )
+                if command.player_id not in eligible_registration(team.team_number, registration):
+                    raise AssignmentRankingError(
+                        "Der Spieler ist für diese Mannschaft nicht eindeutig oder nicht zulässig gemeldet."
+                    )
 
             team.assign_player(
                 player_id=command.player_id,
@@ -51,7 +56,7 @@ class RemovePlayerFromTeam:
 
     def execute(self, command: RemovePlayerFromTeamCommand) -> None:
         with self.uow:
-            team = self.uow.repository.get_team(command.team_id)
+            team = self.uow.repository.get_team(command.team_id, for_update=True)
             if team is None:
                 raise TeamNotFoundError(command.team_id)
             if not team.remove_player(command.player_id):

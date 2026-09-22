@@ -143,6 +143,29 @@ class Team:
         return True
 
 
+def eligible_registration(
+    team_number: int | None, registration: list[RegistrationPosition]
+) -> dict[int, tuple[int, int]]:
+    """Simple internal selection rule; not a complete competition eligibility check."""
+    if team_number is None or team_number < 1:
+        return {}
+    ranks: dict[int, set[tuple[int, int]]] = {}
+    invalid: set[int] = set()
+    for item in registration:
+        try:
+            ranks.setdefault(item.player_id, set()).add(item.sort_key())
+        except AssignmentRankingError:
+            invalid.add(item.player_id)
+    unique = {player: next(iter(keys)) for player, keys in ranks.items()
+              if len(keys) == 1 and player not in invalid}
+    # Conflicting positions cannot provide a reliable ordering.
+    counts: dict[tuple[int, int], int] = {}
+    for key in unique.values():
+        counts[key] = counts.get(key, 0) + 1
+    return {player: key for player, key in unique.items()
+            if key[0] >= team_number and counts[key] == 1}
+
+
 @dataclass(kw_only=True)
 class TeamMembership:
     team_id: int | None = None

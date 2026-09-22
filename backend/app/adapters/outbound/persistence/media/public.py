@@ -1,7 +1,18 @@
-"""Public persistence contract for using event-gallery images in reports."""
+"""Public persistence contracts for authorized media references and galleries."""
 from sqlmodel import Session, select
-from app.adapters.outbound.persistence.media.models import Gallery, GalleryMedia
+from app.adapters.outbound.persistence.media.models import Gallery, GalleryMedia, MediaAsset
 from app.adapters.outbound.persistence.media.gallery_repository import SqlGalleryRepository
+
+
+def lock_image_reference(session: Session, media_id: int) -> bool:
+    """Validate a processed image for an authorized administrator, without committing.
+
+    The caller owns authorization for the intended use. A shared row lock prevents
+    deleting/changing the asset while its new reference is saved.
+    """
+    return session.exec(select(MediaAsset.id).where(
+        MediaAsset.id == media_id, MediaAsset.mime_type == "image/webp",
+    ).with_for_update(read=True)).first() is not None
 
 
 def event_gallery_contains_image(session: Session, event_id: int, media_id: int) -> bool:

@@ -16,11 +16,13 @@ from app.adapters.outbound.persistence.members.imported_players import (
 from app.adapters.outbound.persistence.members.match_players import SqlMatchPlayerReader
 from app.adapters.outbound.persistence.members.player_lookup import SqlPlayerLookup
 from app.bootstrap.events import build_sync_match_event
+from app.bootstrap.members import build_get_player_images
 from app.core.competition.application.commands import (
     AssignPlayerToTeam,
     RemovePlayerFromTeam,
 )
 from app.core.competition.application.queries import (
+    GetTeamCandidates,
     GetMatchDetails,
     GetSchedule,
     GetTeamLineup,
@@ -29,6 +31,11 @@ from app.core.competition.application.queries import (
     ListTeams,
 )
 from sqlmodel import Session
+
+
+def build_get_team_candidates(session_factory=None) -> GetTeamCandidates:
+    session_factory = session_factory or (lambda: Session(engine))
+    return GetTeamCandidates(SqlCompetitionReader(session_factory, SqlMatchPlayerReader(session_factory)))
 
 
 def build_assign_player_to_team(session_factory=None) -> AssignPlayerToTeam:
@@ -71,7 +78,8 @@ def build_get_match_details(session_factory=None) -> GetMatchDetails:
 def build_get_team_lineup(session_factory=None) -> GetTeamLineup:
     session_factory = session_factory or (lambda: Session(engine))
     return GetTeamLineup(
-        SqlCompetitionReader(session_factory, SqlMatchPlayerReader(session_factory))
+        SqlCompetitionReader(session_factory, SqlMatchPlayerReader(session_factory)),
+        build_get_player_images(session_factory),
     )
 
 
