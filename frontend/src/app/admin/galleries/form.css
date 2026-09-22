@@ -1,0 +1,53 @@
+:host {
+  max-width: 900px;
+}
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+label {
+  display: block;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+input:not([type='checkbox']) {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.75rem;
+  min-height: 44px;
+  border: 1px solid #8795a2;
+  border-radius: 0.4rem;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
+}
+.check input {
+  width: 20px;
+  height: 20px;
+}
+.images {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+.images li {
+  text-align: center;
+}
+.actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+input:focus-visible,
+a:focus-visible {
+  outline: 3px solid #17587b;
+  outline-offset: 3px;
+}

@@ -1,0 +1,118 @@
+:host {
+  display: block;
+  max-width: 1120px;
+  margin: 0 auto;
+  color: #20252b;
+}
+.heading {
+  margin-bottom: 1.5rem;
+}
+h1 {
+  font-size: clamp(1.65rem, 3vw, 2.25rem);
+  margin: 0.25rem 0 0.65rem;
+}
+h2 {
+  font-size: 1.2rem;
+  margin: 0 0 1rem;
+}
+h3 {
+  margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+p {
+  line-height: 1.6;
+}
+.eyebrow {
+  color: #226487;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.muted,
+time {
+  color: #535e69;
+}
+.panel {
+  padding: 1.4rem;
+  border: 1px solid #dce2e7;
+  border-radius: 0.75rem;
+  background: white;
+  margin-bottom: 1rem;
+}
+.rows {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.15rem 0;
+  border-top: 1px solid #e5e7eb;
+}
+.row:first-child {
+  border-top: 0;
+}
+.row > div {
+  min-width: 0;
+}
+button,
+.button {
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  border: 1px solid #8b98a5;
+  border-radius: 0.5rem;
+  background: white;
+  color: #20252b;
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary {
+  background: #226487;
+  color: white;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+button:focus-visible {
+  outline: 3px solid #17587b;
+  outline-offset: 3px;
+}
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+.error {
+  padding: 1rem;
+  border-left: 4px solid #b42323;
+  background: #fff0ef;
+  color: #8a1919;
+}
+@media (max-width: 640px) {
+  .row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .panel {
+    padding: 1rem;
+  }
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+.button:focus-visible {
+  outline: 3px solid #17587b;
+  outline-offset: 3px;
+}

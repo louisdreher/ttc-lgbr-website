@@ -1,0 +1,132 @@
+<header class="heading">
+  <p class="eyebrow">Bildergalerien</p>
+  <h1 tabindex="-1">{{ galleryId() === null ? 'Galerie anlegen' : 'Galerie bearbeiten' }}</h1>
+  <a routerLink="/admin/galleries">Zur Galerieübersicht</a>
+</header>
+@if (saved(); as result) {
+  <section class="panel" role="status">
+    <h2>Die Galerie wurde gespeichert.</h2>
+    <p>{{ form.controls.title.value }}</p>
+    <a [routerLink]="['/admin/galleries', result.id, 'edit']">Galerie öffnen</a>
+  </section>
+} @else {
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p role="status">{{ notice() }}</p>
+  }
+  @if (loading()) {
+    <p role="status">Galerie wird geladen …</p>
+  }
+  @if (galleryId() !== null) {
+    <button type="button" [disabled]="saving() || loading()" (click)="reload()">
+      Aktuellen Stand neu laden
+    </button>
+  }
+  @if (!loading() && !loadFailed()) {
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <fieldset [disabled]="saving()">
+        <section class="panel">
+          @if (eventId() !== null) {
+            <p>
+              Event: <strong>{{ eventTitle() || 'Termin ' + eventId() }}</strong>
+            </p>
+            <p class="muted">
+              {{
+                galleryId() === null
+                  ? 'Ein vorhandenes Berichtstitelbild wird beim Speichern übernommen und als Vorschaubild verwendet.'
+                  : 'Die Eventzuordnung bleibt unverändert.'
+              }}
+            </p>
+          }
+          <label for="gallery-title">Galerietitel</label>
+          <input id="gallery-title" formControlName="title" required />
+          <label for="gallery-date">Galeriedatum</label>
+          <input
+            id="gallery-date"
+            type="date"
+            formControlName="gallery_date"
+            aria-describedby="gallery-date-help"
+          />
+          <p id="gallery-date-help" class="muted">
+            @if (galleryId() === null && (eventId() !== null || creatingEvent())) {
+              Ohne eigene Angabe wird das Eventdatum übernommen.
+            } @else {
+              Bitte gib ein Galeriedatum an.
+            }
+          </p>
+          <label class="check"
+            ><input type="checkbox" formControlName="show_date" /> Datum auf der Webseite
+            anzeigen</label
+          >
+        </section>
+        <section class="panel" aria-labelledby="gallery-images">
+          <h2 id="gallery-images">Bilder</h2>
+          <button type="button" (click)="uploadOpen.set(true)">Bilder hochladen</button>
+          <p class="muted">
+            Entfernen ändert nur die Auswahl. Bereits hochgeladene Bilder bleiben gespeichert.
+          </p>
+          <ul class="images">
+            @for (id of images(); track id; let index = $index) {
+              <li>
+                <app-media-preview
+                  [mediaId]="id"
+                  [galleryId]="previewGallery(id)"
+                  [alt]="'Galeriebild ' + (index + 1)"
+                />
+                @if (galleryId() !== null) {
+                  <button type="button" (click)="setCover(id)" [attr.aria-pressed]="cover() === id">
+                    {{ cover() === id ? 'Vorschaubild' : 'Als Vorschaubild' }}
+                  </button>
+                }
+                <button
+                  type="button"
+                  [disabled]="index === 0"
+                  (click)="moveImage(index, -1)"
+                  [attr.aria-label]="'Bild ' + (index + 1) + ' nach vorne'"
+                >
+                  Nach vorne
+                </button>
+                <button
+                  type="button"
+                  [disabled]="index === images().length - 1"
+                  (click)="moveImage(index, 1)"
+                  [attr.aria-label]="'Bild ' + (index + 1) + ' nach hinten'"
+                >
+                  Nach hinten
+                </button>
+                <button
+                  type="button"
+                  (click)="removeImage(id)"
+                  [attr.aria-label]="'Bild ' + (index + 1) + ' aus der Auswahl entfernen'"
+                >
+                  Entfernen
+                </button>
+              </li>
+            } @empty {
+              <li>Noch keine Bilder ausgewählt.</li>
+            }
+          </ul>
+        </section>
+        @if (galleryId() === null && eventId() === null && auth.hasAnyRole('ADMIN', 'EDITOR')) {
+          <app-editorial-event
+            idPrefix="gallery"
+            [form]="eventForm"
+            [enabled]="creatingEvent()"
+            (enabledChange)="toggleEvent($event)"
+          />
+        }
+        <div class="actions">
+          <button type="submit" class="primary">
+            {{ saving() ? 'Wird gespeichert …' : 'Galerie speichern' }}
+          </button>
+          <button type="button" (click)="cancel()">Abbrechen</button>
+        </div>
+      </fieldset>
+    </form>
+  }
+  @if (uploadOpen()) {
+    <app-media-upload (completed)="addImages($event)" (cancelled)="uploadOpen.set(false)" />
+  }
+}

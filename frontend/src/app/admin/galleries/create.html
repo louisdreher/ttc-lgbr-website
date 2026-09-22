@@ -1,0 +1,72 @@
+<header class="heading">
+  <p class="eyebrow">Bildergalerien</p>
+  <h1 tabindex="-1">Galerie anlegen</h1>
+  <p class="muted">Wähle einen vergangenen Termin aus, für den noch keine Galerie vorhanden ist.</p>
+</header>
+<section class="panel" aria-labelledby="free-gallery-title">
+  <h2 id="free-gallery-title">Neue Galerie</h2>
+  @if (auth.hasAnyRole('ADMIN', 'EDITOR')) {
+    <a class="button primary" routerLink="/admin/galleries/new"> Galerie anlegen </a>
+    <p class="muted">Ohne bestehenden Termin beginnen und bei Bedarf ein Event ergänzen.</p>
+  }
+</section>
+@for (group of groups; track group.key) {
+  <section
+    class="panel"
+    [attr.aria-labelledby]="group.key + '-title'"
+    [attr.aria-busy]="group.loading()"
+  >
+    <h2 [id]="group.key + '-title'">{{ group.title }}</h2>
+    @if (group.error()) {
+      <p class="error" role="alert">{{ group.error() }}</p>
+      <button type="button" (click)="load(group.key)">Erneut versuchen</button>
+    }
+    @if (group.loading()) {
+      <p role="status">{{ group.title }} werden geladen …</p>
+    }
+    @if (group.page(); as data) {
+      <ul class="rows">
+        @for (event of data.items; track event.event_id) {
+          <li class="row">
+            <div>
+              <h3>{{ event.title }}</h3>
+              <time [attr.datetime]="event.starts_at">{{
+                event.starts_at | date: 'dd.MM.yyyy, HH:mm'
+              }}</time>
+            </div>
+            <a
+              class="button"
+              [routerLink]="['/admin/galleries/event', event.event_id]"
+              [queryParams]="{ title: event.title, date: eventDate(event.starts_at) }"
+              [attr.aria-label]="'Galerie anlegen: ' + event.title"
+              >Galerie anlegen</a
+            >
+          </li>
+        } @empty {
+          <li class="muted">
+            Keine vergangenen Termine mit Berichtserwartung ohne Galerie vorhanden.
+          </li>
+        }
+      </ul>
+      <nav class="pagination" [attr.aria-label]="group.title + ': Seiten'">
+        <button
+          type="button"
+          [disabled]="group.loading() || data.offset === 0"
+          (click)="load(group.key, data.offset - data.limit)"
+        >
+          Zurück
+        </button>
+        <span aria-live="polite"
+          >{{ data.total }} Termine · Seite {{ data.offset / data.limit + 1 }}</span
+        >
+        <button
+          type="button"
+          [disabled]="group.loading() || data.offset + data.limit >= data.total"
+          (click)="load(group.key, data.offset + data.limit)"
+        >
+          Weiter
+        </button>
+      </nav>
+    }
+  </section>
+}
