@@ -35,6 +35,7 @@ from app.adapters.outbound.persistence.media.models import (
 from app.adapters.outbound.persistence.members.models import (
     Member,
     Player,
+    PlayerImage,
     PlayerRating,
 )
 from app.adapters.outbound.persistence.messaging.models import OutboxMessage

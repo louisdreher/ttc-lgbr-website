@@ -1,5 +1,6 @@
 from datetime import date
 
+from sqlalchemy import CheckConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -71,3 +72,18 @@ class PlayerRating(SQLModel, table=True):
     )
 
     qttr: int
+
+
+class PlayerImage(SQLModel, table=True):
+    """One image per player and season half."""
+
+    __tablename__ = "player_image"
+    __table_args__ = (
+        CheckConstraint("season_half IN ('vr', 'rr')", name="ck_player_image_season_half"),
+    )
+
+    player_id: int = Field(foreign_key="player.id", primary_key=True)
+    # 2026 represents 2026/27. Intentionally independent of half-season IDs.
+    season_start_year: int = Field(primary_key=True)
+    season_half: str = Field(primary_key=True)
+    media_id: int = Field(foreign_key="media_asset.id")
