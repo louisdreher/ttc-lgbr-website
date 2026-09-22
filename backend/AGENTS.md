@@ -46,8 +46,9 @@ Check the actual code and preserve unrelated work when documentation differs.
   `bootstrap/competition_sync.py` for sync composition.
 - Current Competition GET routes live under `/api/competition`. Internal team
   lineup requires ADMIN; other implemented reads are public. Preserve these
-  permissions unless the user requests a change. Assignment write HTTP routes
-  are still planned. Scheduled sync runs through the separate content worker.
+  permissions unless the user requests a change. Candidate reads and assignment
+  PUT/DELETE routes also require ADMIN; see competition-domain.md for the simple
+  registration eligibility rule. Scheduled sync runs through the separate content worker.
   Never trigger sync from a read query.
 - MyTischtennis automation has ADMIN-only endpoints under `/api/admin/mytt`.
   Settings and latest status live in the database; HTTP requests only enqueue

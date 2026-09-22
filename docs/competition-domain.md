@@ -78,7 +78,9 @@ dürfen weiterhin optimierte DTO-Projektionen statt vollständiger Entities nutz
 ## Interne Mannschaftsaufstellung
 
 `AssignPlayerToTeamCommand(team_id, player_id, status=None, position=None)` wird
-über `build_assign_player_to_team().execute(command)` ausgeführt. HTTP ist geplant.
+über `build_assign_player_to_team().execute(command)` ausgeführt. Der ADMIN-Endpunkt
+`PUT /api/competition/teams/{team_id}/lineup/{player_id}` verwendet die automatische
+Zuordnung ohne manuelle Position und ohne Statusänderungsoption.
 
 Ohne Position werden ausschließlich Meldungen derselben Saison/Halbserie und
 Kategorie der Zielmannschaft verwendet (Herren, J15, J19 jeweils getrennt).
@@ -86,6 +88,10 @@ Die Reihenfolge ergibt sich aus `Team.team_number` und dem numerischen
 `TeamMembership.rank` (in der Datenbank z. B. "2", nicht "1.2"). Alle internen
 Positionen werden lückenlos ab 1 vergeben. Fehlende Kategorie, fehlende/ungültige
 oder widersprüchliche Ränge verhindern die automatische Zuordnung.
+Zusätzlich muss die Meldungsmannschaft mindestens die Nummer der Zielmannschaft
+haben: In Mannschaft 3 sind 3.x, 4.x usw. möglich, aber keine 2.x. Dies ist eine
+einfache interne Auswahlregel und keine vollständige Prüfung aller Spielordnungen.
+Sperrvermerke und weitere Sonderfälle sind noch nicht berücksichtigt.
 
 Eine explizite Position erlaubt manuelles Einfügen oder Verschieben, auch ohne
 Kategorie und Meldungsrang. Erlaubt sind 1 bis zur resultierenden Spielerzahl;
@@ -100,6 +106,17 @@ Zuordnung. Erneutes Zuordnen aktualisiert bzw. löscht den Status. Dieser beeinf
 die Reihenfolge nicht. Externe Meldungen bleiben unverändert. Die vorhandenen
 Datenbankspalten reichen aus; es ist keine Migration nötig. Der PlayerLookup
 verwendet eine eigene Lesesession, die Unit of Work speichert die Aufstellung atomar.
+Zuordnung und Entfernen sperren die Mannschaft während der Transaktion mit
+`SELECT FOR UPDATE`, damit parallele interne Änderungen keine Spieler verlieren.
+
+`GetTeamCandidates` liest über den Competition-Reader ausschließlich Meldedaten
+derselben Saison/Halbserie und Kategorie. Die gemeinsame Domainfunktion
+`eligible_registration` bestimmt die erlaubten Spieler sowohl für Auswahl als auch
+automatisches Schreiben. Bereits zugeordnete Spieler werden ausgeblendet; fehlende,
+ungültige oder mehrdeutige Ränge und doppelt belegte Positionen werden ausgeschlossen.
+Sortierung erfolgt numerisch nach Mannschaft und Rang, z. B. 3.2 vor 3.10.
+Spielernamen liefert der bestehende gebündelte Members-Spieleradapter.
+`GET /api/competition/teams/{team_id}/candidates` ist ADMIN-geschützt.
 
 
 Allgemeine Usecases und Verträge liegen direkt in `application/`:
@@ -164,6 +181,26 @@ Bootstrap: `build_get_match_details()`. Kein Live-Sync; HTTP-Zugriff siehe unten
 
 `GetTeamLineup.execute(GetTeamLineupQuery(team_id))` liest ausschließlich die interne
 Aufstellung aus `TeamAssignment`, nicht die externe Meldung oder eine Spielaufstellung.
+Der Usecase ergänzt pro Spieler `media_id` über den öffentlichen Members-Vertrag
+`GetPlayerImages`. Die Saison und Halbserie der Mannschaft bestimmen die historische
+Bildauswahl; fehlende Bilder ergeben `None`. Der ADMIN-Endpunkt liefert diese
+optionale Medien-ID mit. Die CMS-Mannschaftsseite bietet eine Saison-/Halbserienwahl
+und eine Zeilenliste mit Links zur Detailseite `/admin/teams/:teamId`. Dort erscheint
+die interne Aufstellung samt geschützten Bildvorschauen. Der Queryparameter `season`
+erhält den Saisonfilter beim Navigieren und Neuladen. Seitenzugriff
+und Menüeintrag sind entsprechend ebenfalls ADMIN vorbehalten. Schreibaktionen
+zum Hinzufügen und Entfernen sind auf der Detailseite verfügbar. Der Button unter
+der Aufstellung öffnet einen modalen Dialog. Die Suche filtert direkt sichtbare
+Spielerzeilen mit Meldeposition, Name und Hinzufügen-Button, ohne Dropdown.
+Der Dialog schließt nach erfolgreichem Speichern; Fehler erscheinen im Dialog.
+Escape und Schließen führen zurück zum auslösenden Button, während des Speicherns
+ist Schließen gesperrt.
+Entfernen verlangt eine Bestätigung in der Zeile. Nach erfolgreichem Schreiben
+wird die Aufstellung einschließlich historischer Bilder neu geladen.
+Bildwechsel sind über den Bild-Button einer Spielerzeile verfügbar. Der ADMIN-Endpunkt
+`PUT /api/competition/teams/{team_id}/lineup/{player_id}/image` übergibt die Zuordnung
+an Members. Saison und Halbserie stammen serverseitig aus der Mannschaft; der
+Aufstellungseintrag muss vorhanden sein. Details: [Spielerbilder](player-images.md).
 `TeamLineup` enthält Mannschaftsname, Saison-ID, Kategorie und Spieler mit Namen,
 Position und optionalem Status. Sortierung: Position aufsteigend, fehlende Positionen
 zuletzt, bei Gleichstand Spieler-ID. Es wird nicht neu sortiert oder gespeichert.
@@ -179,7 +216,12 @@ Positionen lückenlos ab 1. Es erfolgt kein Abgleich mit externen Meldungsränge
 Statuswerte, Meldungen und Zuordnungen in anderen Mannschaften bleiben erhalten.
 Fehlende Zuordnungen sind ein unveränderter Erfolg, unbekannte Mannschaften führen
 zu `TeamNotFoundError`. Bootstrap: `build_remove_player_from_team()`.
-Speichern und Entfernen erfolgen in einer Transaktion. HTTP ist noch nicht vorhanden.
+Speichern und Entfernen erfolgen in einer Transaktion. Der ADMIN-Endpunkt
+`DELETE /api/competition/teams/{team_id}/lineup/{player_id}` entfernt ausschließlich
+die interne Zuordnung, keine Spieler, Meldungen oder Bildhistorien. PUT und DELETE
+liefern 204, unbekannte Mannschaften 404; PUT liefert bei unbekannten Spielern 404
+und bei verletzten Zuordnungsregeln 422. Keine Anmeldung ergibt 401, fehlende
+ADMIN-Rolle 403. Die HTTP-Schnittstelle bietet keinen manuellen Positions-Bypass.
 
 
 `ListSeasons.execute()` liefert alle gespeicherten Saisons/Halbserien als
