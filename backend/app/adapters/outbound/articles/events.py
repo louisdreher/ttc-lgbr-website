@@ -9,7 +9,7 @@ from app.core.content.articles.application.errors import ArticleNotFoundError
 from app.core.content.articles.domain.slugs import match_report_slug
 from app.core.content.events.public import (
     CreateEventCommand,
-    CreateHiddenArticleEvent,
+    CreateHiddenEditorialEvent,
     EventReader,
 )
 
@@ -18,7 +18,7 @@ class EventArticleContext:
     def __init__(
         self,
         reader: EventReader,
-        creator: CreateHiddenArticleEvent,
+        creator: CreateHiddenEditorialEvent,
         matches: GetMatchDetails,
     ):
         self.reader, self.creator = reader, creator

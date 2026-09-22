@@ -12,7 +12,7 @@ from app.core.content.events.domain.event import Event
 from app.core.content.types import Visibility
 
 
-class CreateHiddenArticleEvent:
+class CreateHiddenEditorialEvent:
     def __init__(self, events: EventRepository, categories: CategoryRepository):
         self.events, self.categories = events, categories
 
@@ -24,5 +24,5 @@ class CreateHiddenArticleEvent:
         values = asdict(command)
         values.update(visibility=Visibility.HIDDEN, report_expected=True)
         event = self.events.save(Event.create(**values))
-        # Caller owns the transaction containing both event and article.
+        # Caller owns the transaction containing the event and its editorial content.
         return event.id

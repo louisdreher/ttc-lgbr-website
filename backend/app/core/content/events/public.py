@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Protocol
-from app.core.content.events.application.article_events import CreateHiddenArticleEvent
+from app.core.content.events.application.editorial_events import CreateHiddenEditorialEvent
 from app.core.content.events.application.dto import (
     CreateEventCommand,
     EventDetails,
@@ -10,6 +10,7 @@ from app.core.content.events.application.dto import (
 )
 from app.core.content.events.application.ports import EventReader
 from app.core.content.events.application.sync_match import SyncMatchEvent
+from app.core.content.events.domain.errors import EventServiceError
 
 
 class GalleryEventReader(Protocol):
@@ -19,11 +20,12 @@ class GalleryEventReader(Protocol):
 
 
 __all__ = [
+    "EventServiceError",
     "GalleryEventReader",
     "EventDetails",
     "EventReader",
     "SyncMatchEvent",
     "SyncMatchEventCommand",
-    "CreateHiddenArticleEvent",
+    "CreateHiddenEditorialEvent",
     "CreateEventCommand",
 ]

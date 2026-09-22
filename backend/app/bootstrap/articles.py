@@ -56,11 +56,11 @@ def build_article_events(session: Session):
     )
     from app.adapters.outbound.persistence.users.reader import SqlUserReader
     from app.bootstrap.competition import build_get_match_details
-    from app.core.content.events.public import CreateHiddenArticleEvent
+    from app.core.content.events.public import CreateHiddenEditorialEvent
 
     return EventArticleContext(
         SqlEventReader(session, SqlUserReader(session)),
-        CreateHiddenArticleEvent(
+        CreateHiddenEditorialEvent(
             SqlEventRepository(session), SqlCategoryRepository(session)
         ),
         build_get_match_details(lambda: Session(session.get_bind())),
