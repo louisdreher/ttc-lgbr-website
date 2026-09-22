@@ -12,6 +12,7 @@ from app.adapters.inbound.http.articles.public_router import (
 )
 from app.adapters.inbound.http.auth.router import router as auth_router
 from app.adapters.inbound.http.media.router import router as media_router
+from app.adapters.inbound.http.media.gallery_router import router as gallery_router
 from app.adapters.inbound.http.competition.automation_router import (
     router as automation_router,
 )
@@ -69,6 +70,7 @@ app.include_router(event_admin_router)
 app.include_router(event_public_router)
 app.include_router(auth_router)
 app.include_router(media_router)
+app.include_router(gallery_router)
 
 
 @app.get("/")

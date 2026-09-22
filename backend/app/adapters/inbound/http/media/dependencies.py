@@ -9,6 +9,23 @@ from app.bootstrap.settings import settings
 from app.bootstrap.media import build_get_caption, build_update_caption
 from app.bootstrap.media import build_create_gallery
 from app.bootstrap.media import build_gallery_opportunities
+from app.bootstrap.media import build_list_galleries, build_get_gallery, build_update_gallery, build_get_gallery_image
+
+
+def provide_list_galleries(session: Annotated[Session, Depends(get_session)]):
+    return build_list_galleries(session)
+
+
+def provide_get_gallery(session: Annotated[Session, Depends(get_session)]):
+    return build_get_gallery(session)
+
+
+def provide_update_gallery(session: Annotated[Session, Depends(get_session, use_cache=False)]):
+    return build_update_gallery(session)
+
+
+def provide_gallery_image(session: Annotated[Session, Depends(get_session)]):
+    return build_get_gallery_image(session, media_directory=configured_media_directory(settings.media_directory))
 
 
 def provide_gallery_opportunities(session: Annotated[Session, Depends(get_session)]):
@@ -41,3 +58,13 @@ def provide_upload_image(
         media_directory=configured_media_directory(settings.media_directory),
         max_upload_bytes=settings.media_max_upload_bytes,
     )
+
+
+def provide_event_gallery(session: Annotated[Session, Depends(get_session, use_cache=False)]):
+    from app.bootstrap.media import build_get_event_gallery
+    return build_get_event_gallery(session)
+
+
+def provide_event_gallery_image(session: Annotated[Session, Depends(get_session, use_cache=False)]):
+    from app.bootstrap.media import build_get_event_gallery_image
+    return build_get_event_gallery_image(session, media_directory=configured_media_directory(settings.media_directory))

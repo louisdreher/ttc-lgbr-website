@@ -24,7 +24,7 @@ from app.core.content.media.application.errors import (
 from app.core.users.public import RoleName, UserDetails
 from app.adapters.inbound.http.media.dependencies import provide_create_gallery
 from app.adapters.inbound.http.media.schemas import CreateGalleryRequest, CreatedGalleryResponse
-from app.core.content.media.application.dto import CreateGalleryCommand
+from app.core.content.media.application.dto import CreateGalleryCommand, GalleryNewEvent
 from app.core.content.media.application.errors import GalleryAccessDenied, EventGalleryAlreadyExists
 from app.core.content.media.domain.gallery import GalleryError
 from app.adapters.inbound.http.media.dependencies import provide_gallery_opportunities
@@ -72,6 +72,7 @@ def create_gallery(
             media_ids=tuple(request.media_ids), user_id=current_user.id,
             can_upload=True,
             can_manage_media=bool({"ADMIN", "EDITOR"}.intersection(current_user.roles)),
+            new_event=GalleryNewEvent(**request.new_event.model_dump()) if request.new_event else None,
         ))
     except GalleryAccessDenied as error:
         raise HTTPException(403, str(error)) from error

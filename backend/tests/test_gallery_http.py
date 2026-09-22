@@ -87,6 +87,16 @@ def test_explicit_date_and_display_choice(api):
     assert command.show_date is False and command.media_ids == ()
 
 
+def test_new_event_request_is_mapped_and_requires_aware_dates(api):
+    app, use_case = api
+    authenticate(app)
+    data = {"title": "Fest", "new_event": {"title": "Event", "starts_at": "2007-06-16T12:00:00+02:00", "category_id": 1}}
+    assert TestClient(app).post(URL, json=data).status_code == 201
+    assert use_case.execute.call_args.args[0].new_event.category_id == 1
+    data["new_event"]["starts_at"] = "2007-06-16T12:00:00"
+    assert TestClient(app).post(URL, json=data).status_code == 422
+
+
 @pytest.mark.parametrize("error,status", [
     (GalleryAccessDenied("Nicht erlaubt"), 403),
     (EventGalleryAlreadyExists("Galerie existiert"), 409),
