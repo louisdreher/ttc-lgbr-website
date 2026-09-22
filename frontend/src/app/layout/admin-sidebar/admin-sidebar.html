@@ -54,6 +54,10 @@
       </div>
     </div>
 
+    <a routerLink="/admin/galleries" routerLinkActive="active" ariaCurrentWhenActive="page" (click)="onNavigate()">
+      Bildergalerien
+    </a>
+
     <!-- Mannschaften -->
     @if (authService.hasAnyRole('ADMIN', 'EDITOR')) {
       <a routerLink="/admin/teams" routerLinkActive="active" (click)="onNavigate()">

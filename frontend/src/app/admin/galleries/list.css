@@ -1,0 +1,25 @@
+select {
+  min-height: 44px;
+  padding: 0.6rem;
+  margin: 0.5rem 0 1.5rem 0.75rem;
+  border: 1px solid #8795a2;
+  border-radius: 0.4rem;
+  background: white;
+  color: #20252b;
+}
+select:focus-visible {
+  outline: 3px solid #17587b;
+  outline-offset: 3px;
+}
+app-media-preview {
+  width: 180px;
+  flex-shrink: 0;
+}
+.row > div {
+  flex: 1;
+}
+@media (max-width: 640px) {
+  app-media-preview {
+    width: 100%;
+  }
+}

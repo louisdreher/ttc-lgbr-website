@@ -1,3 +1,4 @@
+import { galleryLeaveGuard } from './admin/galleries/form.guard';
 import { Routes } from '@angular/router';
 
 import { PublicLayoutComponent } from './layout/public-layout/public-layout';
@@ -194,6 +195,35 @@ export const routes: Routes = [
         path: 'teams',
         component: AdminTeams,
         canActivate: [roleGuard('ADMIN', 'EDITOR')],
+      },
+      {
+        path: 'galleries/new',
+        loadComponent: () => import('./admin/galleries/form').then((module) => module.GalleryForm),
+        canActivate: [roleGuard('ADMIN', 'EDITOR')],
+        canDeactivate: [galleryLeaveGuard],
+        title: 'Neue Galerie | TTC',
+      },
+      {
+        path: 'galleries/event/:eventId',
+        loadComponent: () => import('./admin/galleries/form').then((module) => module.GalleryForm),
+        canDeactivate: [galleryLeaveGuard],
+        title: 'Eventgalerie anlegen | TTC',
+      },
+      {
+        path: 'galleries/:id/edit',
+        loadComponent: () => import('./admin/galleries/form').then((module) => module.GalleryForm),
+        canDeactivate: [galleryLeaveGuard],
+        title: 'Galerie bearbeiten | TTC',
+      },
+      {
+        path: 'galleries/create',
+        loadComponent: () => import('./admin/galleries/create').then((module) => module.AdminGalleryCreate),
+        title: 'Galerie anlegen | TTC',
+      },
+      {
+        path: 'galleries',
+        loadComponent: () => import('./admin/galleries/list').then((module) => module.GalleryList),
+        title: 'Bildergalerien | TTC',
       },
       {
         path: 'events',
