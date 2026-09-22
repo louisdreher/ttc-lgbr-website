@@ -1,3 +1,4 @@
+from app.adapters.outbound.persistence.media.public import event_gallery_contains_image
 from app.adapters.outbound.persistence.articles.models import (
     Article as ArticleRecord,
 )
@@ -99,12 +100,15 @@ class SQLModelArticleRepository:
         return self._to_domain(row) if row else None
 
     def validate_cover(
-        self, cover_image_id: int | None, *, user_id: int, can_edit_all: bool
+        self, cover_image_id: int | None, *, user_id: int, can_edit_all: bool, event_id: int | None = None
     ) -> None:
         if cover_image_id is None:
             return
         image = self.session.get(MediaAsset, cover_image_id)
-        if image is None or (image.uploaded_by_user_id != user_id and not can_edit_all):
+        if image is None or (
+            image.uploaded_by_user_id != user_id and not can_edit_all
+            and not (event_id is not None and event_gallery_contains_image(self.session, event_id, cover_image_id))
+        ):
             raise ArticleDomainError("Titelbild nicht gefunden.")
 
     def delete(self, article: Article) -> None:

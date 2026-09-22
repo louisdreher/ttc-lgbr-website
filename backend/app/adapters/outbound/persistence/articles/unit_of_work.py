@@ -1,4 +1,5 @@
 from sqlmodel import Session
+from app.adapters.outbound.articles.galleries import SqlArticleGalleryCovers
 
 from app.adapters.outbound.persistence.articles.repository import (
     SQLModelArticleRepository,
@@ -11,6 +12,7 @@ class SqlArticleUnitOfWork:
     def __init__(self, session: Session):
         self.session = session
         self.articles = SQLModelArticleRepository(session)
+        self.gallery_covers = SqlArticleGalleryCovers(session)
         self._committed = False
 
     def __enter__(self):

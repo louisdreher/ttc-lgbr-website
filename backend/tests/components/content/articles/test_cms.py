@@ -157,6 +157,43 @@ def form(**changes):
     )
 
 
+def test_report_uses_foreign_image_only_from_its_own_event_gallery(cms):
+    from app.adapters.inbound.http.media.gallery_router import router as gallery_router
+    from app.adapters.outbound.persistence.media.models import MediaAsset, Gallery
+    from app.bootstrap.media import build_create_gallery
+    from app.core.content.media.application.dto import CreateGalleryCommand
+
+    client, engine, login = cms
+    client.app.include_router(gallery_router)
+    article = client.post('/api/admin/articles/save', json=form(event_id=1)).json()
+    with Session(engine) as session:
+        for mid in (11, 12, 13):
+            session.add(MediaAsset(id=mid, storage_key=f'images/{mid}.webp', original_filename='fest.jpg',
+                mime_type='image/webp', width=10, height=10, file_size=10, uploaded_by_user_id=3,
+                caption='Vereinsfest'))
+        session.commit()
+        gallery = build_create_gallery(session).execute(CreateGalleryCommand(
+            title='Fest', user_id=3, can_upload=True, can_manage_media=True, event_id=1, media_ids=(12, 11)))
+    response = client.get('/api/admin/media/galleries/events/1')
+    assert response.status_code == 200 and response.json()['media_ids'] == [12, 11]
+    assert response.headers['cache-control'] == 'private, no-store'
+    caption = client.get('/api/admin/media/galleries/events/1/images/11/caption')
+    assert caption.json() == dict(caption='Vereinsfest', can_edit=False)
+    assert client.get('/api/admin/media/galleries/events/1/images/13/caption').status_code == 404
+    assert client.get(f'/api/admin/media/galleries/{gallery.id}').status_code == 404
+    saved = client.put(f'/api/admin/articles/{article["id"]}', json=form(event_id=1, cover_image_id=11))
+    assert saved.status_code == 200 and saved.json()['cover_image_id'] == 11
+    assert client.put(f'/api/admin/articles/{article["id"]}', json=form(event_id=1, cover_image_id=13)).status_code == 422
+    assert client.post('/api/admin/articles/save', json=form(slug='frei', cover_image_id=11)).status_code == 422
+    with Session(engine) as session:
+        assert session.get(Gallery, gallery.id).cover_image_id == 11
+    login('other')
+    assert client.get('/api/admin/media/galleries/events/1').status_code == 403
+    assert client.get('/api/admin/media/galleries/events/1/images/11/caption').status_code == 403
+    login('member')
+    assert client.get('/api/admin/media/galleries/events/1').status_code == 403
+
+
 def test_editorial_time_filter_applies_before_count_and_pagination(cms):
     client, engine, login = cms
     old_id = client.post("/api/admin/articles/save", json=form(slug="old")).json()["id"]

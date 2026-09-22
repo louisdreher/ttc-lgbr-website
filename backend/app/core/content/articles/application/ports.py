@@ -24,13 +24,23 @@ class ArticleRepository(Protocol):
     def find_by_event(self, event_id: int) -> Article | None: ...
     def lock_event(self, event_id: int) -> None: ...
     def validate_cover(
-        self, cover_image_id: int | None, *, user_id: int, can_edit_all: bool
+        self, cover_image_id: int | None, *, user_id: int, can_edit_all: bool, event_id: int | None = None
     ) -> None: ...
     def delete(self, article: Article) -> None: ...
 
 
+class ArticleGalleryCovers(Protocol):
+    def adopt(self, event_id: int, media_id: int) -> None:
+        """Adopt a validated report cover into an existing gallery, without committing.
+
+        The caller holds the event/report locks. Never create a gallery here.
+        """
+        ...
+
+
 class ArticleUnitOfWork(Protocol):
     articles: ArticleRepository
+    gallery_covers: ArticleGalleryCovers
 
     def __enter__(self) -> Self: ...
     def __exit__(self, exc_type, exc_value, traceback) -> None: ...

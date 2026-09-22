@@ -244,11 +244,13 @@ class SaveArticle:
                     created_at=now,
                     updated_at=now,
                 )
-            if command.cover_image_id != article.cover_image_id:
+            cover_changed = command.cover_image_id != article.cover_image_id
+            if cover_changed:
                 self.uow.articles.validate_cover(
                     command.cover_image_id,
                     user_id=command.actor.user_id,
                     can_edit_all=command.actor.can_edit_all,
+                    event_id=article.event_id,
                 )
             article.revise(
                 title=command.title,
@@ -265,6 +267,8 @@ class SaveArticle:
             saved = self.uow.articles.save(article)
             if saved.id is None:
                 raise RuntimeError("Der gespeicherte Beitrag besitzt keine ID.")
+            if cover_changed and saved.event_id is not None and saved.cover_image_id is not None:
+                self.uow.gallery_covers.adopt(saved.event_id, saved.cover_image_id)
             self.uow.commit()
             return saved.id
 
