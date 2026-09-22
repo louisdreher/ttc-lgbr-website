@@ -86,11 +86,32 @@
         </section>
         <section class="panel" aria-label="Titelbild">
           <h2>Titelbild</h2>
-          @if (coverImageId(); as id) { <app-media-preview [mediaId]="id" /> }
-          @if (coverImageId(); as id) { <app-media-caption [mediaId]="id" /> }
+          @if (coverImageId(); as id) {
+            <app-media-preview [mediaId]="id" [eventId]="coverEventId()" />
+          }
+          @if (coverImageId(); as id) {
+            <app-media-caption [mediaId]="id" [eventId]="coverEventId()" />
+          }
           <div class="actions">
-            <button type="button" (click)="uploadOpen.set(true)">{{ coverImageId() ? 'Bild ersetzen' : 'Bild hochladen' }}</button>
-            @if (coverImageId()) { <button type="button" (click)="removeCover()">Titelbild entfernen</button> }
+            <button type="button" (click)="uploadOpen.set(true)">
+              {{ coverImageId() ? 'Bild ersetzen' : 'Bild hochladen' }}
+            </button>
+            @if (eventId(); as event) {
+              <app-report-gallery
+                [eventId]="event"
+                [articleId]="articleId()"
+                [title]="form.controls.title.value"
+                [dirty]="form.dirty"
+                [selectedId]="coverImageId()"
+                [savedCoverId]="article()?.cover_image_id ?? null"
+                (selected)="selectGalleryCover($event)"
+                (galleryLoaded)="gallery.set($event)"
+                (busyChange)="galleryBusy.set($event)"
+              />
+            }
+            @if (coverImageId()) {
+              <button type="button" (click)="removeCover()">Titelbild entfernen</button>
+            }
           </div>
           <p class="muted">Die Titelbild-Auswahl wird mit dem Beitrag gespeichert.</p>
         </section>
@@ -144,75 +165,34 @@
           </div>
         </section>
         @if (articleId() === null && eventId() === null) {
-          <section class="panel">
-            <label class="check"
-              ><input
-                type="checkbox"
-                [checked]="creatingEvent()"
-                (change)="toggleEvent(!creatingEvent())"
-              />
-              Zusätzlich einen Event anlegen</label
-            >
-            @if (creatingEvent()) {
-              <p class="muted">
-                Der Event wird zusammen mit dem Beitrag gespeichert und bleibt im Kalender
-                verborgen.
-              </p>
-              @if (categoryError()) {
-                <p class="error" role="alert" articleFocus>{{ categoryError() }}</p>
-                <button type="button" (click)="loadCategories()">Kategorien erneut laden</button>
-              }
-              <div [formGroup]="eventForm">
-                <div class="field">
-                  <label for="event-title">Event-Titel</label
-                  ><input id="event-title" formControlName="title" />
-                </div>
-                <div class="grid">
-                  <div class="field">
-                    <label for="event-start">Beginn</label
-                    ><input id="event-start" type="datetime-local" formControlName="starts_at" />
-                  </div>
-                  <div class="field">
-                    <label for="event-end">Ende (optional)</label
-                    ><input id="event-end" type="datetime-local" formControlName="ends_at" />
-                  </div>
-                </div>
-                <div class="field">
-                  <label for="event-category">Kategorie</label
-                  ><select id="event-category" formControlName="category_id">
-                    <option [ngValue]="null">Bitte auswählen</option>
-                    @for (category of categories(); track category.id) {
-                      <option [ngValue]="category.id">{{ category.name }}</option>
-                    }
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="event-location">Ort (optional)</label
-                  ><input id="event-location" formControlName="location" />
-                </div>
-                <div class="field">
-                  <label for="event-description">Event-Beschreibung (optional)</label
-                  ><textarea
-                    id="event-description"
-                    rows="3"
-                    formControlName="description"
-                  ></textarea>
-                </div>
-              </div>
-            }
-          </section>
+          <app-editorial-event
+            idPrefix="article"
+            [form]="eventForm"
+            [enabled]="creatingEvent()"
+            (enabledChange)="toggleEvent($event)"
+          />
         }
         <div class="actions">
-          <button type="submit" [disabled]="saving()">
+          <button type="submit" [disabled]="saving() || galleryBusy()">
             {{ saving() ? 'Wird gespeichert …' : 'Speichern' }}
           </button>
           @if (canSubmit() && article()?.status !== 'IN_REVIEW') {
-            <button type="button" class="primary" (click)="save('submit')" [disabled]="saving()">
+            <button
+              type="button"
+              class="primary"
+              (click)="save('submit')"
+              [disabled]="saving() || galleryBusy()"
+            >
               Einreichen
             </button>
           }
           @if (canPublish()) {
-            <button type="button" class="primary" (click)="save('publish')" [disabled]="saving()">
+            <button
+              type="button"
+              class="primary"
+              (click)="save('publish')"
+              [disabled]="saving() || galleryBusy()"
+            >
               Veröffentlichen
             </button>
           }
@@ -220,7 +200,11 @@
       </fieldset>
     </form>
     @if (uploadOpen()) {
-      <app-media-upload [maxFiles]="1" (completed)="selectCover($event)" (cancelled)="uploadOpen.set(false)" />
+      <app-media-upload
+        [maxFiles]="1"
+        (completed)="selectCover($event)"
+        (cancelled)="uploadOpen.set(false)"
+      />
     }
   }
 }

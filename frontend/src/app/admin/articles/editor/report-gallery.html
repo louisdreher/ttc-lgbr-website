@@ -1,0 +1,53 @@
+@if (articleId() === null) {
+  <p>Speichere den Bericht zuerst, um die Galerie des Events zu verwenden oder anzulegen.</p>
+} @else if (loading()) {
+  <p role="status">Galerie wird geladen …</p>
+} @else if (pending().length) {
+  <p>
+    {{ pending().length }} Bilder sind hochgeladen. Die Galerie wird erst mit erfolgreichem Anlegen
+    gespeichert.
+  </p>
+  <button type="button" [disabled]="saving() || dirty()" (click)="create()">
+    Galerie erneut anlegen
+  </button>
+  <button type="button" [disabled]="saving()" (click)="discard()">
+    Zuordnung verwerfen und neu laden
+  </button>
+} @else if (loaded()) {
+  @if (gallery()) {
+    <button type="button" (click)="pickerOpen.set(true)">Aus Galerie</button>
+  } @else {
+    <button type="button" [disabled]="dirty()" (click)="openUpload()">Galerie anlegen</button>
+    @if (dirty()) {
+      <p>
+        Speichere den Bericht zuerst, damit das aktuelle Titelbild in die neue Galerie übernommen
+        wird.
+      </p>
+    }
+  }
+} @else {
+  <button type="button" (click)="retry.set(retry() + 1)">Galerie erneut laden</button>
+}
+@if (saving()) {
+  <p role="status">Galerie wird angelegt …</p>
+}
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+@if (notice()) {
+  <p role="status">{{ notice() }}</p>
+}
+@if (uploadOpen()) {
+  <app-media-upload (completed)="uploaded($event)" (cancelled)="uploadOpen.set(false)" />
+}
+@if (pickerOpen()) {
+  @if (gallery(); as current) {
+    <app-gallery-image-picker
+      [gallery]="current"
+      [eventId]="eventId()"
+      [selectedId]="selectedId()"
+      (selected)="choose($event)"
+      (cancelled)="pickerOpen.set(false)"
+    />
+  }
+}

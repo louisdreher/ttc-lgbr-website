@@ -1,3 +1,10 @@
+import { ReportGallery } from './report-gallery';
+import { GalleryDetails } from '../../../core/media/gallery-api.service';
+import { EditorialEvent } from '../../../shared/editorial-event/editorial-event';
+import {
+  createEditorialEventForm,
+  editorialEventInput,
+} from '../../../shared/editorial-event/editorial-event-form';
 import { ArticleFocus } from '../../../core/articles/article-focus';
 import { MediaUpload } from '../../../shared/media-upload/media-upload';
 import { MediaPreview } from '../../../shared/media-upload/media-preview';
@@ -26,13 +33,21 @@ import {
   PreparedArticle,
   STATUS_LABELS,
 } from '../../../core/articles/article.models';
-import { PublicEventApiService } from '../../../pages/events/public-event-api.service';
-import { PublicEventCategory } from '../../../pages/events/public-event.models';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-article-editor',
-  imports: [ReactiveFormsModule, RouterLink, DatePipe, ArticleFocus, MediaUpload, MediaPreview, MediaCaption],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    DatePipe,
+    ArticleFocus,
+    MediaUpload,
+    MediaPreview,
+    MediaCaption,
+    EditorialEvent,
+    ReportGallery,
+  ],
   templateUrl: './article-editor.html',
   styleUrls: ['../cms.css', './article-editor.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,7 +55,6 @@ import { AuthService } from '../../../core/auth/auth.service';
 })
 export class ArticleEditor {
   private readonly api = inject(ArticleApiService);
-  private readonly eventApi = inject(PublicEventApiService);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -52,8 +66,6 @@ export class ArticleEditor {
   readonly saving = signal(false);
   readonly error = signal('');
   readonly notice = signal('');
-  readonly categories = signal<PublicEventCategory[]>([]);
-  readonly categoryError = signal('');
   readonly creatingEvent = signal(false);
   readonly labels = STATUS_LABELS;
   readonly readOnly = computed(
@@ -70,6 +82,16 @@ export class ArticleEditor {
   readonly types = ARTICLE_TYPES;
   readonly coverImageId = signal<number | null>(null);
   readonly uploadOpen = signal(false);
+  readonly gallery = signal<GalleryDetails | null>(null);
+  readonly galleryBusy = signal(false);
+  readonly coverEventId = computed(() =>
+    this.gallery()?.media_ids.includes(this.coverImageId() ?? 0) ? this.eventId() : null,
+  );
+
+  selectGalleryCover(id: number): void {
+    this.coverImageId.set(id);
+    this.form.markAsDirty();
+  }
 
   selectCover(images: UploadedImage[]): void {
     this.uploadOpen.set(false);
@@ -104,23 +126,15 @@ export class ArticleEditor {
     visibility: new FormControl<ArticleVisibility>('PUBLIC', { nonNullable: true }),
     tags: new FormControl('', { nonNullable: true }),
   });
-  readonly eventForm = new FormGroup({
-    title: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.maxLength(255), Validators.pattern(/\S/)],
-    }),
-    starts_at: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    ends_at: new FormControl('', { nonNullable: true }),
-    category_id: new FormControl<number | null>(null, Validators.required),
-    location: new FormControl('', { nonNullable: true }),
-    description: new FormControl('', { nonNullable: true }),
-  });
+  readonly eventForm = createEditorialEventForm();
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
   load(): void {
     this.coverImageId.set(null);
+    this.gallery.set(null);
+    this.galleryBusy.set(false);
     this.uploadOpen.set(false);
     this.request?.unsubscribe();
     this.loaded.set(false);
@@ -207,20 +221,10 @@ export class ArticleEditor {
   toggleEvent(enabled: boolean): void {
     this.creatingEvent.set(enabled);
     this.form.markAsDirty();
-    if (enabled && this.categories().length === 0) this.loadCategories();
-  }
-  loadCategories(): void {
-    this.categoryError.set('');
-    this.eventApi
-      .getCategories()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (categories) => this.categories.set(categories),
-        error: (error) => this.categoryError.set(articleError(error)),
-      });
   }
   save(action: 'save' | 'submit' | 'publish'): void {
-    if (!this.loaded() || this.saving() || this.loading() || this.readOnly()) return;
+    if (!this.loaded() || this.saving() || this.galleryBusy() || this.loading() || this.readOnly())
+      return;
     if (action === 'publish' && !this.canPublish()) return;
     if (action === 'submit' && !this.canSubmit()) return;
     this.error.set('');
@@ -251,29 +255,14 @@ export class ArticleEditor {
       new_event: null,
     };
     if (this.creatingEvent()) {
-      this.eventForm.markAllAsTouched();
-      const event = this.eventForm.getRawValue();
-      const start = new Date(event.starts_at);
-      const end = event.ends_at ? new Date(event.ends_at) : null;
-      if (
-        this.eventForm.invalid ||
-        event.category_id === null ||
-        !Number.isFinite(start.getTime()) ||
-        (end !== null && (!Number.isFinite(end.getTime()) || end < start))
-      ) {
+      const event = editorialEventInput(this.eventForm);
+      if (event === null) {
         this.error.set(
           'Bitte prüfe Titel, Kategorie und Zeitraum des Events. Das Ende darf nicht vor dem Beginn liegen.',
         );
         return;
       }
-      payload.new_event = {
-        ...event,
-        category_id: event.category_id,
-        starts_at: start.toISOString(),
-        ends_at: end?.toISOString() ?? null,
-        location: event.location.trim() || null,
-        description: event.description.trim() || null,
-      };
+      payload.new_event = event;
     }
     this.saving.set(true);
     this.api
@@ -308,14 +297,14 @@ export class ArticleEditor {
   }
   confirmLeave(): boolean {
     return (
-      !(this.form.dirty || (this.creatingEvent() && this.eventForm.dirty)) ||
+      !(this.galleryBusy() || this.form.dirty || (this.creatingEvent() && this.eventForm.dirty)) ||
       window.confirm(
         'Deine Änderungen sind noch nicht gespeichert. Möchtest du die Seite trotzdem verlassen?',
       )
     );
   }
   beforeUnload(event: BeforeUnloadEvent): void {
-    if (this.form.dirty || (this.creatingEvent() && this.eventForm.dirty)) {
+    if (this.galleryBusy() || this.form.dirty || (this.creatingEvent() && this.eventForm.dirty)) {
       event.preventDefault();
       event.returnValue = '';
     }

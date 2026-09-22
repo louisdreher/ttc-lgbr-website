@@ -1,3 +1,4 @@
+import { GalleryApiService } from '../../../core/media/gallery-api.service';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -30,7 +31,11 @@ describe('Article editor workflow', () => {
     TestBed.configureTestingModule({
       imports: [ArticleEditor],
       providers: [
-        { provide: MediaApiService, useValue: { image: () => of(new Blob()), caption: () => of({ caption: null }) } },
+        { provide: GalleryApiService, useValue: { byEvent: () => of(null) } },
+        {
+          provide: MediaApiService,
+          useValue: { image: () => of(new Blob()), caption: () => of({ caption: null }) },
+        },
         provideRouter([]),
         {
           provide: ActivatedRoute,
@@ -51,13 +56,31 @@ describe('Article editor workflow', () => {
   }
   it('keeps uploaded cover selection dirty until saving and supports removal', () => {
     const { component, api } = setup(articleFixture());
-    component.selectCover([{ id: 42, width: 10, height: 10, file_size: 20, mime_type: 'image/webp' }]);
+    component.selectCover([
+      { id: 42, width: 10, height: 10, file_size: 20, mime_type: 'image/webp' },
+    ]);
     expect(component.form.dirty).toBe(true);
     component.save('save');
-    expect(api.save).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ cover_image_id: 42 }), false);
+    expect(api.save).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ cover_image_id: 42 }),
+      false,
+    );
     component.removeCover();
     expect(component.coverImageId()).toBeNull();
     expect(component.form.dirty).toBe(true);
+  });
+  it('saves a selected gallery image through the normal report save', () => {
+    const { component, api } = setup(articleFixture({ event_id: 9 }));
+    component.selectGalleryCover(11);
+    expect(component.form.dirty).toBe(true);
+    expect(api.save).not.toHaveBeenCalled();
+    component.save('save');
+    expect(api.save).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ event_id: 9, cover_image_id: 11 }),
+      false,
+    );
   });
   it('loads a system draft without claiming and locks its match type', () => {
     const { component, api } = setup(articleFixture(), true);
@@ -166,5 +189,27 @@ describe('Article editor workflow', () => {
     component.save('save');
     expect(api.save).not.toHaveBeenCalled();
     expect(component.error()).toContain('Zeitraum');
+  });
+
+  it('saves event input from the shared component with the article', () => {
+    const { component, fixture, api } = setup(null);
+    component.form.patchValue({ title: 'Bericht', slug: 'bericht' });
+    fixture.nativeElement.querySelector('app-editorial-event input[type=checkbox]').click();
+    fixture.detectChanges();
+    expect(component.creatingEvent()).toBe(true);
+    expect(component.form.dirty).toBe(true);
+    component.eventForm.patchValue({
+      title: 'Fest',
+      starts_at: '2026-09-17T12:00',
+      category_id: 2,
+    });
+    component.save('save');
+    expect(api.save).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({
+        new_event: expect.objectContaining({ title: 'Fest', category_id: 2, ends_at: null }),
+      }),
+      false,
+    );
   });
 });
