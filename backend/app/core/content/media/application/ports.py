@@ -6,7 +6,15 @@ from app.core.content.media.application.dto import ImageReference, ProcessedImag
 from app.core.content.media.domain.asset import MediaAsset
 from app.core.content.media.domain.gallery import Gallery
 from app.core.content.media.application.dto import GalleryEventContext
+from app.core.content.media.application.dto import GalleryNewEvent
 from app.core.content.media.application.dto import GalleryOpportunitiesQuery, GalleryOpportunityPage
+from app.core.content.media.application.dto import GallerySnapshot, GalleryDetails, GalleryPage, ListGalleriesQuery
+
+
+class GalleryReader(Protocol):
+    def find_by_event(self, event_id: int) -> GalleryDetails | None: ...
+    def list(self, query: ListGalleriesQuery) -> GalleryPage: ...
+    def get(self, gallery_id: int) -> GalleryDetails | None: ...
 
 
 class GalleryOpportunityReader(Protocol):
@@ -14,6 +22,8 @@ class GalleryOpportunityReader(Protocol):
 
 
 class GalleryRepository(Protocol):
+    def get_for_update(self, gallery_id: int) -> GallerySnapshot | None: ...
+    def update(self, gallery: Gallery) -> None: ...
     def exists_for_event(self, event_id: int) -> bool: ...
     def save(self, gallery: Gallery, *, created_by_user_id: int) -> Gallery:
         """Insert without committing; enforce one gallery per event in persistence."""
@@ -21,6 +31,10 @@ class GalleryRepository(Protocol):
 
 
 class GalleryEvents(Protocol):
+    def create_hidden(self, values: GalleryNewEvent, user_id: int) -> int:
+        """Create in the same transaction without committing."""
+        ...
+
     def for_creation(self, event_id: int, user_id: int) -> GalleryEventContext | None:
         """Read event/report through public contracts in the creation transaction.
 

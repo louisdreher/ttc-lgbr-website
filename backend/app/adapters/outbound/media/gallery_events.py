@@ -1,14 +1,23 @@
 from datetime import timezone
+from dataclasses import asdict
 from zoneinfo import ZoneInfo
 
 from app.core.content.articles.public import GalleryReportReader
-from app.core.content.events.public import GalleryEventReader
-from app.core.content.media.application.dto import GalleryEventContext
+from app.core.content.events.public import GalleryEventReader, CreateHiddenEditorialEvent, CreateEventCommand, EventServiceError
+from app.core.content.media.application.dto import GalleryEventContext, GalleryNewEvent
+from app.core.content.media.domain.gallery import GalleryError
 
 
 class EventGalleryContext:
-    def __init__(self, events: GalleryEventReader, reports: GalleryReportReader):
+    def __init__(self, events: GalleryEventReader, reports: GalleryReportReader, creator: CreateHiddenEditorialEvent):
         self.events, self.reports = events, reports
+        self.creator = creator
+
+    def create_hidden(self, values: GalleryNewEvent, user_id: int) -> int:
+        try:
+            return self.creator.execute(CreateEventCommand(**asdict(values), created_by_user_id=user_id))
+        except EventServiceError as error:
+            raise GalleryError(str(error)) from error
 
     def for_creation(self, event_id: int, user_id: int) -> GalleryEventContext | None:
         starts_at = self.events.lock_for_gallery(event_id)

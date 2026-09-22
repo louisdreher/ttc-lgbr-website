@@ -20,3 +20,11 @@ class GalleryAccessDenied(Exception):
 
 class EventGalleryAlreadyExists(Exception):
     pass
+
+
+class GalleryNotFound(Exception):
+    pass
+
+
+class GalleryConflict(Exception):
+    pass

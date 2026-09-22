@@ -1,4 +1,9 @@
 import logging
+from dataclasses import replace
+from datetime import timezone
+from app.core.content.media.application.dto import UpdateGalleryCommand
+from app.core.content.media.application.errors import GalleryNotFound, GalleryConflict
+from app.core.content.media.application.queries import require_gallery_access
 
 from app.core.content.media.application.dto import (
     CreateGalleryCommand,
@@ -24,6 +29,34 @@ from app.core.content.media.domain.gallery import Gallery, GalleryError
 logger = logging.getLogger(__name__)
 
 
+class UpdateGallery:
+    def __init__(self, uow: GalleryUnitOfWork):
+        self.uow = uow
+
+    def execute(self, command: UpdateGalleryCommand) -> int:
+        require_gallery_access(command)
+        with self.uow:
+            current = self.uow.galleries.get_for_update(command.gallery_id)
+            if current is None or (not command.can_manage_media and current.created_by_user_id != command.user_id):
+                raise GalleryNotFound()
+            # SQLite timestamps are naive; PostgreSQL returns aware UTC values.
+            stamp = current.updated_at
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=timezone.utc)
+            if command.updated_at != stamp:
+                raise GalleryConflict("Die Galerie wurde inzwischen geändert. Bitte neu laden.")
+            gallery = replace(current.gallery, title=command.title,
+                gallery_date=command.gallery_date, show_date=command.show_date,
+                media_ids=command.media_ids, cover_image_id=command.cover_image_id)
+            for media_id in set(gallery.media_ids) - set(current.gallery.media_ids):
+                image = self.uow.media.get(media_id)
+                if image is None or (not command.can_manage_media and image.uploaded_by_user_id != command.user_id):
+                    raise ImageNotFound()
+            self.uow.galleries.update(gallery)
+            self.uow.commit()
+            return command.gallery_id
+
+
 class CreateGallery:
     def __init__(self, uow: GalleryUnitOfWork) -> None:
         self.uow = uow
@@ -32,15 +65,22 @@ class CreateGallery:
         if command.user_id <= 0 or not command.can_upload:
             raise GalleryAccessDenied("Keine Berechtigung zum Anlegen einer Galerie.")
         with self.uow:
+            event_id = command.event_id
+            if command.new_event is not None:
+                if event_id is not None:
+                    raise GalleryError("Bitte entweder ein bestehendes oder ein neues Event wählen.")
+                if not command.can_manage_media:
+                    raise GalleryAccessDenied("Neue Events mit Galerie erfordern Redaktionsrechte.")
+                event_id = self.uow.events.create_hidden(command.new_event, command.user_id)
             cover = None
             gallery_date = command.gallery_date
-            if command.event_id is not None:
-                if command.event_id <= 0:
+            if event_id is not None:
+                if event_id <= 0:
                     raise GalleryError("Ungültige Event-ID.")
-                context = self.uow.events.for_creation(command.event_id, command.user_id)
+                context = self.uow.events.for_creation(event_id, command.user_id)
                 if context is None or not (command.can_manage_media or context.can_edit_report):
                     raise GalleryAccessDenied("Event nicht verfügbar oder nicht bearbeitbar.")
-                if self.uow.galleries.exists_for_event(command.event_id):
+                if self.uow.galleries.exists_for_event(event_id):
                     raise EventGalleryAlreadyExists("Für dieses Event existiert bereits eine Galerie.")
                 cover = context.report_cover_image_id
                 if gallery_date is None:
@@ -51,10 +91,10 @@ class CreateGallery:
             if gallery_date is None:
                 raise GalleryError("Bitte ein Galeriedatum angeben.")
             gallery = Gallery(
-                title=command.title, event_id=command.event_id, media_ids=command.media_ids,
+                title=command.title, event_id=event_id, media_ids=command.media_ids,
                 gallery_date=gallery_date,
                 show_date=(
-                    command.event_id is not None
+                    event_id is not None
                     if command.show_date is None else command.show_date
                 ),
             )

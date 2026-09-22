@@ -11,8 +11,11 @@ from app.adapters.outbound.persistence.events.models import Event
 from app.adapters.outbound.persistence.media.models import Gallery, GalleryMedia, MediaAsset
 from app.adapters.outbound.persistence.users.models import User
 from app.bootstrap.media import build_create_gallery
-from app.core.content.media.application.dto import CreateGalleryCommand
+from app.core.content.media.application.dto import CreateGalleryCommand, GalleryNewEvent
 from app.core.content.media.application.errors import GalleryAccessDenied
+from app.core.content.media.application.errors import ImageNotFound
+from app.core.content.media.domain.gallery import GalleryError
+from app.core.content.types import Visibility
 
 
 def creation(**changes):
@@ -20,6 +23,45 @@ def creation(**changes):
         "title": "Turnier", "user_id": 1, "can_upload": True,
         "event_id": 7, "media_ids": (11, 42),
     } | changes))
+
+
+def new_event():
+    return GalleryNewEvent(title="Neues Fest", starts_at=datetime(2007, 6, 15, 23, 30, tzinfo=timezone.utc), category_id=1)
+
+
+def test_new_event_and_gallery_are_committed_together(engine):
+    with Session(engine) as session:
+        result = build_create_gallery(session).execute(creation(
+            event_id=None, can_manage_media=True, new_event=new_event(),
+        ))
+    with Session(engine) as session:
+        gallery = session.get(Gallery, result.id)
+        event = session.get(Event, gallery.event_id)
+        assert event.title == "Neues Fest"
+        assert event.visibility == Visibility.HIDDEN
+        assert event.report_expected is True
+        assert event.created_by_user_id == 1
+        assert gallery.gallery_date == date(2007, 6, 16)
+        assert gallery.show_date is True
+
+
+def test_new_event_rolls_back_when_image_validation_fails(engine):
+    with Session(engine) as session:
+        with pytest.raises(ImageNotFound):
+            build_create_gallery(session).execute(creation(
+                event_id=None, can_manage_media=True, new_event=new_event(), media_ids=(999,),
+            ))
+    with Session(engine) as session:
+        assert session.exec(select(Event).where(Event.title == "Neues Fest")).first() is None
+        assert session.exec(select(Gallery)).first() is None
+
+
+@pytest.mark.parametrize("event_id,editor,error", [(7, True, GalleryError), (None, False, GalleryAccessDenied)])
+def test_new_event_rejects_ambiguous_context_and_unauthorized_users(engine, event_id, editor, error):
+    with Session(engine) as session:
+        with pytest.raises(error):
+            build_create_gallery(session).execute(creation(event_id=event_id, can_manage_media=editor, new_event=new_event()))
+        assert session.exec(select(Event).where(Event.title == "Neues Fest")).first() is None
 
 
 def seed_report(engine, *, author_id=1, status=ArticleStatus.DRAFT, system=False):
