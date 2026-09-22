@@ -1,3 +1,5 @@
+import { EditorialEventInput } from '../events/editorial-event.models';
+
 export type ArticleType =
   'NEWS' | 'MATCH_REPORT' | 'EVENT_REPORT' | 'ANNUAL_REPORT' | 'ANNOUNCEMENT';
 export type ArticleStatus = 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED';
@@ -60,14 +62,6 @@ export interface PreparedArticle {
   cover_image_id: number | null;
   editable_fields: string[];
 }
-export interface HiddenEvent {
-  title: string;
-  starts_at: string;
-  ends_at: string | null;
-  category_id: number;
-  location: string | null;
-  description: string | null;
-}
 export interface ArticleWrite {
   title: string;
   slug: string;
@@ -78,7 +72,7 @@ export interface ArticleWrite {
   event_id: number | null;
   tags: string[];
   cover_image_id: number | null;
-  new_event: HiddenEvent | null;
+  new_event: EditorialEventInput | null;
 }
 export const ARTICLE_TYPES: { value: ArticleType; label: string }[] = [
   { value: 'NEWS', label: 'Nachricht' },

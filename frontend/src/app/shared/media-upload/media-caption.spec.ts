@@ -36,4 +36,15 @@ describe('MediaCaption', () => {
     expect(component.error()).not.toBe('');
     expect(component.saving()).toBe(false);
   });
+  it('shows another uploader’s gallery caption without granting edit rights', () => {
+    const { fixture, component, api } = setup();
+    api.caption.mockReturnValueOnce(of({ caption: 'Galeriebild', can_edit: false }));
+    fixture.componentRef.setInput('eventId', 7);
+    fixture.detectChanges();
+    expect(api.caption).toHaveBeenLastCalledWith(42, 7);
+    expect(component.caption.value).toBe('Galeriebild');
+    expect(component.caption.disabled).toBe(true);
+    component.save();
+    expect(api.updateCaption).not.toHaveBeenCalled();
+  });
 });

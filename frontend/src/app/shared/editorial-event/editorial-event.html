@@ -1,0 +1,58 @@
+<section class="panel">
+  <label class="check"
+    ><input type="checkbox" [checked]="enabled()" (change)="enabledChange.emit(!enabled())" />
+    Zusätzlich einen Event anlegen</label
+  >
+  @if (enabled()) {
+    <p class="muted">Der Event wird mit diesem Formular gespeichert und bleibt im Kalender verborgen.</p>
+    @if (categoryError()) {
+      <p class="error" role="alert">{{ categoryError() }}</p>
+      <button type="button" (click)="loadCategories()">Kategorien erneut laden</button>
+    }
+    <div [formGroup]="form()">
+      <div class="field">
+        <label [attr.for]="idPrefix() + '-event-title'">Event-Titel</label
+        ><input [id]="idPrefix() + '-event-title'" formControlName="title" />
+      </div>
+      <div class="grid">
+        <div class="field">
+          <label [attr.for]="idPrefix() + '-event-start'">Beginn</label
+          ><input
+            [id]="idPrefix() + '-event-start'"
+            type="datetime-local"
+            formControlName="starts_at"
+          />
+        </div>
+        <div class="field">
+          <label [attr.for]="idPrefix() + '-event-end'">Ende (optional)</label
+          ><input
+            [id]="idPrefix() + '-event-end'"
+            type="datetime-local"
+            formControlName="ends_at"
+          />
+        </div>
+      </div>
+      <div class="field">
+        <label [attr.for]="idPrefix() + '-event-category'">Kategorie</label
+        ><select [id]="idPrefix() + '-event-category'" formControlName="category_id">
+          <option [ngValue]="null">Bitte auswählen</option>
+          @for (category of categories(); track category.id) {
+            <option [ngValue]="category.id">{{ category.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label [attr.for]="idPrefix() + '-event-location'">Ort (optional)</label
+        ><input [id]="idPrefix() + '-event-location'" formControlName="location" />
+      </div>
+      <div class="field">
+        <label [attr.for]="idPrefix() + '-event-description'">Event-Beschreibung (optional)</label
+        ><textarea
+          [id]="idPrefix() + '-event-description'"
+          rows="3"
+          formControlName="description"
+        ></textarea>
+      </div>
+    </div>
+  }
+</section>
