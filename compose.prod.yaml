@@ -1,0 +1,59 @@
+name: ttc-production
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ttc
+      POSTGRES_USER: ttc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ttc -d ttc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: ./backend
+    image: ttc-backend:local
+    restart: unless-stopped
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL fehlt}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY fehlt}
+      LOG_TO_FILE: "false"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    volumes:
+      - media_data:/app/output/media
+
+  web:
+    build:
+      context: ./frontend
+    image: ttc-frontend:local
+    restart: unless-stopped
+
+    depends_on:
+      api:
+        condition: service_started
+
+    ports:
+      - "127.0.0.1:8080:80"
+
+volumes:
+  postgres_data:
+  media_data:

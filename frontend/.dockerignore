@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.angular/
+tmp/
+
+.git/
+.vscode/
+
+.env
+.env.*
+!.env.example
+
+npm-debug.log*
