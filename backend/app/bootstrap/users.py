@@ -11,6 +11,7 @@ from app.bootstrap.settings import settings
 from app.core.users.application.commands import (
     AddUserRole,
     CreateUser,
+    CreateFirstAdmin,
     DeleteUser,
     EnsureDefaultRoles,
     RemoveUserRole,
@@ -26,6 +27,10 @@ from app.core.users.application.queries import (
     ListUsers,
 )
 from sqlmodel import Session
+
+
+def build_create_first_admin(session: Session) -> CreateFirstAdmin:
+    return CreateFirstAdmin(SqlUserUnitOfWork(session), ArgonPasswords())
 
 
 def build_create_user(session: Session) -> CreateUser:

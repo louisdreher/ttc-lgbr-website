@@ -75,6 +75,25 @@ Do not use `alembic stamp` as a repair command without first comparing the
 actual schema with the target revision. `stamp` changes Alembic's recorded
 revision but does not modify tables.
 
+## First administrator
+
+After migrations and the first API startup (which initializes default roles),
+run from the project root:
+
+```powershell
+docker compose --env-file .env.production -f compose.prod.yaml build api
+docker compose --env-file .env.production -f compose.prod.yaml run --rm api python -m scripts.users create-admin
+```
+
+Without Docker, run `python -m scripts.users create-admin` from `backend/` with
+the backend environment active. The command writes a new active account and its
+ADMIN assignment atomically. It prompts for name, email and a password of 12 to
+128 characters twice, without echoing the password. An interactive terminal is
+required; do not use `-T`, password arguments or piped input. No email is sent.
+Existing accounts are not promoted or reset. An existing ADMIN account blocks
+setup even when disabled; concurrent PostgreSQL calls serialize on the ADMIN row.
+The command returns a nonzero exit status on failure and leaves no partial account.
+
 ## Start FastAPI
 
 Media uploads use `MEDIA_DIRECTORY` (default `output/media`, relative to

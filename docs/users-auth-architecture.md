@@ -79,7 +79,13 @@ bleiben erhalten. PostgreSQL-Inserts verwenden `ON CONFLICT (name) DO NOTHING`,
 damit parallele API-Starts keine doppelten Rollen erzeugen. Andere Datenbankfehler
 brechen den Start ab. Migrationen müssen weiterhin vorher separat ausgeführt
 werden; der Start erstellt weder Tabellen noch Benutzer.
-Ein Einrichtungsablauf für den ersten Administrator bleibt geplant.
+Der erste Administrator wird ausdrücklich über `python -m scripts.users create-admin`
+eingerichtet. Der CLI-Adapter validiert die E-Mail und fragt das Passwort verdeckt
+mit Bestätigung ab. `CreateFirstAdmin` prüft die Passwortlänge (12 bis 128 Zeichen),
+sperrt die ADMIN-Zeile und speichert Konto und Rollenzuordnung in einer Transaktion.
+Auch deaktivierte Administratoren verhindern eine erneute Ersteinrichtung;
+vorhandene Konten werden weder hochgestuft noch zurückgesetzt. Die Verdrahtung
+verwendet den bestehenden Argon2-Adapter. Migrationen und Rollen müssen vorhanden sein.
 Die später ergänzte Competition-Domain und die verschobenen Members-/Media-
 Persistenzmodelle sind in [der Architekturübersicht](architecture.md) beschrieben.
 

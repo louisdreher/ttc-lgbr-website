@@ -3,31 +3,26 @@
 This document records known limitations that are intentionally not solved yet.
 They should not be interpreted as accidental omissions or completed features.
 
-## No bootstrap process for roles and first administrator
+## First administrator requires explicit setup
 
 ### Status
 
-Open; deferred.
+Implemented as an interactive CLI command.
 
 ### Current situation
 
-User creation is protected by the `ADMIN` role. A new installation initially
-has neither an administrator nor a guaranteed process that creates the default
-roles. This creates a bootstrap cycle: an administrator is required to create
-the first administrator.
+API startup creates missing default roles after migrations, but does not create
+an administrator. Run `python -m scripts.users create-admin` explicitly in the
+configured backend environment. See [development setup](development.md).
 
 ### Impact
 
-- A fresh installation cannot be initialized through the normal protected API.
-- Manual database changes may currently be required.
-- Role existence depends on prior database state.
+- The command asks for name, email and a hidden password with confirmation.
+- Existing accounts are never promoted or reset by this command.
+- Any existing ADMIN account, including a disabled one, blocks initial setup.
 
-### Intended future discussion
-
-A future setup mechanism should create missing roles idempotently and provide a
-safe, explicit way to create the first administrator. A dedicated CLI command
-is a likely option. It must not introduce hard-coded credentials, default
-passwords, or a publicly exposed bootstrap endpoint.
+Account recovery is separate from first-time setup. No default credentials or
+public bootstrap endpoint are provided.
 
 ## Scheduler not implemented
 

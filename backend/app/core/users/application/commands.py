@@ -25,6 +25,36 @@ from app.core.users.domain.password_link import PasswordLink
 from app.core.users.domain.user import Role, RoleName, User, normalize_email
 
 
+class CreateFirstAdmin:
+    """Explicit first-time setup; never promotes or resets an existing account."""
+
+    def __init__(self, uow: UserUnitOfWork, passwords: Passwords):
+        self.uow, self.passwords = uow, passwords
+
+    def execute(self, command: CreateUserCommand) -> UserDetails:
+        if not command.name.strip():
+            raise ValueError("Name darf nicht leer sein.")
+        if not 12 <= len(command.password) <= 128:
+            raise ValueError("Das Passwort muss 12 bis 128 Zeichen lang sein.")
+        with self.uow:
+            self.uow.users.lock_administration()
+            role = self.uow.roles.get_by_name(RoleName.ADMIN.value)
+            if role is None:
+                raise RoleNotFoundError("ADMIN-Rolle fehlt. Bitte zuerst die API starten.")
+            if self.uow.users.admin_exists():
+                raise UserConflictError("Es existiert bereits ein Administrator, eventuell deaktiviert.")
+            if self.uow.users.email_exists(normalize_email(command.email)):
+                raise UserAlreadyExistsError("Ein Konto mit dieser E-Mail existiert bereits.")
+            user = User.create(
+                email=command.email, name=command.name,
+                password_hash=self.passwords.hash(command.password),
+            )
+            user.add_role(role)
+            result = UserDetails.from_user(self.uow.users.save(user))
+            self.uow.commit()
+            return result
+
+
 class CreateUser:
     def __init__(self, uow: UserUnitOfWork, passwords: Passwords):
         self.uow = uow

@@ -23,6 +23,35 @@ from sqlmodel import Session, select
 from test_outbox_postgres import postgres_database  # noqa: F401
 
 
+def test_concurrent_first_admin_creation(postgres_database):
+    from app.bootstrap.users import build_create_first_admin
+    from app.core.users.application.dto import CreateUserCommand
+
+    engine, config = postgres_database
+    command.upgrade(config, "head")
+    with Session(engine) as session:
+        build_ensure_default_roles(session).execute()
+    barrier = Barrier(2)
+
+    def create(number):
+        with Session(engine) as session:
+            barrier.wait(timeout=10)
+            try:
+                build_create_first_admin(session).execute(CreateUserCommand(
+                    name="Admin", email=f"admin{number}@example.org",
+                    password="test-password-123",
+                ))
+                return True
+            except UserConflictError:
+                return False
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(create, range(2))) == [False, True]
+    with Session(engine) as session:
+        admins = session.exec(select(User).where(User.roles.any(Role.name == "ADMIN"))).all()
+        assert len(admins) == 1
+
+
 def test_concurrent_role_initialization(postgres_database, monkeypatch):
     from app.adapters.outbound.persistence.users.repository import SqlRoleRepository
 

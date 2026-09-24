@@ -49,6 +49,12 @@ class SqlUserRepository:
             ).all()
         )
 
+    def admin_exists(self) -> bool:
+        # Even a disabled administrator prevents re-running first-time setup.
+        return self.session.exec(
+            select(UserRow.id).where(UserRow.roles.any(RoleRow.name == "ADMIN"))
+        ).first() is not None
+
     def member_in_use(self, member_id: int, user_id: int | None) -> bool:
         query = select(UserRow.id).where(UserRow.member_id == member_id)
         if user_id is not None:
