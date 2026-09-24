@@ -23,6 +23,40 @@ from sqlmodel import Session, select
 from test_outbox_postgres import postgres_database  # noqa: F401
 
 
+def test_concurrent_role_initialization(postgres_database, monkeypatch):
+    from app.adapters.outbound.persistence.users.repository import SqlRoleRepository
+
+    engine, config = postgres_database
+    command.upgrade(config, "head")
+    barrier = Barrier(2)
+    original = SqlRoleRepository.get_by_name
+
+    def concurrent_read(self, name):
+        role = original(self, name)
+        if name == "ADMIN":
+            # Force both transactions to observe the missing first role.
+            assert role is None
+            barrier.wait(timeout=10)
+        return role
+
+    with monkeypatch.context() as patch:
+        patch.setattr(SqlRoleRepository, "get_by_name", concurrent_read)
+
+        def initialize(_):
+            with Session(engine) as session:
+                build_ensure_default_roles(session).execute()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            list(pool.map(initialize, range(2)))
+
+    with Session(engine) as session:
+        before = {r.name: r.id for r in session.exec(select(Role))}
+        build_ensure_default_roles(session).execute()
+        after = {r.name: r.id for r in session.exec(select(Role))}
+    assert before == after
+    assert set(after) == {role.value for role in RoleName}
+
+
 @pytest.mark.parametrize("upgrade_existing", [False, True])
 def test_users_migration(postgres_database, upgrade_existing):
     engine, config = postgres_database

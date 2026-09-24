@@ -72,9 +72,15 @@ verglichen. Die spätere Berichtautomatik ergänzt die oben beschriebene Systemk
 und wird einschließlich Migration an PostgreSQL geprüft.
 
 `EnsureDefaultRoles` erhält die bisherige idempotente Rollenerstellung als
-Usecase; `build_ensure_default_roles` verdrahtet ihn. Er wird nicht automatisch
-beim Start ausgeführt. Ein Einrichtungsablauf für den ersten Administrator bleibt
-geplant. Die später ergänzte Competition-Domain und die verschobenen Members-/Media-
+Usecase; `build_ensure_default_roles` verdrahtet ihn. Der FastAPI-Lifespan in
+`app/bootstrap/lifespan.py` führt ihn vor Annahme von Anfragen mit einer eigenen
+Datenbanksitzung aus. Fehlende Rollen werden ergänzt; vorhandene Rollen und IDs
+bleiben erhalten. PostgreSQL-Inserts verwenden `ON CONFLICT (name) DO NOTHING`,
+damit parallele API-Starts keine doppelten Rollen erzeugen. Andere Datenbankfehler
+brechen den Start ab. Migrationen müssen weiterhin vorher separat ausgeführt
+werden; der Start erstellt weder Tabellen noch Benutzer.
+Ein Einrichtungsablauf für den ersten Administrator bleibt geplant.
+Die später ergänzte Competition-Domain und die verschobenen Members-/Media-
 Persistenzmodelle sind in [der Architekturübersicht](architecture.md) beschrieben.
 
 ## Benutzerverwaltung im CMS

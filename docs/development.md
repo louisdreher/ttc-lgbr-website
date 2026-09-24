@@ -65,9 +65,11 @@ alembic check
 ```
 
 Generated revisions are drafts and must be reviewed before they are applied.
-Schema migrations also do not create application bootstrap data such as roles
-or the first administrator; that remains a separate setup concern documented
-in [known-issues.md](known-issues.md).
+Schema migrations do not create default roles or the first administrator.
+After migration, API startup automatically ensures ADMIN, EDITOR and
+TEAM_REPORTER exist, preserving existing roles. Startup fails if this cannot
+complete (for example, if migrations are missing). No administrator is created;
+that remains a separate setup concern documented in [known-issues.md](known-issues.md).
 
 Do not use `alembic stamp` as a repair command without first comparing the
 actual schema with the target revision. `stamp` changes Alembic's recorded

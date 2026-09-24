@@ -3,6 +3,7 @@ from app.adapters.outbound.persistence.users.models import User as UserRow
 from app.core.users.application.errors import UserConflictError
 from app.core.users.domain.user import Role, User
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlmodel import Session, select
 
 
@@ -135,5 +136,13 @@ class SqlRoleRepository:
         return Role(id=row.id, name=row.name) if row is not None else None
 
     def add(self, name: str) -> None:
+        if self.session.get_bind().dialect.name == "postgresql":
+            # Another startup may have inserted the role after our initial read.
+            self.session.execute(
+                postgres_insert(RoleRow)
+                .values(name=name)
+                .on_conflict_do_nothing(index_elements=["name"])
+            )
+            return
         self.session.add(RoleRow(name=name))
         self.session.flush()

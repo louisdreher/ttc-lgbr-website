@@ -23,6 +23,7 @@ from app.adapters.inbound.http.users.admin_router import password_router
 from app.adapters.inbound.http.users.admin_router import router as user_admin_router
 from app.adapters.inbound.http.users.router import router as user_router
 from app.bootstrap.logging import configure_logging
+from app.bootstrap.lifespan import lifespan
 from app.bootstrap.settings import settings
 
 configure_logging(
@@ -35,7 +36,7 @@ configure_logging(
 )
 
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
