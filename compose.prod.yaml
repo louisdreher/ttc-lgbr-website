@@ -41,6 +41,23 @@ services:
     volumes:
       - media_data:/app/output/media
 
+  worker:
+    profiles: ["automation"]
+    build:
+      context: ./backend
+    image: ttc-backend:local
+    command: ["python", "-m", "scripts.content", "worker"]
+    restart: unless-stopped
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL fehlt}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY fehlt}
+      LOG_TO_FILE: "false"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
   web:
     build:
       context: ./frontend

@@ -7,6 +7,10 @@ services:
       COOKIE_SECURE: "true"
       PUBLIC_FRONTEND_URL: https://${SITE_ADDRESS:?SITE_ADDRESS fehlt}
 
+  worker:
+    environment:
+      ENVIRONMENT: production
+
   web:
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:?SITE_ADDRESS fehlt}
