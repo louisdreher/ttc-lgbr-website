@@ -1,0 +1,15 @@
+# Apply after compose.prod.yaml on the public server (Compose >= 2.24.4).
+services:
+  api:
+    ports: !reset []
+    environment:
+      ENVIRONMENT: production
+      COOKIE_SECURE: "true"
+      PUBLIC_FRONTEND_URL: https://${SITE_ADDRESS:?SITE_ADDRESS fehlt}
+
+  web:
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?SITE_ADDRESS fehlt}
+    ports: !override
+      - "80:80"
+      - "443:443"

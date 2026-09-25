@@ -47,6 +47,9 @@ services:
     image: ttc-frontend:local
     restart: unless-stopped
 
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+
     depends_on:
       api:
         condition: service_started
@@ -54,6 +57,12 @@ services:
     ports:
       - "127.0.0.1:8080:80"
 
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
 volumes:
   postgres_data:
   media_data:
+  caddy_data:
+  caddy_config:
