@@ -293,6 +293,31 @@ im Inhaltsbereich bei Desktop-/Mobilgrößen. Screenshots liegen unter dem
 ignorierten `frontend/tmp/user-checks`. `USERS_TEST_URL` und `BROWSER_CHANNEL`
 überschreiben Vorschauadresse und Browser (Standard: Microsoft Edge).
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on pushes to main, pull requests targeting main,
+and manual workflow dispatch. Backend and frontend checks run independently;
+Docker builds follow only after both pass. New runs cancel older runs on the
+same branch or pull request. Jobs have read-only repository permissions and
+do not use production secrets, contact the VPS, publish images or deploy.
+
+- Backend: Python 3.13, both hash-locked requirements files, `pip check`,
+  `alembic upgrade head` and `alembic check` against a fresh PostgreSQL 18 database,
+  then the complete pytest suite.
+- PostgreSQL integration tests receive TTC_TEST_POSTGRES_URL pointing to the
+  temporary CI service. They create and drop their own disposable databases;
+  they are not silently skipped for a missing connection setting. The CI-only
+  user/password are public test credentials, not production credentials.
+- Frontend: Node.js 22, npm 10.9.2, `npm ci`, Angular tests without watch mode,
+  and the production build. Google Fonts inlining requires internet access.
+- Docker: build the backend and frontend Dockerfiles independently, without push.
+
+After committing and pushing the workflow, inspect the first run in GitHub's
+Actions tab. Local validation does not replace that first hosted run. The custom
+Playwright browser checks are not included yet. Branch protection / required
+checks must be configured separately in GitHub; this file alone does not prevent
+merging or pushing a failing change.
+
 ## Suggested learning workflow with Codex
 
 Prefix a task with the kind of collaboration you want:
