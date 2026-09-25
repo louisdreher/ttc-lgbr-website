@@ -28,11 +28,25 @@ def seed(engine):
         system_id = session.exec(
             select(User.id).where(User.system_key == "article-automation")
         ).one()
-        users = [
-            User(email=f"writer{i}@example.org", name=f"Writer {i}", password_hash="!")
+        # This fixture also runs before the user-administration migration.
+        # Use only historical columns, not today's ORM insert defaults.
+        ids = [
+            session.execute(
+                text(
+                    'INSERT INTO "user" '
+                    '(email, name, password_hash, is_active, created_at) '
+                    'VALUES (:email, :name, :password_hash, true, :created_at) '
+                    'RETURNING id'
+                ),
+                {
+                    "email": f"writer{i}@example.org",
+                    "name": f"Writer {i}",
+                    "password_hash": "!",
+                    "created_at": datetime.now(timezone.utc),
+                },
+            ).scalar_one()
             for i in range(2)
         ]
-        session.add_all(users)
         category = EventCategory(name="Verein", slug="verein")
         session.add(category)
         session.flush()
@@ -41,7 +55,6 @@ def seed(engine):
         )
         session.add(event)
         session.flush()
-        ids = [u.id for u in users]
         event_id = event.id
         session.commit()
         return event_id, ids, system_id
