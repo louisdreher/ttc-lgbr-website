@@ -37,9 +37,9 @@ install -d -m 0700 -o root -g root "$BACKUP_DIR"
 
 # Serialize manual and scheduled runs, including cleanup of old archives.
 exec 9>"$BACKUP_DIR/.backup.lock"
-if ! flock -n 9; then
-    log 'Another backup is already running; skipping.'
-    exit 0
+if ! flock -w 300 9; then
+    log 'Another backup still holds the lock after 300 seconds; failing.' >&2
+    exit 1
 fi
 
 compose=(docker compose --project-directory "$PROJECT_DIR"

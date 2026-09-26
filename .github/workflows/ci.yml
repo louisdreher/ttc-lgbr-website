@@ -15,6 +15,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  deployment-scripts:
+    name: Deployment script checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check shell syntax and deployment failure handling
+        run: |
+          bash -n scripts/deploy.sh
+          bash -n scripts/backup-postgres.sh
+          python3 -m unittest discover -s scripts/tests -v
+
   backend:
     name: Backend and PostgreSQL
     runs-on: ubuntu-24.04
